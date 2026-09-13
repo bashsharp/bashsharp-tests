@@ -6,7 +6,7 @@ seq: 26
 status: todo
 priority: p1
 created: 2026-09-10T10:45:34.548954Z
-sprint: 146
+sprint: 166
 ---
 
 The v1.0.0 agentic product IS this gate. Today every guarantee in the spec is prose.
