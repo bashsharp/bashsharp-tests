@@ -1,0 +1,16 @@
+root
+testdir:intrinsic.go
+testdir:escape_runtime_atomic.go
+testdir:escape_sync_atomic.go
+testdir:escape_unsafe.go
+testdir:escape_iface.go
+testdir:alias3.go
+testdir:ddd2.go
+testdir:fixedbugs/issue9608.go
+testdir:dwarf/dwarf.go
+testdir:alias2.go
+testdir:blank1.go
+testdir:closure6.go
+testdir:fixedbugs/bug020.go
+testdir:fixedbugs/issue4909b.go
+testdir:nowritebarrier.go
