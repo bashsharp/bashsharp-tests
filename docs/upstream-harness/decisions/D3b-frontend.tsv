@@ -1,0 +1,6 @@
+root	mode	decision	ground
+testdir:fixedbugs/issue23586.go	both	front-end	needs a source-preserving front end (162 closure; S165.5 design note)
+testdir:fixedbugs/issue4468.go	both	front-end	needs a source-preserving front end (162 closure; S165.5 design note)
+testdir:fixedbugs/issue50372.go	both	front-end	needs a source-preserving front end (162 closure; S165.5 design note)
+testdir:fixedbugs/issue15609.go	compiled	D3b	execute-phase .s companion: assembly must run natively (162 D3(b))
+testdir:fixedbugs/issue74648.go	compiled	D3b	execute-phase .s companion: assembly must run natively (162 D3(b))

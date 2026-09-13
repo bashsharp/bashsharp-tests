@@ -1,0 +1,13 @@
+root	mode	decision	ground
+testdir:fixedbugs/issue34968.go	both	D4	import "C" / //go:build cgo: pure-Go product declares cgo out of scope (162 D4)
+testdir:fixedbugs/issue36705.go	both	D4	import "C" / //go:build cgo: pure-Go product declares cgo out of scope (162 D4)
+testdir:fixedbugs/issue47227.go	both	D4	import "C" / //go:build cgo: pure-Go product declares cgo out of scope (162 D4)
+testdir:fixedbugs/issue71225.go	both	D4	import "C" / //go:build cgo: pure-Go product declares cgo out of scope (162 D4)
+testdir:fixedbugs/issue71226.go	both	D4	import "C" / //go:build cgo: pure-Go product declares cgo out of scope (162 D4)
+testdir:fixedbugs/issue47185.go	both	D4	import "C" / //go:build cgo: pure-Go product declares cgo out of scope (162 D4)
+testdir:fixedbugs/bug514.go	interpreted	D4	package requires cgo (retained row; non-blocking)
+testdir:fixedbugs/issue40954.go	interpreted	D4	package requires cgo (retained row; non-blocking)
+testdir:fixedbugs/issue42032.go	interpreted	D4	package requires cgo (retained row; non-blocking)
+testdir:fixedbugs/issue42076.go	interpreted	D4	package requires cgo (retained row; non-blocking)
+testdir:fixedbugs/issue46903.go	interpreted	D4	package requires cgo (retained row; non-blocking)
+testdir:fixedbugs/issue51733.go	interpreted	D4	package requires cgo (retained row; non-blocking)

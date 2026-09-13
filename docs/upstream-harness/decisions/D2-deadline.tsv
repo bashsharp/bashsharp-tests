@@ -1,0 +1,23 @@
+root	mode	decision	ground
+testdir:64bit.go	interpreted	D2	interpreter per-call cost (162 D2, 53x the bound)
+testdir:abi/fibish.go	interpreted	D2	interpreter per-call cost (162 D2, 53x the bound)
+testdir:abi/fibish_closure.go	interpreted	D2	interpreter per-call cost (162 D2, 53x the bound)
+testdir:abi/uglyfib.go	interpreted	D2	interpreter per-call cost (162 D2, 53x the bound)
+testdir:closure.go	interpreted	D2	interpreter per-call cost (162 D2, 53x the bound)
+testdir:deferfin.go	interpreted	D2	interpreter per-call cost (162 D2, 53x the bound)
+testdir:fixedbugs/issue11256.go	interpreted	D2	interpreter per-call cost (162 D2, 53x the bound)
+testdir:fixedbugs/issue16037_run.go	interpreted	D2	interpreter per-call cost (162 D2, 53x the bound)
+testdir:fixedbugs/issue16249.go	interpreted	D2	interpreter per-call cost (162 D2, 53x the bound)
+testdir:fixedbugs/issue5493.go	interpreted	D2	interpreter per-call cost (162 D2, 53x the bound)
+testdir:fixedbugs/issue5963.go	interpreted	D2	interpreter per-call cost (162 D2, 53x the bound)
+testdir:fixedbugs/issue67255.go	interpreted	D2	interpreter per-call cost (162 D2, 53x the bound)
+testdir:fixedbugs/issue79186.go	interpreted	D2	interpreter per-call cost (162 D2, 53x the bound)
+testdir:ken/divconst.go	interpreted	D2	interpreter per-call cost (162 D2, 53x the bound)
+testdir:ken/modconst.go	interpreted	D2	interpreter per-call cost (162 D2, 53x the bound)
+testdir:peano.go	interpreted	D2	interpreter per-call cost (162 D2, 53x the bound)
+testdir:rangegen.go	interpreted	D2	interpreter per-call cost (162 D2, 53x the bound)
+testdir:stack.go	interpreted	D2	interpreter per-call cost (162 D2, 53x the bound)
+testdir:atomicload.go	interpreted	D2	regression at C: pushed back over the bound by 162 run-time mechanisms (handoff: D2 applies) — D10 profile confirms
+testdir:fixedbugs/issue22781.go	interpreted	D2	regression at C: pushed back over the bound by 162 run-time mechanisms (handoff: D2 applies) — D10 profile confirms
+testdir:rotate1.go	interpreted	D2	regression at C: pushed back over the bound by 162 run-time mechanisms (handoff: D2 applies) — D10 profile confirms
+testdir:rotate2.go	interpreted	D2	regression at C: pushed back over the bound by 162 run-time mechanisms (handoff: D2 applies) — D10 profile confirms

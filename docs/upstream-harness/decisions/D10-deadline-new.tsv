@@ -1,0 +1,9 @@
+root	mode	decision	ground
+testdir:chan/select2.go	interpreted	D10-pending	reached the deadline only after its evaluator FAIL closed at C; decide on the profile shard
+testdir:divmod.go	interpreted	D10-pending	reached the deadline only after its evaluator FAIL closed at C; decide on the profile shard
+testdir:fixedbugs/issue80196.go	interpreted	D10-pending	reached the deadline only after its evaluator FAIL closed at C; decide on the profile shard
+testdir:heapsampling.go	interpreted	D10-pending	reached the deadline only after its evaluator FAIL closed at C; decide on the profile shard
+testdir:ken/chan.go	interpreted	D10-pending	reached the deadline only after its evaluator FAIL closed at C; decide on the profile shard
+testdir:typeparam/list2.go	interpreted	D10-pending	reached the deadline only after its evaluator FAIL closed at C; decide on the profile shard
+testdir:typeparam/listimp2.go	interpreted	D10-pending	reached the deadline only after its evaluator FAIL closed at C; decide on the profile shard
+testdir:rangegen.go	compiled	D10-pending	COMPILED deadline: backend second-lowering cost, owner 152 — not D2
