@@ -63,12 +63,16 @@ type eventRecord struct {
 	PackageMap    *packageMap  `json:"package_map"`
 	Program       *programRec  `json:"program"`
 	Tool          toolIdentity `json:"tool"`
-	ExpectedBytes int          `json:"expected_bytes"`
-	ActualBytes   int          `json:"actual_bytes"`
-	Matched       bool         `json:"matched"`
-	Exit          int          `json:"exit"`
-	Skipped       bool         `json:"skipped"`
-	Failed        bool         `json:"failed"`
+	// S165.0 (D8): the package identity the seam handed Bash++ for this
+	// phase — upstream's own -D / -p, never invented.
+	ImportBase    string `json:"import_base"`
+	ImportPath    string `json:"import_path"`
+	ExpectedBytes int    `json:"expected_bytes"`
+	ActualBytes   int    `json:"actual_bytes"`
+	Matched       bool   `json:"matched"`
+	Exit          int    `json:"exit"`
+	Skipped       bool   `json:"skipped"`
+	Failed        bool   `json:"failed"`
 }
 
 // programRec is the program a later phase of one upstream test acted on
@@ -83,6 +87,10 @@ type programRec struct {
 	// from the directory's .s companions.
 	Object    string   `json:"object"`
 	Assembled []string `json:"assembled"`
+	// S165.0 (D8): the identity the compile phase handed Bash++; the
+	// interpreted execute phase runs the remembered sources under it.
+	ImportBase string `json:"import_base"`
+	ImportPath string `json:"import_path"`
 }
 
 // packageID is the upstream compiler's naming of a directory package
@@ -140,6 +148,103 @@ func hasPrefix(values []string, prefix string) bool {
 		}
 	}
 	return false
+}
+
+// compilerIdentity is the -D base and -p path of a direct `go tool compile`
+// argv as the compiler's own flag parsing reads them (the last occurrence
+// wins; the compile inputs are excluded by name). Any other native command
+// carries none. It mirrors the seam's reading exactly, so the identity a
+// backend event records is checked against upstream's argv, never trusted.
+func compilerIdentity(nativeArgv, compileInputs []string) (base, path string) {
+	if len(nativeArgv) < 3 || nativeArgv[1] != "tool" || nativeArgv[2] != "compile" {
+		return "", ""
+	}
+	inputs := make(map[string]bool, len(compileInputs))
+	for _, input := range compileInputs {
+		inputs[input] = true
+	}
+	args := nativeArgv[3:]
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if inputs[arg] {
+			continue
+		}
+		name := strings.TrimLeft(arg, "-")
+		if len(name) == len(arg) || len(arg)-len(name) > 2 {
+			continue
+		}
+		var value string
+		if flag, inline, ok := strings.Cut(name, "="); ok {
+			name, value = flag, inline
+		} else if name == "p" || name == "D" {
+			i++
+			if i >= len(args) {
+				break
+			}
+			value = args[i]
+		}
+		switch name {
+		case "p":
+			path = value
+		case "D":
+			base = value
+		}
+	}
+	return base, path
+}
+
+// handsSources reports whether a disposition is one where the seam invoked
+// the Bash++ front end on the phase's sources — the dispositions that carry
+// the identity handoff.
+func handsSources(disposition string) bool {
+	return strings.HasPrefix(disposition, "check-") || strings.HasPrefix(disposition, "transpile-")
+}
+
+// checkIdentity checks the identity a backend event records against
+// upstream's own phase (S165.0, D8): a directory package phase carries the
+// -D / -p upstream's compileInDir chose; any other phase carries exactly the
+// -p (and -D) of its direct compile argv, and no identity at all when the
+// native argv has none (go run, go build). Both readings must agree with
+// the recorded argv, so the seam can neither invent nor drop one.
+func checkIdentity(phase, backend eventRecord) error {
+	base, path := compilerIdentity(phase.Argv, phase.CompileInputs)
+	if phase.Package != nil {
+		if phase.Package.Base != base || phase.Package.Path != path {
+			return fmt.Errorf("upstream package identity %s/%s disagrees with its compile argv %q/%q", phase.Package.Base, phase.Package.Path, base, path)
+		}
+	}
+	if !handsSources(backend.Disposition) {
+		return nil
+	}
+	if backend.ImportBase != base || backend.ImportPath != path {
+		return fmt.Errorf("backend identity %q/%q is not upstream's own compile identity %q/%q (%s)", backend.ImportBase, backend.ImportPath, base, path, backend.Disposition)
+	}
+	return nil
+}
+
+// checkProgramIdentity checks that a remembered program carries the identity
+// of the compile phase that handed it (S165.0, D8): the record names it and,
+// when there is one, the map args hand it to the interpreted execute phase.
+func checkProgramIdentity(program *programRec, compile *eventRecord) error {
+	if program == nil || compile == nil {
+		return fmt.Errorf("no program or compile phase to check the identity of")
+	}
+	if program.ImportBase != compile.ImportBase || program.ImportPath != compile.ImportPath {
+		return fmt.Errorf("program identity %q/%q differs from its compile phase's %q/%q", program.ImportBase, program.ImportPath, compile.ImportBase, compile.ImportPath)
+	}
+	for _, handoff := range []struct{ flag, want string }{{"--go-import-base", program.ImportBase}, {"--go-import-path", program.ImportPath}} {
+		flag, want := handoff.flag, handoff.want
+		var got string
+		for i, arg := range program.MapArgs {
+			if arg == flag && i+1 < len(program.MapArgs) {
+				got = program.MapArgs[i+1]
+			}
+		}
+		if got != want {
+			return fmt.Errorf("program map args %v hand %s %q, want %q", program.MapArgs, flag, got, want)
+		}
+	}
+	return nil
 }
 
 func main() {
@@ -230,6 +335,9 @@ func verifyRow(row matrixRow, dir, mode, version, tool string) (string, error) {
 		}
 		if len(backend.Deviations) == 0 {
 			return "", fmt.Errorf("backend deviations are not explicit")
+		}
+		if err := checkIdentity(phase, backend); err != nil {
+			return "", fmt.Errorf("phase %d: %v", i, err)
 		}
 	}
 
@@ -631,6 +739,9 @@ func verifyBuildDirRow(row matrixRow, ev evidence, mode, goAction string) (strin
 			if !reflect.DeepEqual(nonEmpty(backend.Program.Assembled), nonEmpty(assembled)) {
 				return "", fmt.Errorf("phase %d: pack adopted assembled objects %v, want exactly the seam's %v", i, backend.Program.Assembled, assembled)
 			}
+			if err := checkProgramIdentity(backend.Program, compile); err != nil {
+				return "", fmt.Errorf("phase %d: %v", i, err)
+			}
 			if mode == "compiled" && (len(backend.Artifacts) != 1 || backend.Program.Artifact != backend.Artifacts[0] || backend.Program.Object != filepath.Base(backend.Artifacts[0])) {
 				return "", fmt.Errorf("phase %d: pack must record the archive as the program artifact: artifacts=%v program=%v", i, backend.Artifacts, backend.Program)
 			}
@@ -1031,6 +1142,9 @@ func verifyRunDirRow(row matrixRow, ev evidence, mode, goAction string) (string,
 			}
 			if mode == "compiled" && (len(backend.Artifacts) != 1 || backend.Program.Artifact != backend.Artifacts[0]) {
 				return "", fmt.Errorf("phase %d: link must record the linked program as its artifact: artifacts=%v program=%v", i, backend.Artifacts, backend.Program)
+			}
+			if err := checkProgramIdentity(backend.Program, last); err != nil {
+				return "", fmt.Errorf("phase %d: %v", i, err)
 			}
 			program = backend.Program
 			stage = "link"

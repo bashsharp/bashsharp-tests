@@ -447,6 +447,8 @@ func buildDirEvidence(mode string, assembly bool) []eventRecord {
 	generated := "/tmp/module/main.go"
 	compilerArgv := append(append([]string(nil), compileArgv[:len(compileArgv)-len(gos)]...), generated)
 	proof := result()
+	backend.ImportBase, backend.ImportPath = ".", "main"
+	identityArgs := []string{"--go-import-base", ".", "--go-import-path", "main"}
 	if mode == "compiled" {
 		backend.Disposition = "transpile-compile-directory-build"
 		backend.Artifacts = []string{generated, cwd + "/go.o"}
@@ -470,7 +472,7 @@ func buildDirEvidence(mode string, assembly bool) []eventRecord {
 	}
 	packArgv := append([]string{goTool, "tool", "pack", "c", "all.a"}, objects...)
 	phase, backend = mk("phase", "link", objects, packArgv), mk("backend", "link", objects, packArgv)
-	packed := &programRec{Files: gos, Object: "all.a", Assembled: assembled}
+	packed := &programRec{Files: gos, MapArgs: identityArgs, ImportBase: ".", ImportPath: "main", Object: "all.a", Assembled: assembled}
 	backend.Disposition, backend.Program = "pack-adopt-check", packed
 	if mode == "compiled" {
 		packed.Artifact = cwd + "/all.a"
@@ -479,7 +481,7 @@ func buildDirEvidence(mode string, assembly bool) []eventRecord {
 	records = append(records, phase, backend, result())
 	linkArgv := []string{goTool, "tool", "link", "-o", "a.exe", "-importcfg=/tmp/importcfg", "all.a"}
 	phase, backend = mk("phase", "link", []string{"all.a"}, linkArgv), mk("backend", "link", []string{"all.a"}, linkArgv)
-	linked := &programRec{Files: gos, Object: "a.exe", Assembled: assembled}
+	linked := &programRec{Files: gos, MapArgs: identityArgs, ImportBase: ".", ImportPath: "main", Object: "a.exe", Assembled: assembled}
 	backend.Disposition, backend.Program = "link-adopt-check", linked
 	if mode == "compiled" {
 		linked.Artifact = cwd + "/a.exe"
@@ -608,9 +610,128 @@ func TestVerifierBuildDirRejectsPermissiveShapes(t *testing.T) {
 	}
 }
 
-// runDirEvidence is the phase sequence of a single-package rundir root: one
-// directory compile under upstream's `-D test -p=main`, the link adopting
-// it, the execute running the remembered program.
+// Sprint: #165; Story: S165.0; Story-ID: 1528c3c2b1df
+//
+// TestCompilerIdentityReadsUpstreamArgv pins the verifier's reading of
+// upstream's compile identity: the -D / -p of a direct `go tool compile`
+// argv, last occurrence winning, inputs excluded by name; none for any other
+// native command.
+func TestCompilerIdentityReadsUpstreamArgv(t *testing.T) {
+	for _, tt := range []struct {
+		argv       []string
+		inputs     []string
+		base, path string
+	}{
+		{[]string{"go", "tool", "compile", "-e", "-p=p", "-importcfg=/i", "/t/x.go"}, []string{"/t/x.go"}, "", "p"},
+		{[]string{"go", "tool", "compile", "-p=p", "-d=panic", "-C", "-e", "-importcfg=/i", "-+", "-p=runtime", "/t/x.go"}, []string{"/t/x.go"}, "", "runtime"},
+		{[]string{"go", "tool", "compile", "-p=p", "-e", "-importcfg=/i", "-p", "example.com/dotted", "/t/x.go"}, []string{"/t/x.go"}, "", "example.com/dotted"},
+		{[]string{"go", "tool", "compile", "-e", "-D", "test", "-importcfg=/i", "-p=main", "/t/d/main.go"}, []string{"/t/d/main.go"}, "test", "main"},
+		{[]string{"go", "tool", "compile", "-e", "-D", "test", "-importcfg=/i", "-o", "test/a.a", "-p", "test/a", "/t/d/a.go", "/t/d/b.go"}, []string{"/t/d/a.go", "/t/d/b.go"}, "test", "test/a"},
+		{[]string{"go", "tool", "compile", "-p=main", "-e", "-D", ".", "-importcfg=/i", "-o", "go.o", "-asmhdr", "go_asm.h", "-symabis", "symabis", "/t/d/main.go"}, []string{"/t/d/main.go"}, ".", "main"},
+		{[]string{"go", "tool", "compile", "-p=", "-e", "/t/x.go"}, []string{"/t/x.go"}, "", ""},
+		{[]string{"go", "tool", "compile", "-e", "/t/x.go", "-p"}, []string{"/t/x.go"}, "", ""},
+		{[]string{"go", "run", "-gcflags=-p=x", "/t/x.go"}, []string{"/t/x.go"}, "", ""},
+		{[]string{"go", "build", "-o", "a.exe", "/t/x.go"}, []string{"/t/x.go"}, "", ""},
+		{[]string{"go", "tool", "asm", "-p=main", "-gensymabis", "-o", "symabis", "/t/d/f.s"}, []string{"/t/d/f.s"}, "", ""},
+		{[]string{"/t/a.exe"}, nil, "", ""},
+	} {
+		base, path := compilerIdentity(tt.argv, tt.inputs)
+		if base != tt.base || path != tt.path {
+			t.Errorf("compilerIdentity(%v) = %q/%q, want %q/%q", tt.argv, base, path, tt.base, tt.path)
+		}
+	}
+}
+
+// identityCompileEvidence is a single-file compile phase whose native argv
+// carries upstream's -p (compileFile's `-p=p`) and whose backend recorded
+// the handoff.
+func identityCompileEvidence(mode string) (eventRecord, eventRecord, eventRecord) {
+	phase, backend, result := compileEvidence(mode)
+	native := []string{"go", "tool", "compile", "-e", "-p=p", "-importcfg=/tmp/importcfg", "-N", "bug020.go"}
+	phase.Argv, backend.NativeArgv = native, native
+	backend.ImportPath = "p"
+	if mode == "compiled" {
+		backend.CompilerArgv = []string{"go", "tool", "compile", "-e", "-p=p", "-importcfg=/tmp/importcfg", "-N", "/tmp/main.go"}
+	}
+	return phase, backend, result
+}
+
+// TestVerifierRequiresUpstreamIdentityHandoff (S165.0, D8): a phase that
+// reaches the front end records exactly the identity of upstream's own
+// compile argv — never one it invented, never a dropped one — and a phase
+// whose native argv carries none records none.
+func TestVerifierRequiresUpstreamIdentityHandoff(t *testing.T) {
+	for _, mode := range []string{"interpreted", "compiled"} {
+		t.Run(mode, func(t *testing.T) {
+			phase, backend, result := identityCompileEvidence(mode)
+			if status, err := verifyCompileEvidence(t, mode, phase, backend, result); err != nil || status != "COMPILE-ONLY-PASS" {
+				t.Fatalf("verifyRow = %q, %v", status, err)
+			}
+			// dropped: upstream said -p=p, the seam handed nothing
+			backend.ImportPath = ""
+			if _, err := verifyCompileEvidence(t, mode, phase, backend, result); err == nil || !strings.Contains(err.Error(), "not upstream's own compile identity") {
+				t.Fatalf("dropped identity: error = %v", err)
+			}
+			// invented: the seam handed an identity upstream never chose
+			backend.ImportPath = "main"
+			if _, err := verifyCompileEvidence(t, mode, phase, backend, result); err == nil || !strings.Contains(err.Error(), "not upstream's own compile identity") {
+				t.Fatalf("invented identity: error = %v", err)
+			}
+			backend.ImportPath, backend.ImportBase = "p", "test"
+			if _, err := verifyCompileEvidence(t, mode, phase, backend, result); err == nil || !strings.Contains(err.Error(), "not upstream's own compile identity") {
+				t.Fatalf("invented base: error = %v", err)
+			}
+			// a recipe's own -p after upstream's is the identity gc compiles under
+			backend.ImportBase = ""
+			native := append(append([]string(nil), phase.Argv[:len(phase.Argv)-1]...), "-p=example.com/dotted", "bug020.go")
+			phase.Argv, backend.NativeArgv = native, native
+			if _, err := verifyCompileEvidence(t, mode, phase, backend, result); err == nil || !strings.Contains(err.Error(), "not upstream's own compile identity") {
+				t.Fatalf("recipe -p ignored: error = %v", err)
+			}
+			backend.ImportPath = "example.com/dotted"
+			if status, err := verifyCompileEvidence(t, mode, phase, backend, result); err != nil || status != "COMPILE-ONLY-PASS" {
+				t.Fatalf("recipe -p honoured: verifyRow = %q, %v", status, err)
+			}
+			// a native argv without -p (the S149 evidence shape) records none
+			phase, backend, result = compileEvidence(mode)
+			if status, err := verifyCompileEvidence(t, mode, phase, backend, result); err != nil || status != "COMPILE-ONLY-PASS" {
+				t.Fatalf("no identity: verifyRow = %q, %v", status, err)
+			}
+			backend.ImportPath = "p"
+			if _, err := verifyCompileEvidence(t, mode, phase, backend, result); err == nil || !strings.Contains(err.Error(), "not upstream's own compile identity") {
+				t.Fatalf("identity invented for a -p-less argv: error = %v", err)
+			}
+		})
+	}
+	// go run carries no compiler identity: the seam must hand none.
+	phase, backend, result := runEvidence("interpreted", nil, []string{})
+	if status, err := verifyRunEvidence(t, "interpreted", "pass", phase, backend, result); err != nil || status != "RUN-PASS" {
+		t.Fatalf("run: verifyRow = %q, %v", status, err)
+	}
+	backend.ImportPath = "main"
+	if _, err := verifyRunEvidence(t, "interpreted", "pass", phase, backend, result); err == nil || !strings.Contains(err.Error(), "not upstream's own compile identity") {
+		t.Fatalf("run with an invented identity: error = %v", err)
+	}
+	// An unsupported phase hands nothing to the front end; its record is
+	// not an identity claim, whatever upstream's argv carried.
+	phase, backend, _ = identityCompileEvidence("interpreted")
+	backend.Disposition = "unsupported"
+	for _, recorded := range []string{"", "p"} {
+		backend.ImportPath = recorded
+		if err := checkIdentity(phase, backend); err != nil {
+			t.Fatalf("unsupported phase recording %q: %v", recorded, err)
+		}
+	}
+	backend.Disposition = "check-only"
+	if err := checkIdentity(phase, backend); err != nil {
+		t.Fatalf("check-only with upstream's identity: %v", err)
+	}
+}
+
+// runDirEvidence is the phase sequence of a single-package rundir root
+// (intrinsic's shape): one directory compile under upstream's `-D test
+// -p=main`, the link adopting it, the execute running the remembered program
+// under the same identity (S165.0, D8 request (b)).
 func runDirEvidence(mode string) []eventRecord {
 	test := "sysdir.go"
 	cwd, dir := "/tmp/testdir", "/goroot/test/sysdir.dir"
@@ -625,6 +746,7 @@ func runDirEvidence(mode string) []eventRecord {
 	phase, backend := mk("phase", "compile", gos, compileArgv), mk("backend", "compile", gos, compileArgv)
 	phase.Package = &packageID{Base: "test", Path: "main"}
 	backend.PackageMap = &packageMap{Base: "test", Path: "main"}
+	backend.ImportBase, backend.ImportPath = "test", "main"
 	generated := "/tmp/module/main.go"
 	proof := result()
 	if mode == "compiled" {
@@ -638,7 +760,7 @@ func runDirEvidence(mode string) []eventRecord {
 		backend.Disposition = "check-package-map"
 	}
 	records := []eventRecord{phase, backend, proof}
-	program := &programRec{Files: gos}
+	program := &programRec{Files: gos, MapArgs: []string{"--go-import-base", "test", "--go-import-path", "main"}, ImportBase: "test", ImportPath: "main"}
 	linkArgv := []string{goTool, "tool", "link", "-o", "a.exe", "-importcfg=/tmp/importcfg", "main.o"}
 	phase, backend = mk("phase", "link", []string{"main.o"}, linkArgv), mk("backend", "link", []string{"main.o"}, linkArgv)
 	backend.Disposition, backend.Program = "link-adopt-check", program
@@ -669,6 +791,58 @@ func verifyRunDirEvidence(t *testing.T, mode, goAction string, records []eventRe
 	items = append(items, eventRecord{Kind: "terminal", Test: "sysdir.go", Failed: goAction == "fail"})
 	writeJSONLines(t, base+".events.jsonl", items...)
 	return verifyRow(matrixRow{Test: "sysdir.go", Action: "rundir"}, dir, mode, "test", "/bin/bashy")
+}
+
+// TestVerifierRunDirProgramKeepsIdentity (S165.0, D8 request (b)): the
+// program a single-package directory root's link and execute phases act on
+// carries the compile phase's identity and hands it through its map args;
+// a program without it — the pre-S165 single-package shape — is rejected.
+func TestVerifierRunDirProgramKeepsIdentity(t *testing.T) {
+	for _, mode := range []string{"interpreted", "compiled"} {
+		t.Run(mode, func(t *testing.T) {
+			records := runDirEvidence(mode)
+			if status, err := verifyRunDirEvidence(t, mode, "pass", records); err != nil || status != "RUNDIR-PASS" {
+				t.Fatalf("verifyRow = %q, %v", status, err)
+			}
+			for _, tt := range []struct {
+				name   string
+				mutate func(p *programRec)
+				want   string
+			}{
+				{"no identity on the program", func(p *programRec) { p.ImportBase, p.ImportPath, p.MapArgs = "", "", nil }, "differs from its compile phase"},
+				{"identity named but not handed", func(p *programRec) { p.MapArgs = nil }, "hand --go-import-base"},
+				{"another identity handed", func(p *programRec) { p.MapArgs = []string{"--go-import-base", "test", "--go-import-path", "p"} }, "hand --go-import-path"},
+				{"the base dropped", func(p *programRec) { p.MapArgs = []string{"--go-import-path", "main"} }, "hand --go-import-base"},
+			} {
+				records := runDirEvidence(mode)
+				for i := 4; i < len(records); i += 3 {
+					copied := *records[i].Program
+					records[i].Program = &copied
+				}
+				tt.mutate(records[4].Program)
+				if mode == "compiled" {
+					tt.mutate(records[7].Program)
+				} else {
+					records[7].Program = records[4].Program
+				}
+				if _, err := verifyRunDirEvidence(t, mode, "pass", records); err == nil || !strings.Contains(err.Error(), tt.want) {
+					t.Fatalf("%s: error = %v, want %q", tt.name, err, tt.want)
+				}
+			}
+			// The compile phase itself must record upstream's -D / -p.
+			records = runDirEvidence(mode)
+			records[1].ImportPath = "p"
+			if _, err := verifyRunDirEvidence(t, mode, "pass", records); err == nil || !strings.Contains(err.Error(), "not upstream's own compile identity") {
+				t.Fatalf("compile phase identity: error = %v", err)
+			}
+			// And upstream's own package identity must agree with its argv.
+			records = runDirEvidence(mode)
+			records[0].Package = &packageID{Base: "test", Path: "test/main"}
+			if _, err := verifyRunDirEvidence(t, mode, "pass", records); err == nil || !strings.Contains(err.Error(), "disagrees with its compile argv") {
+				t.Fatalf("package identity vs argv: error = %v", err)
+			}
+		})
+	}
 }
 
 // TestVerifierRunDirLinkAdoptsCompiledObject pins the compiled rundir link

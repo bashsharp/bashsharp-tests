@@ -8,7 +8,8 @@
 // Direct Go-source backend for the authenticated Go 1.27 testdir seam. The
 // only program description accepted here is the compileInputs/programArgv
 // boundary selected by upstream and handed to planExec, plus the package
-// identity (-D base, -p path) upstream chose for a directory package.
+// identity (-D base, -p path) upstream chose for a directory package or
+// carries in its own direct compile argv for a single file (S165.0, D8).
 package testdir_test
 
 import (
@@ -89,12 +90,18 @@ func (t test) backendEventProgram(mode, action, phase, disposition string, compi
 	if program != nil {
 		compilerArgv, _ = program["compiler_argv"].([]string)
 	}
+	var identity backendIdentity
+	if value, ok := backendIdentities.Load(t.eventName()); ok {
+		identity = value.(backendIdentity)
+	}
 	events.emit(t.eventName(), "backend", map[string]any{
 		"program":        program,
 		"package_map":    packageMap,
 		"backend_schema": backendSchema,
 		"mode":           mode,
 		"action":         action,
+		"import_base":    identity.Base,
+		"import_path":    identity.Path,
 		"compile_inputs": nonNil(compileInputs),
 		"program_argv":   nonNil(programArgv),
 		"recipe_flags":   nonNil(recipeFlags),
@@ -143,14 +150,97 @@ type backendProgram struct {
 	// the directory's .s companions (S165.0, D3(a)); pack may consume them
 	// and nothing else may.
 	assembled []string
+	// identity is the package identity the compile phase handed Bash++
+	// (S165.0, D8); the interpreted execute phase runs the remembered
+	// sources under the same one, so a single-package directory program
+	// keeps upstream's `-p main` at execute exactly like a multi-package one.
+	identity backendIdentity
 }
 
 // backendPrograms is keyed by the upstream test identity, like backendPackages.
 var backendPrograms sync.Map
 
 func (p backendProgram) record() map[string]any {
-	return map[string]any{"files": nonNil(p.files), "map_args": nonNil(p.mapArgs), "artifact": p.artifact, "compiler_argv": nonNil(p.compilerArgv), "object": p.object, "assembled": nonNil(p.assembled)}
+	return map[string]any{"files": nonNil(p.files), "map_args": nonNil(p.mapArgs), "artifact": p.artifact, "compiler_argv": nonNil(p.compilerArgv), "object": p.object, "assembled": nonNil(p.assembled),
+		"import_base": p.identity.Base, "import_path": p.identity.Path}
 }
+
+// backendIdentity is the package identity upstream's own compiler argv
+// carries — its -D relative-import base and its -p import path — handed to
+// Bash++ unchanged as --go-import-base / --go-import-path (S165.0, D8). A
+// directory package's identity is the one upstream's compileInDir chose; a
+// single-file compile phase's is whatever -p upstream's own argv carries
+// (`-p=p` for errorcheck/compile, `-p=main` for a directory build). The seam
+// never invents one: a phase whose native argv carries no -p hands Bash++
+// no identity and the checker keeps its directory rule.
+type backendIdentity struct {
+	Base string
+	Path string
+}
+
+// compilerIdentity reads the -D / -p of a direct `go tool compile` argv the
+// way the compiler's own flag parsing does — the last occurrence wins, so a
+// recipe's own `-p=…` after upstream's `-p=p` is the identity gc compiles
+// under. The compile inputs are excluded by name; nothing else is
+// interpreted. Any other native command (go run, go build, go tool asm)
+// carries no compiler identity.
+func compilerIdentity(nativeArgv, compileInputs []string) backendIdentity {
+	var id backendIdentity
+	if len(nativeArgv) < 3 || nativeArgv[1] != "tool" || nativeArgv[2] != "compile" {
+		return id
+	}
+	inputs := make(map[string]bool, len(compileInputs))
+	for _, input := range compileInputs {
+		inputs[input] = true
+	}
+	args := nativeArgv[3:]
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if inputs[arg] {
+			continue
+		}
+		name := strings.TrimLeft(arg, "-")
+		if len(name) == len(arg) || len(arg)-len(name) > 2 {
+			continue
+		}
+		var value string
+		if flag, inline, ok := strings.Cut(name, "="); ok {
+			name, value = flag, inline
+		} else if name == "p" || name == "D" {
+			i++
+			if i >= len(args) {
+				break
+			}
+			value = args[i]
+		}
+		switch name {
+		case "p":
+			id.Path = value
+		case "D":
+			id.Base = value
+		}
+	}
+	return id
+}
+
+// args is the identity as the Bash++ front end takes it; nothing when the
+// native argv carried none.
+func (id backendIdentity) args() []string {
+	var args []string
+	if id.Base != "" {
+		args = append(args, "--go-import-base", id.Base)
+	}
+	if id.Path != "" {
+		args = append(args, "--go-import-path", id.Path)
+	}
+	return args
+}
+
+// backendIdentities is the identity of the phase the seam is planning, per
+// upstream test (keyed like backendPackages), so every backend event of that
+// phase records the import_base / import_path handed to Bash++. Set for the
+// duration of backendPlan only.
+var backendIdentities sync.Map
 
 // owns reports whether a link-phase input set is exactly what this test's
 // earlier phases handed the seam: the object of its compiler artifact (by
@@ -540,6 +630,17 @@ func (t test) backendPlan(step *planStep, action, phase string, pkg *packageIden
 	if mode == "" {
 		return
 	}
+	// The identity of this phase (S165.0, D8): upstream's own -D / -p for a
+	// directory package, else whatever -p its direct compile argv carries;
+	// every backend event of the phase records it as import_base /
+	// import_path, and it is handed to Bash++ wherever the phase reaches
+	// the front end.
+	identity := compilerIdentity(nativeArgv, compileInputs)
+	if pkg != nil {
+		identity = backendIdentity{Base: pkg.Base, Path: pkg.Path}
+	}
+	backendIdentities.Store(t.eventName(), identity)
+	defer backendIdentities.Delete(t.eventName())
 	// Upstream bounds a command only when the recipe says `-t N`; every other
 	// phase is unbounded, which is right for the native compiler and wrong
 	// for a product under test that can hang. The backend lane applies the
@@ -674,6 +775,18 @@ func (t test) backendPlan(step *planStep, action, phase string, pkg *packageIden
 	// own -D base and -p path. Nothing is discovered on disk.
 	var mapArgs []string
 	var packageMap map[string]any
+	if !directory {
+		// A single-file phase carries upstream's own compile identity when
+		// its native argv does (`-p=p` for errorcheck/compile, `-p=main` for
+		// a directory build): the same handoff as the directory phase, so the
+		// checker decides internal visibility on the identity gc compiles
+		// under. go run / go build argv carry none and none is invented.
+		mapArgs = identity.args()
+		if len(mapArgs) != 0 {
+			deviations = append(deviations,
+				fmt.Sprintf("upstream's own compile identity (-D %q -p %q) is handed to Bash++ as an explicit --go-import-base/--go-import-path; the seam invents no identity", identity.Base, identity.Path))
+		}
+	}
 	if directory {
 		key := t.eventName()
 		var earlier []packageGroup
@@ -692,12 +805,10 @@ func (t test) backendPlan(step *planStep, action, phase string, pkg *packageIden
 		packageMap = map[string]any{"base": pkg.Base, "path": pkg.Path, "packages": packages}
 		// The last directory package upstream compiles is the program a later
 		// link/execute phase of this test acts on (rundir, errorcheckandrundir).
-		// A single-package program needs no map; a multi-package one carries
-		// upstream's identity and every earlier group.
-		program := backendProgram{files: append([]string(nil), compileInputs...)}
-		if len(earlier) != 0 {
-			program.mapArgs = append([]string(nil), mapArgs...)
-		}
+		// The program carries upstream's identity and every earlier group —
+		// a single-package program too (S165.0, D8): its execute phase runs
+		// under the same `-p main` its compile phase was checked under.
+		program := backendProgram{files: append([]string(nil), compileInputs...), mapArgs: append([]string(nil), mapArgs...), identity: identity}
 		backendPrograms.Store(key, program)
 		deviations = append(deviations,
 			fmt.Sprintf("upstream package identity -D %s -p %s and the %d earlier package(s) of this test are handed to Bash++ as an explicit package map; relative imports are never resolved on disk", pkg.Base, pkg.Path, len(earlier)))
@@ -740,7 +851,7 @@ func (t test) backendPlan(step *planStep, action, phase string, pkg *packageIden
 				checkDeviations = append(append([]string(nil), deviations...),
 					"the Bash++ check interface has no compiler or artifact semantics; upstream's direct compile flags and the go.o object remain explicit evidence only",
 					"directory build phase stops after Bash++ check; no object is produced and no init or main is executed")
-				backendPrograms.Store(t.eventName(), backendProgram{files: append([]string(nil), compileInputs...), object: filepath.Base(compilerOutput(nativeArgv, compileInputs[0], step.cmd.Dir))})
+				backendPrograms.Store(t.eventName(), backendProgram{files: append([]string(nil), compileInputs...), mapArgs: append([]string(nil), mapArgs...), identity: identity, object: filepath.Base(compilerOutput(nativeArgv, compileInputs[0], step.cmd.Dir))})
 			}
 			if buildOnly {
 				checkDeviations = append(append([]string(nil), deviations...),
@@ -879,7 +990,7 @@ func (t test) backendPlan(step *planStep, action, phase string, pkg *packageIden
 				compileDeviations = append(compileDeviations,
 					"the direct compiler keeps upstream's -o object, -D . and, with .s companions, -asmhdr go_asm.h / -symabis symabis in the upstream working directory; the generated file's constants and declarations are what the assembler sees",
 					"the object is the program this test's pack, link and execute phases act on")
-				backendPrograms.Store(t.eventName(), backendProgram{files: append([]string(nil), compileInputs...), artifact: artifact, compilerArgv: append([]string(nil), compilerArgv...), object: filepath.Base(artifact)})
+				backendPrograms.Store(t.eventName(), backendProgram{files: append([]string(nil), compileInputs...), mapArgs: append([]string(nil), mapArgs...), identity: identity, artifact: artifact, compilerArgv: append([]string(nil), compilerArgv...), object: filepath.Base(artifact)})
 			}
 			t.backendEventCompiler(mode, action, phase, disposition, compileInputs, programArgv, recipeFlags, nativeArgv,
 				step.artifacts, step.maps, compileDeviations, packageMap, compilerArgv)
@@ -950,5 +1061,53 @@ func TestProgramOwnsLinkInputs(t *testing.T) {
 	}
 	if (backendProgram{}).owns([]string{"go.o"}, false) {
 		t.Error("a program with no files owns nothing")
+	}
+}
+
+// TestCompilerIdentityReadsUpstreamArgv pins the identity handoff (S165.0,
+// D8): the -D / -p of upstream's own direct compile argv, last occurrence
+// winning as the compiler's flag parsing has it, compile inputs excluded by
+// name; every other native command carries none.
+func TestCompilerIdentityReadsUpstreamArgv(t *testing.T) {
+	for _, tt := range []struct {
+		argv   []string
+		inputs []string
+		want   backendIdentity
+	}{
+		// compileFile / errorcheck / errorcheckoutput: -p=p
+		{[]string{"go", "tool", "compile", "-e", "-p=p", "-importcfg=/i", "/t/x.go"}, []string{"/t/x.go"}, backendIdentity{Path: "p"}},
+		{[]string{"go", "tool", "compile", "-p=p", "-d=panic", "-C", "-e", "-importcfg=/i", "-0", "-m", "-l", "/t/x.go"}, []string{"/t/x.go"}, backendIdentity{Path: "p"}},
+		// a recipe's own -p after upstream's: the last one is gc's
+		{[]string{"go", "tool", "compile", "-p=p", "-d=panic", "-C", "-e", "-importcfg=/i", "-+", "-p=runtime", "/t/x.go"}, []string{"/t/x.go"}, backendIdentity{Path: "runtime"}},
+		{[]string{"go", "tool", "compile", "-p=p", "-e", "-importcfg=/i", "-p", "example.com/dotted", "/t/x.go"}, []string{"/t/x.go"}, backendIdentity{Path: "example.com/dotted"}},
+		// compileInDir: -D test -p=main / -o a.a -p test/a
+		{[]string{"go", "tool", "compile", "-e", "-D", "test", "-importcfg=/i", "-p=main", "/t/d/main.go"}, []string{"/t/d/main.go"}, backendIdentity{Base: "test", Path: "main"}},
+		{[]string{"go", "tool", "compile", "-e", "-D", "test", "-importcfg=/i", "-o", "test/a.a", "-p", "test/a", "/t/d/a.go", "/t/d/b.go"}, []string{"/t/d/a.go", "/t/d/b.go"}, backendIdentity{Base: "test", Path: "test/a"}},
+		// builddir: -p=main -D . -o go.o -asmhdr go_asm.h -symabis symabis
+		{[]string{"go", "tool", "compile", "-p=main", "-e", "-D", ".", "-importcfg=/i", "-o", "go.o", "-asmhdr", "go_asm.h", "-symabis", "symabis", "/t/d/main.go"}, []string{"/t/d/main.go"}, backendIdentity{Base: ".", Path: "main"}},
+		// an input named like a flag value is excluded by name, never read
+		{[]string{"go", "tool", "compile", "-e", "-importcfg=/i", "-p", "-p", "-p"}, []string{"-p"}, backendIdentity{}},
+		// an empty or dangling -p is no identity
+		{[]string{"go", "tool", "compile", "-p=", "-e", "/t/x.go"}, []string{"/t/x.go"}, backendIdentity{}},
+		{[]string{"go", "tool", "compile", "-e", "/t/x.go", "-p"}, []string{"/t/x.go"}, backendIdentity{}},
+		// go run / go build / go tool asm / go tool link / a.exe: none
+		{[]string{"go", "run", "-gcflags=-p=x", "/t/x.go"}, []string{"/t/x.go"}, backendIdentity{}},
+		{[]string{"go", "build", "-o", "a.exe", "/t/x.go"}, []string{"/t/x.go"}, backendIdentity{}},
+		{[]string{"go", "tool", "asm", "-p=main", "-gensymabis", "-o", "symabis", "/t/d/f.s"}, []string{"/t/d/f.s"}, backendIdentity{}},
+		{[]string{"go", "tool", "link", "-o", "a.exe", "-importcfg=/i", "main.o"}, []string{"main.o"}, backendIdentity{}},
+		{[]string{"/t/a.exe"}, nil, backendIdentity{}},
+	} {
+		if got := compilerIdentity(tt.argv, tt.inputs); got != tt.want {
+			t.Errorf("compilerIdentity(%v) = %+v, want %+v", tt.argv, got, tt.want)
+		}
+	}
+	if got := (backendIdentity{Base: "test", Path: "main"}).args(); strings.Join(got, " ") != "--go-import-base test --go-import-path main" {
+		t.Errorf("args() = %v", got)
+	}
+	if got := (backendIdentity{Path: "p"}).args(); strings.Join(got, " ") != "--go-import-path p" {
+		t.Errorf("args() = %v", got)
+	}
+	if got := (backendIdentity{}).args(); len(got) != 0 {
+		t.Errorf("args() of no identity = %v", got)
 	}
 }
