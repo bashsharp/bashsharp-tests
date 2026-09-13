@@ -91,50 +91,105 @@ func bashppTestCount(testmain string) (tests, benchmarks, fuzz, examples int, er
 	return tests, benchmarks, fuzz, examples, nil
 }
 
-func bashppFiles(p *load.Package) []string {
-	files := make([]string, 0, len(p.GoFiles))
-	for _, f := range p.GoFiles {
-		files = append(files, filepath.Join(p.Dir, f))
+// bashppFileRole is cmd/go's own classification of one Go file of a package
+// test: an ordinary file of the tested package (GoFiles), an in-package test
+// file compiled into the tested package's recompiled variant (TestGoFiles),
+// or a file of the external test package (XTestGoFiles). The role is what
+// the file IS to cmd/go; it decides the library flag it is handed under and
+// which of the two library units it forms, never the identity.
+type bashppFileRole string
+
+const (
+	bashppRoleGo    bashppFileRole = "go"
+	bashppRoleTest  bashppFileRole = "test"
+	bashppRoleXTest bashppFileRole = "xtest"
+)
+
+// flag is the library flag of the role: --go-file, --go-test-file,
+// --go-xtest-file (bashy transpile --go-library).
+func (role bashppFileRole) flag() string {
+	if role == bashppRoleGo {
+		return "--go-file"
 	}
-	return files
+	return "--go-" + string(role) + "-file"
 }
 
 type bashppPackageFile struct {
 	path string
-	flag string
+	role bashppFileRole
 }
 
-func bashppPackageFiles(p *load.Package) []bashppPackageFile {
-	files := make([]bashppPackageFile, 0, len(p.GoFiles)+len(p.TestGoFiles)+len(p.XTestGoFiles))
-	for _, name := range p.GoFiles {
-		files = append(files, bashppPackageFile{filepath.Join(p.Dir, name), "--go-file"})
+// bashppIdentity is the declared identity of one Bash++ invocation: the
+// import path it is checked under (the compiler's -p) and whether it is
+// cmd/go's generated test main. cmd/go builds a package test as three
+// compile units, each under its own identity: the tested package (ptest,
+// -p <pkg>, the in-package test files merged in), the external test package
+// (pxtest, -p <pkg>_test) and the generated testmain (pmain, -p <pkg>.test,
+// whose importer-stack label "testmain" is what exempts it from the internal
+// rule: load/pkg.go disallowInternal). The library transpile compiles the
+// first two as one library under the tested package's OWN identity — the
+// external test package is formed from the xtest role — so the tested
+// package sees its own internal siblings exactly as cmd/go grants them to
+// <pkg>; it never asserts TestMain. The testmain identity and the TestMain
+// fact go only to the invocation that receives _testmain.go.
+type bashppIdentity struct {
+	importPath string
+	testMain   bool
+}
+
+func (id bashppIdentity) args() []string {
+	args := []string{"--go-import-path", id.importPath}
+	if id.testMain {
+		args = append(args, "--go-test-main")
 	}
-	for _, name := range p.TestGoFiles {
-		files = append(files, bashppPackageFile{filepath.Join(p.Dir, name), "--go-test-file"})
-	}
-	for _, name := range p.XTestGoFiles {
-		files = append(files, bashppPackageFile{filepath.Join(p.Dir, name), "--go-xtest-file"})
-	}
-	return files
+	return args
+}
+
+// bashppProgramIdentity is the generated testmain's: cmd/go's own path for
+// it (load/test.go: p.ImportPath + ".test") with the TestMain fact, asserted
+// explicitly (--go-test-main, S165.0 for D8) rather than inferred from the
+// ".test" suffix, at the one site that knows the program it runs IS that
+// testmain.
+func bashppProgramIdentity(pmain *load.Package) bashppIdentity {
+	return bashppIdentity{importPath: pmain.ImportPath, testMain: true}
+}
+
+// bashppLibraryIdentity is the tested package's own: what cmd/go compiles
+// ptest under (-p <pkg>). A library is never the test main.
+func bashppLibraryIdentity(p *load.Package) bashppIdentity {
+	return bashppIdentity{importPath: p.ImportPath, testMain: false}
 }
 
 // bashppTestVariantFiles classifies the files of one of cmd/go's test
-// variants of the tested package for the library transpile. The recompiled
-// in-package variant lists its test files in GoFiles AND TestGoFiles, and the
-// external-test variant (<path>_test) lists the xtest files as its GoFiles, so
-// the plain GoFiles/TestGoFiles/XTestGoFiles walk double-counts and misfiles
-// them. Each path is classified once: xtest package → --go-xtest-file; a file
-// named in TestGoFiles → --go-test-file; everything else → --go-file.
+// variants of the tested package by role, each path exactly once. The
+// recompiled in-package variant (ptest) lists its test files in GoFiles AND
+// TestGoFiles, and the external-test variant (pxtest, <path>_test) lists the
+// xtest files as its GoFiles, so a plain GoFiles/TestGoFiles/XTestGoFiles
+// walk double-counts and misfiles them (and a duplicated file is refused by
+// the front end). Each path is classified once: xtest package → xtest; a
+// file named in TestGoFiles → test; everything else → go. The in-package
+// variant's XTestGoFiles (copied from the original package's metadata) are
+// NOT its files — cmd/go compiles them into pxtest only — so they never
+// form the tested package. A package whose tests are all external
+// (cmd/internal/testdir) has no in-package unit at all: its files are xtest
+// files and nothing else, which is how the external test package is formed
+// honestly.
 func bashppTestVariantFiles(imp *load.Package, tested string) []bashppPackageFile {
+	files := make([]bashppPackageFile, 0, len(imp.GoFiles)+len(imp.TestGoFiles)+len(imp.XTestGoFiles))
+	seen := map[string]bool{}
+	add := func(name string, role bashppFileRole) {
+		path := filepath.Join(imp.Dir, name)
+		if !seen[path] {
+			seen[path] = true
+			files = append(files, bashppPackageFile{path, role})
+		}
+	}
 	if imp.ImportPath == tested+"_test" {
-		files := make([]bashppPackageFile, 0, len(imp.GoFiles)+len(imp.XTestGoFiles))
-		seen := map[string]bool{}
-		for _, name := range append(append([]string(nil), imp.GoFiles...), imp.XTestGoFiles...) {
-			path := filepath.Join(imp.Dir, name)
-			if !seen[path] {
-				seen[path] = true
-				files = append(files, bashppPackageFile{path, "--go-xtest-file"})
-			}
+		for _, name := range imp.GoFiles {
+			add(name, bashppRoleXTest)
+		}
+		for _, name := range imp.XTestGoFiles {
+			add(name, bashppRoleXTest)
 		}
 		return files
 	}
@@ -142,35 +197,39 @@ func bashppTestVariantFiles(imp *load.Package, tested string) []bashppPackageFil
 	for _, name := range imp.TestGoFiles {
 		isTest[name] = true
 	}
-	files := make([]bashppPackageFile, 0, len(imp.GoFiles)+len(imp.TestGoFiles)+len(imp.XTestGoFiles))
-	seen := map[string]bool{}
-	add := func(name, flag string) {
-		path := filepath.Join(imp.Dir, name)
-		if !seen[path] {
-			seen[path] = true
-			files = append(files, bashppPackageFile{path, flag})
-		}
-	}
 	for _, name := range imp.GoFiles {
 		if isTest[name] {
-			add(name, "--go-test-file")
+			add(name, bashppRoleTest)
 		} else {
-			add(name, "--go-file")
+			add(name, bashppRoleGo)
 		}
 	}
 	for _, name := range imp.TestGoFiles {
-		add(name, "--go-test-file")
-	}
-	for _, name := range imp.XTestGoFiles {
-		add(name, "--go-xtest-file")
+		add(name, bashppRoleTest)
 	}
 	return files
+}
+
+func bashppFilePaths(files []bashppPackageFile) []string {
+	paths := make([]string, 0, len(files))
+	for _, file := range files {
+		paths = append(paths, file.path)
+	}
+	return paths
+}
+
+func bashppFileRoles(files []bashppPackageFile) map[string]string {
+	roles := make(map[string]string, len(files))
+	for _, file := range files {
+		roles[file.path] = string(file.role)
+	}
+	return roles
 }
 
 func bashppLibraryArgs(files []bashppPackageFile) []string {
 	args := make([]string, 0, len(files)*2)
 	for _, file := range files {
-		args = append(args, file.flag, file.path)
+		args = append(args, file.role.flag(), file.path)
 	}
 	return args
 }
@@ -273,10 +332,11 @@ func bashppTestPlan(p *load.Package, buildAction *work.Action, args []string) []
 	// The program: every package pmain imports that cmd/go built for this
 	// test — the package under test (with its in-package test files merged
 	// by load.TestPackagesFor) and the external test package — in import
-	// order, then _testmain.go as the main package.
+	// order, then _testmain.go as the main package. Every file is handed
+	// once, under the role cmd/go gave it.
 	var mapArgs []string
 	var packages []map[string]any
-	var overlayOriginals []string
+	var classified []bashppPackageFile
 	var assemblyCompanions []string
 	for _, imp := range pmain.Internal.Imports {
 		if imp.ImportPath != p.ImportPath && imp.ImportPath != p.ImportPath+"_test" {
@@ -289,38 +349,35 @@ func bashppTestPlan(p *load.Package, buildAction *work.Action, args []string) []
 			return []string{"/bin/sh", "-c", "echo 'Bash++ gotest backend: non-Go inputs' >&2; exit 1"}
 		}
 		assemblyCompanions = append(assemblyCompanions, imp.SFiles...)
-		classified := bashppPackageFiles(imp)
-		files := make([]string, 0, len(classified))
-		for _, file := range classified {
-			files = append(files, file.path)
-		}
-		overlayOriginals = append(overlayOriginals, files...)
+		variant := bashppTestVariantFiles(imp, p.ImportPath)
+		classified = append(classified, variant...)
+		files := bashppFilePaths(variant)
 		mapArgs = append(mapArgs, "--go-package", imp.ImportPath+"="+strings.Join(files, ","))
-		packages = append(packages, map[string]any{"path": imp.ImportPath, "files": files})
+		packages = append(packages, map[string]any{"path": imp.ImportPath, "files": files, "roles": bashppFileRoles(variant)})
 	}
 	record["program"] = map[string]any{"path": pmain.ImportPath, "packages": packages, "files": []string{testmain}}
 	testArgs := args[1:]
 	record["program_argv"] = testArgs
-	// The program's declared identity is cmd/go's own testmain package
-	// (load/test.go: ImportPath p.ImportPath + ".test"), and this is the one
-	// site that knows the program it runs IS that testmain: cmd/go exempts
-	// the importer whose import stack label is "testmain" from the internal
-	// rule (load/pkg.go disallowInternal). Bash++ receives the fact
-	// explicitly (--go-test-main, S165.0 for D8) rather than inferring it
-	// from the ".test" suffix; the identity-keyed visibility rule admits
-	// internal imports on the identity and this fact, never on a name.
-	identity := []string{"--go-import-path", pmain.ImportPath, "--go-test-main"}
-	record["import_path"] = pmain.ImportPath
-	record["test_main"] = true
+	// Two identities, never confused (S165.0, D8): the program's is cmd/go's
+	// own testmain package (<pkg>.test) with the TestMain fact, handed to the
+	// one Bash++ invocation that receives _testmain.go; the library's is the
+	// tested package's own (<pkg>), what cmd/go compiles ptest under, so the
+	// tested package's internal imports are decided on ITS identity — cmd/go
+	// grants cmd/compile its cmd/compile/internal/* on the directory, never
+	// on the testmain's path — and the library never asserts the fact.
+	program := bashppProgramIdentity(pmain)
+	library := bashppLibraryIdentity(p)
+	record["import_path"] = program.importPath
+	record["test_main"] = program.testMain
 	deviations := []string{
 		"cmd/go enumerated the tests and built the native test binary; the binary is never executed while the backend is selected",
-		"the tested package, its in-package test files and the external test package are handed to Bash++ as an explicit package map with the generated _testmain.go as the main package",
-		"the program's declared identity is cmd/go's testmain package (<pkg>.test) and the backend asserts the TestMain fact (--go-test-main) at the site where cmd/go would run the test binary",
+		"the tested package, its in-package test files and the external test package are handed to Bash++ as an explicit package map with the generated _testmain.go as the main package; every file once, under cmd/go's own role for it",
+		"the program's declared identity is cmd/go's testmain package (<pkg>.test) and the backend asserts the TestMain fact (--go-test-main) only on the invocation that receives _testmain.go; the tested package's files are checked under the tested package's own identity (<pkg>)",
 	}
 	var plan []string
 	switch mode {
 	case "interpreted":
-		plan = append(append([]string{tool, "--bashpp", "--source=go"}, identity...), mapArgs...)
+		plan = append(append([]string{tool, "--bashpp", "--source=go"}, program.args()...), mapArgs...)
 		plan = append(plan, "--go-file", testmain)
 		if len(testArgs) != 0 {
 			plan = append(plan, "--")
@@ -329,7 +386,21 @@ func bashppTestPlan(p *load.Package, buildAction *work.Action, args []string) []
 		record["disposition"] = "run-package-map"
 	case "compiled":
 		goTool := os.Getenv("BASHPP_GOTEST_GO")
+		// The overlay directory is evidence (the generated files cmd/go
+		// compiled instead of the originals, the overlay, the -n trace, the
+		// proof) and must outlive the run: cmd/go deletes its $WORK (pmain.Dir)
+		// when the test ends, which left the verifier nothing to read for any
+		// package whose transpile succeeded. It lives beside the event log.
 		overlayDir := filepath.Join(pmain.Dir, "bashpp-overlay")
+		if events := os.Getenv("BASHPP_GOTEST_EVENTS"); events != "" {
+			overlayDir = events + ".overlay"
+		}
+		if err := os.RemoveAll(overlayDir); err != nil {
+			record["disposition"] = "configuration-error"
+			record["deviations"] = append(deviations, "could not clear the overlay directory: "+err.Error())
+			bashppEmit(record)
+			return []string{"/bin/sh", "-c", "exit 1"}
+		}
 		if err := os.MkdirAll(overlayDir, 0o700); err != nil {
 			record["disposition"] = "configuration-error"
 			record["deviations"] = append(deviations, "could not create overlay directory: "+err.Error())
@@ -345,17 +416,8 @@ func bashppTestPlan(p *load.Package, buildAction *work.Action, args []string) []
 			bashppEmit(record)
 			return []string{"/bin/sh", "-c", "exit 1"}
 		}
-		var classified []bashppPackageFile
-		for _, imp := range pmain.Internal.Imports {
-			if imp.ImportPath == p.ImportPath || imp.ImportPath == p.ImportPath+"_test" {
-				classified = append(classified, bashppTestVariantFiles(imp, p.ImportPath)...)
-			}
-		}
 		// The overlay replaces exactly the classified originals, each once.
-		overlayOriginals = overlayOriginals[:0]
-		for _, file := range classified {
-			overlayOriginals = append(overlayOriginals, file.path)
-		}
+		overlayOriginals := bashppFilePaths(classified)
 		generated, err := bashppLibraryOutputNames(libraryDir, classified)
 		if err != nil {
 			record["disposition"] = "configuration-error"
@@ -364,13 +426,27 @@ func bashppTestPlan(p *load.Package, buildAction *work.Action, args []string) []
 			return []string{"/bin/sh", "-c", "exit 1"}
 		}
 		libraryArgs := bashppLibraryArgs(classified)
-		transpile := append(append(append([]string{tool, "transpile", "--bashpp", "--source=go"}, identity...), "--go-library", libraryDir), libraryArgs...)
+		transpile := append(append(append([]string{tool, "transpile", "--bashpp", "--source=go"}, library.args()...), "--go-library", libraryDir), libraryArgs...)
+		record["library"] = map[string]any{"import_path": library.importPath, "test_main": library.testMain, "roles": bashppFileRoles(classified)}
 		transpileWords := make([]string, len(transpile))
 		for i, word := range transpile {
 			transpileWords[i] = bashppQuote(word)
 		}
 		transcript := filepath.Join(overlayDir, "library-output.txt")
-		lines := []string{strings.Join(transpileWords, " ") + " > " + bashppQuote(transcript), bashppLibraryOverlayScript(transcript, overlay, overlayOriginals, generated)}
+		// The transpile's exit status is evidence too: a refusal by Bash++
+		// (a diagnostic on the tested sources) is a product row, while a
+		// clean transpile that still produced no overlay proof is a seam
+		// defect; the verifier tells them apart by this file. Its stderr
+		// stays on cmd/go's captured output, the upstream terminal.
+		status := filepath.Join(overlayDir, "transpile.status")
+		lines := []string{
+			"status=0",
+			strings.Join(transpileWords, " ") + " > " + bashppQuote(transcript) + " || status=$?",
+			"printf '%s\\n' \"$status\" > " + bashppQuote(status),
+			"test \"$status\" -eq 0",
+			bashppLibraryOverlayScript(transcript, overlay, overlayOriginals, generated),
+		}
+		record["transpile_status"] = status
 		goTest := append([]string{"env", "-u", "BASHPP_GOTEST_BACKEND", goTool, "test", "-overlay=" + overlay, p.ImportPath}, testArgs...)
 		words := make([]string, len(goTest))
 		for j, word := range goTest {
@@ -381,7 +457,10 @@ func bashppTestPlan(p *load.Package, buildAction *work.Action, args []string) []
 		for j, word := range dryRun {
 			dryWords[j] = bashppQuote(word)
 		}
-		lines = append(lines, strings.Join(dryWords, " ")+" > "+bashppQuote(trace))
+		// go test -n prints the commands it would run to stderr; the trace
+		// captures both streams so it proves which files the compiler was
+		// handed (stdout of a dry run is empty).
+		lines = append(lines, strings.Join(dryWords, " ")+" > "+bashppQuote(trace)+" 2>&1")
 		lines = append(lines, bashppOverlayProof(os.Getenv("BASHPP_GOTEST_EVENTS"), p.ImportPath, overlay, trace, goTool, overlayOriginals, generated))
 		lines = append(lines, "exec "+strings.Join(words, " "))
 		plan = []string{"/bin/sh", "-c", "set -e\n" + strings.Join(lines, "\n")}
@@ -389,8 +468,8 @@ func bashppTestPlan(p *load.Package, buildAction *work.Action, args []string) []
 		record["overlay"] = overlay
 		record["disposition"] = "transpile-overlay-go-test"
 		deviations = append(deviations,
-			"one transpiler invocation classifies GoFiles, TestGoFiles and XTestGoFiles with their corresponding library flags; every reported library output is mapped by cmd/go -overlay",
-			"cmd/go's original _testmain.go enumerates and runs the tests; cmd/go retains internal-import policy and assembles any .s companion natively")
+			"one transpiler invocation under the tested package's own identity (--go-import-path <pkg>, no TestMain fact) classifies GoFiles, TestGoFiles and XTestGoFiles with their corresponding library flags; every reported library output is mapped by cmd/go -overlay",
+			"cmd/go's original _testmain.go (its own <pkg>.test, compiled natively under the overlay) enumerates and runs the tests; cmd/go retains internal-import policy and assembles any .s companion natively")
 		if len(assemblyCompanions) != 0 {
 			deviations = append(deviations, "D3(b): cmd/go assembles the package's .s test companions natively under the overlay; they are an authority compiler-artifact step, never Bash++ tested-source execution")
 		}

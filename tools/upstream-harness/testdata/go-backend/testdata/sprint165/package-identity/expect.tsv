@@ -1,0 +1,22 @@
+# Sprint: #165; Story: S165.0; Story-ID: 1528c3c2b1df
+# package	mode	terminal (ERE)	verifier status (ERE)	output must (ERE, - none)	output must not (ERE, - none)
+#
+# Compiled rows are this lane's positive controls: the library is checked
+# under the tested package's own identity, so the tested package's own
+# internal sibling is admitted (`use of internal package` is the line a
+# library checked under <pkg>.test would carry) and upstream's go test of the
+# generated files passes. `xonly` (external tests only) is admitted on the
+# identity too; whether the transpile forms its external test package
+# without an in-package unit is the product's (bashy transpile --go-library
+# derives the tested package's name from the in-package unit today), so its
+# terminal is not asserted — only that the identity was never the refusal.
+# Interpreted rows are by ID (D1) this sprint; the seam's claims there are
+# that every file was handed once under its role (no duplicated file, no
+# external test file misfiled into the tested package) and the program
+# under the testmain identity with the fact.
+lib	interpreted	pass|fail	PACKAGE-(PASS|PRODUCT-FAIL)	-	duplicate file|expected package lib|use of internal package
+lib	compiled	pass	PACKAGE-PASS	-	use of internal package
+cmdmain	interpreted	pass|fail	PACKAGE-(PASS|PRODUCT-FAIL)	-	duplicate file|expected package main|use of internal package
+cmdmain	compiled	pass	PACKAGE-PASS	-	use of internal package
+xonly	interpreted	pass|fail	PACKAGE-(PASS|PRODUCT-FAIL)	-	duplicate file|expected package|must form the external test package
+xonly	compiled	pass|fail	PACKAGE-(PASS|PRODUCT-FAIL)	-	use of internal package

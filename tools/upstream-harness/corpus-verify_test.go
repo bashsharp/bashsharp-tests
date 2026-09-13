@@ -56,6 +56,30 @@ func TestCorpusVerifyAcceptsMultiPackageTestdirRecords(t *testing.T) {
 	}
 }
 
+// Sprint: #165; Story: S165.0; Story-ID: 1528c3c2b1df
+// A compiled package whose library transpile succeeded has two records in
+// its plan stream: the plan and the overlay proof the backend script appends
+// (S162's overlay route). The proof is the plan's evidence, not a second or
+// an incomplete plan.
+func TestCorpusVerifyAcceptsCompiledOverlayProof(t *testing.T) {
+	f := newCorpusFixture(t)
+	f.writeRecords(filepath.Join("evidence-compiled", "packages", "example_p.events.jsonl"), map[string]any{
+		"schema": corpusPackageSchema, "kind": "plan", "package": "example/p", "mode": "compiled",
+		"disposition": "transpile-overlay-go-test",
+		"native_argv": []string{"p.test", "-test.v"}, "argv": []string{"/bin/sh", "-c", "transpile"},
+		"enumeration": map[string]int{"tests": 1, "benchmarks": 0, "examples": 0, "fuzz_targets": 0},
+	}, map[string]any{
+		"schema": corpusPackageSchema, "kind": "overlay-proof", "package": "example/p", "go_tool": "/pinned/go",
+		"overlay":       map[string]string{"path": "/tmp/overlay.json", "sha256": "00"},
+		"compile_trace": map[string]string{"path": "/tmp/go-test-n.trace", "sha256": "00"},
+		"files":         []any{}, "compiler_argv": []string{"/pinned/go", "test", "-overlay=/tmp/overlay.json", "example/p"},
+	})
+	code, _, stderr := f.verify(3)
+	if code != 0 {
+		t.Fatalf("verify = %d, stderr:\n%s", code, stderr)
+	}
+}
+
 // This retains the Barrier B TestIssue43124 excerpt shape: the top-level
 // checker-API test has one Go terminal and makes three checker calls. It is not
 // one of the 899 fixture-leaf corpus roots, so those calls are neither duplicate

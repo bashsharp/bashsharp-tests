@@ -6,11 +6,14 @@
 // authenticated package, in the requested mode, cmd/go enumerated a non-zero
 // set of original test bodies (from its own generated _testmain.go), the
 // backend handed exactly the tested package, its test files and the external
-// test package to Bash++ as a package map with _testmain.go as the program,
-// the native test binary was never the executed argv, and the terminal is
-// upstream's. A PASS additionally needs one test2json terminal per
-// enumerated test. A package build, an empty enumeration, or a native run
-// can never be PASS; a failed Bash++ run is a retained product failure.
+// test package to Bash++ as a package map with _testmain.go as the program
+// (every file once, under cmd/go's own role for it; the program under
+// cmd/go's testmain identity with the TestMain fact, the library under the
+// tested package's own identity without it), the native test binary was
+// never the executed argv, and the terminal is upstream's. A PASS
+// additionally needs one test2json terminal per enumerated test. A package
+// build, an empty enumeration, or a native run can never be PASS; a failed
+// Bash++ run is a retained product failure.
 package main
 
 import (
@@ -38,10 +41,13 @@ type planRecord struct {
 	ImportPath  string   `json:"import_path"`
 	TestMain    bool     `json:"test_main"`
 	Overlay     string   `json:"overlay"`
-	Artifacts   []string `json:"artifacts"`
-	Deviations  []string `json:"deviations"`
-	ProgramArgv []string `json:"program_argv"`
-	Enumeration struct {
+	// TranspileStatus is the file the compiled script writes the library
+	// transpile's exit status to before anything else runs.
+	TranspileStatus string   `json:"transpile_status"`
+	Artifacts       []string `json:"artifacts"`
+	Deviations      []string `json:"deviations"`
+	ProgramArgv     []string `json:"program_argv"`
+	Enumeration     struct {
 		Tests, Benchmarks, Examples int
 		FuzzTargets                 int `json:"fuzz_targets"`
 	} `json:"enumeration"`
@@ -51,8 +57,17 @@ type planRecord struct {
 		Packages []struct {
 			Path  string
 			Files []string
+			Roles map[string]string
 		}
 	} `json:"program"`
+	// Library is the compiled route's one Bash++ library invocation: the
+	// identity the tested package's files are checked under and the role of
+	// every file it was handed (S165.0, D8).
+	Library struct {
+		ImportPath string `json:"import_path"`
+		TestMain   bool   `json:"test_main"`
+		Roles      map[string]string
+	} `json:"library"`
 	Tool struct{ Path, Version string } `json:"tool"`
 }
 
@@ -210,6 +225,9 @@ func verify(pkg, dir, mode, version, tool string) (string, error) {
 	if err := verifyIdentity(p, pkg, mode, tool); err != nil {
 		return "", err
 	}
+	if err := verifyRoles(p, pkg, mode); err != nil {
+		return "", err
+	}
 	switch mode {
 	case "interpreted":
 		if p.Argv[0] != tool || !contains(p.Argv, "--go-file") {
@@ -218,6 +236,20 @@ func verify(pkg, dir, mode, version, tool string) (string, error) {
 	case "compiled":
 		if p.Argv[0] != "/bin/sh" || !strings.Contains(strings.Join(p.Argv, " "), "transpile") {
 			return "", fmt.Errorf("compiled argv does not transpile the program")
+		}
+		if refused, err := transpileRefused(p); err != nil {
+			return "", err
+		} else if refused {
+			// Bash++ refused the tested sources before any overlay existed:
+			// the script stops there (set -e), cmd/go never compiled the
+			// originals, and the terminal is the refusal — a product row.
+			if action != "fail" {
+				return "", fmt.Errorf("transpile refused with upstream action %s", action)
+			}
+			if len(proofs) != 0 {
+				return "", fmt.Errorf("transpile refused but an overlay proof was recorded")
+			}
+			return "PACKAGE-PRODUCT-FAIL", nil
 		}
 		if err := verifyOverlay(p, proofs, pkg); err != nil {
 			return "", err
@@ -232,35 +264,116 @@ func verify(pkg, dir, mode, version, tool string) (string, error) {
 	return "PACKAGE-PRODUCT-FAIL", nil
 }
 
-// verifyIdentity checks the TestMain fact (S165.0, D8): the plan declares
-// the program's identity as cmd/go's testmain package (<pkg>.test) and
-// asserts --go-test-main on the Bash++ invocation that checks or transpiles
-// it — the interpreted argv directly, the compiled transpile inside the
-// /bin/sh script — so the identity-keyed internal-visibility rule is fed the
-// fact from the one site that knows it, never a name.
+// verifyIdentity checks the two identities of a package test (S165.0, D8),
+// never confused. The PROGRAM is cmd/go's testmain package (<pkg>.test) and
+// the plan asserts --go-test-main on the one Bash++ invocation that receives
+// _testmain.go — the interpreted argv, directly after that identity — so the
+// identity-keyed internal-visibility rule is fed the fact from the one site
+// that knows it, never a name. The LIBRARY (compiled route: the transpile
+// inside the /bin/sh script) is the tested package's own identity (<pkg>),
+// what cmd/go compiles ptest under, so the tested package's own internal
+// siblings are decided on its identity (cmd/compile → cmd/compile/internal/*)
+// and never on the testmain's; the library never asserts the fact — cmd/go's
+// own _testmain.go is compiled natively under the overlay. A library checked
+// under the testmain identity, a fact asserted on the library, a dropped
+// fact and a fact on another identity are all seam failures.
 func verifyIdentity(p planRecord, pkg, mode, tool string) error {
 	if p.ImportPath != pkg+".test" || !p.TestMain {
 		return fmt.Errorf("plan does not declare the testmain identity %s.test with the TestMain fact: import_path=%q test_main=%v", pkg, p.ImportPath, p.TestMain)
 	}
 	switch mode {
 	case "interpreted":
+		asserted := false
 		for i, arg := range p.Argv {
-			if arg == "--go-import-path" && i+2 < len(p.Argv) && p.Argv[i+1] == pkg+".test" && p.Argv[i+2] == "--go-test-main" {
-				return nil
+			if arg != "--go-import-path" || i+1 >= len(p.Argv) {
+				continue
+			}
+			if p.Argv[i+1] != pkg+".test" {
+				return fmt.Errorf("interpreted argv declares an identity other than the testmain's: --go-import-path %s", p.Argv[i+1])
+			}
+			if i+2 < len(p.Argv) && p.Argv[i+2] == "--go-test-main" {
+				asserted = true
 			}
 		}
-		return fmt.Errorf("interpreted argv does not carry --go-import-path %s.test --go-test-main: %v", pkg, p.Argv[:min(8, len(p.Argv))])
+		if !asserted {
+			return fmt.Errorf("interpreted argv does not carry --go-import-path %s.test --go-test-main: %v", pkg, p.Argv[:min(8, len(p.Argv))])
+		}
+		return nil
 	case "compiled":
 		if len(p.Argv) != 3 || p.Argv[0] != "/bin/sh" || p.Argv[1] != "-c" {
 			return fmt.Errorf("compiled argv is not one /bin/sh -c script: %v", p.Argv[:min(3, len(p.Argv))])
 		}
-		want := "'" + tool + "' 'transpile' '--bashpp' '--source=go' '--go-import-path' '" + pkg + ".test' '--go-test-main' '--go-library'"
+		if p.Library.ImportPath != pkg || p.Library.TestMain {
+			return fmt.Errorf("plan does not declare the library under the tested package's own identity %s without the TestMain fact: import_path=%q test_main=%v", pkg, p.Library.ImportPath, p.Library.TestMain)
+		}
+		want := "'" + tool + "' 'transpile' '--bashpp' '--source=go' '--go-import-path' '" + pkg + "' '--go-library'"
 		if !strings.Contains(p.Argv[2], want) {
-			return fmt.Errorf("compiled transpile does not carry the testmain identity and fact (%s)", want)
+			return fmt.Errorf("compiled transpile does not check the library under the tested package's own identity (%s)", want)
+		}
+		if strings.Contains(p.Argv[2], "'--go-test-main'") {
+			return fmt.Errorf("compiled script asserts the TestMain fact on a library; the fact belongs to cmd/go's own testmain, which the overlay route compiles natively")
 		}
 		return nil
 	}
 	return fmt.Errorf("unknown backend mode %q", mode)
+}
+
+// verifyRoles checks that every file of the program map was handed once,
+// under cmd/go's own role for it, and that the roles form cmd/go's two test
+// packages: the tested package's entry (<pkg>) carries ordinary files (go)
+// and in-package test files (test, a _test.go name), the external test
+// package's entry (<pkg>_test) carries xtest files only — so a package whose
+// tests are all external (cmd/internal/testdir) is one xtest entry and
+// nothing else, and the external test package is formed from that role,
+// never from a file relabelled as ordinary. In compiled mode the transpile
+// must hand every file under the flag of its role (--go-file,
+// --go-test-file, --go-xtest-file) with the roles recorded on the library.
+func verifyRoles(p planRecord, pkg, mode string) error {
+	seen := map[string]bool{}
+	for _, entry := range p.Program.Packages {
+		if len(entry.Roles) != len(entry.Files) {
+			return fmt.Errorf("package %s records %d roles for %d files", entry.Path, len(entry.Roles), len(entry.Files))
+		}
+		for _, file := range entry.Files {
+			if seen[file] {
+				return fmt.Errorf("file %s was handed more than once", file)
+			}
+			seen[file] = true
+			role, ok := entry.Roles[file]
+			if !ok {
+				return fmt.Errorf("file %s of %s has no recorded role", file, entry.Path)
+			}
+			isTestName := strings.HasSuffix(file, "_test.go")
+			switch {
+			case entry.Path == pkg+"_test" && role != "xtest":
+				return fmt.Errorf("file %s of the external test package %s has role %s, want xtest", file, entry.Path, role)
+			case entry.Path == pkg && role == "xtest":
+				return fmt.Errorf("file %s of the tested package %s has role xtest; an external test file never forms the tested package", file, entry.Path)
+			case role == "go" && isTestName:
+				return fmt.Errorf("test file %s was handed as an ordinary file of %s", file, entry.Path)
+			case (role == "test" || role == "xtest") && !isTestName:
+				return fmt.Errorf("file %s of %s has role %s but is not a _test.go file", file, entry.Path, role)
+			case role != "go" && role != "test" && role != "xtest":
+				return fmt.Errorf("file %s of %s has unknown role %q", file, entry.Path, role)
+			}
+			if mode == "compiled" {
+				if p.Library.Roles[file] != role {
+					return fmt.Errorf("library records role %q for %s, the program map %q", p.Library.Roles[file], file, role)
+				}
+				flag := "--go-file"
+				if role != "go" {
+					flag = "--go-" + role + "-file"
+				}
+				if !strings.Contains(p.Argv[2], "'"+flag+"' '"+file+"'") {
+					return fmt.Errorf("compiled transpile does not hand %s as %s", file, flag)
+				}
+			}
+		}
+	}
+	if mode == "compiled" && len(p.Library.Roles) != len(seen) {
+		return fmt.Errorf("library records %d roles for %d files", len(p.Library.Roles), len(seen))
+	}
+	return nil
 }
 
 func contains(list []string, want string) bool {
@@ -313,12 +426,23 @@ func readPlans(name string) ([]planRecord, []overlayProof, error) {
 	s := bufio.NewScanner(f)
 	s.Buffer(make([]byte, 1<<20), 1<<28)
 	for s.Scan() {
-		var p planRecord
-		if err := json.Unmarshal(s.Bytes(), &p); err != nil {
+		// The kind decides the record shape: a plan's "overlay" is the path
+		// string, a proof's is {path, sha256}. Decoding every line as a plan
+		// first rejected every event log that reached the proof — i.e. every
+		// compiled package whose transpile succeeded (pre-existing since the
+		// overlay route, fb3f24e; pinned by TestReadPlansSeparatesProofsFromPlans).
+		var head struct {
+			Kind string `json:"kind"`
+		}
+		if err := json.Unmarshal(s.Bytes(), &head); err != nil {
 			return nil, nil, err
 		}
-		switch p.Kind {
+		switch head.Kind {
 		case "plan":
+			var p planRecord
+			if err := json.Unmarshal(s.Bytes(), &p); err != nil {
+				return nil, nil, err
+			}
 			plans = append(plans, p)
 		case "overlay-proof":
 			var proof overlayProof
@@ -384,6 +508,30 @@ func verifyOverlay(p planRecord, proofs []overlayProof, pkg string) error {
 		}
 	}
 	return nil
+}
+
+// transpileRefused reads the exit status the compiled script recorded for
+// the library transpile: non-zero is Bash++'s refusal of the tested sources.
+// A missing status file means the script never ran that far — a seam
+// defect, not a product row.
+func transpileRefused(p planRecord) (bool, error) {
+	if p.TranspileStatus == "" {
+		return false, fmt.Errorf("plan records no transpile status file")
+	}
+	data, err := os.ReadFile(p.TranspileStatus)
+	if err != nil {
+		return false, fmt.Errorf("read transpile status: %w", err)
+	}
+	status := strings.TrimSpace(string(data))
+	if status == "" {
+		return false, fmt.Errorf("transpile status %s is empty", p.TranspileStatus)
+	}
+	for _, c := range status {
+		if c < '0' || c > '9' {
+			return false, fmt.Errorf("transpile status %q is not an exit status", status)
+		}
+	}
+	return status != "0", nil
 }
 
 func traceArg(trace []byte, want string) bool {

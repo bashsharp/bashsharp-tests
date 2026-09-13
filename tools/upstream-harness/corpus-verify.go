@@ -431,6 +431,14 @@ func (o *corpusObserver) readPackageRecords(mode, name string) {
 		return
 	}
 	o.scanRecords(name, data, func(rec corpusStreamRecord, line int) {
+		// The compiled route's plan stream also carries the overlay proof the
+		// backend script appends once the library transpile succeeded (the
+		// generated files cmd/go compiled instead of the originals, with
+		// digests); it is the plan's evidence, checked by package-verify.go,
+		// not a second plan. Sprint: #165; Story: S165.0; Story-ID: 1528c3c2b1df
+		if rec.Schema == corpusPackageSchema && rec.Kind == "overlay-proof" {
+			return
+		}
 		pkg, err := decodeString(rec.Package)
 		id := "package:" + pkg
 		if err != nil || rec.Schema != corpusPackageSchema || rec.Kind != "plan" || pkg == "" || rec.Mode != mode || rec.Disposition == "" {

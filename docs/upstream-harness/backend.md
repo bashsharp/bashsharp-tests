@@ -328,6 +328,63 @@ own `_testmain.go`, applies its own internal-import rule, and (for
 That assembly is recorded as the explicit D3(b) deviation, not hidden as a
 Bash++ execution.
 
+### Sprint 165 package identities and file roles (S165.0, D8)
+
+cmd/go builds a package test as three compile units, each under its own
+identity: the tested package (`ptest`, `-p <pkg>`, the in-package test files
+merged in), the external test package (`pxtest`, `-p <pkg>_test`) and the
+generated testmain (`pmain`, `-p <pkg>.test`, whose importer-stack label
+`testmain` exempts it from the internal rule in `load/pkg.go`). The backend
+hands **two identities, never confused**:
+
+- **The program** — cmd/go's testmain package `<pkg>.test` with the TestMain
+  fact (`--go-import-path <pkg>.test --go-test-main`) — goes only to the
+  Bash++ invocation that receives `_testmain.go` (the interpreted run).
+- **The library** (the compiled route's one `transpile --go-library`) is
+  checked under the tested package's OWN identity, `--go-import-path <pkg>`,
+  and never asserts the fact. This is what cmd/go grants: `cmd/compile`'s
+  `cmd/compile/internal/*` imports are admitted to `cmd/compile` (the parent
+  of the internal tree) and would be refused to `cmd/compile.test`, which is
+  outside it; cmd/go's own `_testmain.go` is compiled natively under the
+  overlay and needs no fact from Bash++. Until Sprint 165 the library was
+  checked under `<pkg>.test --go-test-main`, and `cmd/compile` compiled
+  failed at `main.go:8:2: could not import cmd/compile/internal/amd64 (use
+  of internal package … not allowed)` — a harness row, not the product's.
+
+**File roles** are cmd/go's own (`GoFiles` → `go`, `TestGoFiles` → `test`,
+`XTestGoFiles` → `xtest`), each file handed once under its role's flag
+(`--go-file` / `--go-test-file` / `--go-xtest-file`) in the library, and once
+in the interpreted map. cmd/go's recompiled in-package variant lists its
+test files in `GoFiles` AND `TestGoFiles` and still carries the original
+package's `XTestGoFiles` metadata; the previous walk handed the test files
+twice (refused by the front end as a duplicate file) and filed the external
+test files into the tested package's map entry (`package x_test; expected
+package x`). The external test package is formed from the `xtest` role
+alone: a package whose tests are all external (`cmd/internal/testdir`) has
+no in-package unit and is one xtest unit. Every plan event records the
+program's `import_path`/`test_main`, the compiled `library`
+(`import_path`, `test_main: false`, `roles`) and per map entry the `roles`
+of its files; `package-verify.go` requires both identities
+(`verifyIdentity`) and the roles (`verifyRoles`) on every row.
+
+Three evidence defects of the compiled route were fixed on the way, each
+pinned by a test: the overlay directory (generated files, overlay, `-n`
+trace, proof) now lives beside the event log (`<events>.overlay/`) instead
+of cmd/go's `$WORK`, which cmd/go deletes before the verifier runs; the `go
+test -n` trace is captured from stderr (a dry run writes nothing to stdout);
+and `readPlans` decodes each event by kind (a proof's `overlay` is an object,
+a plan's a string). The script also records the library transpile's exit
+status (`transpile.status`): a refusal is a `PACKAGE-PRODUCT-FAIL` row, a
+clean transpile with no proof a seam failure. `corpus-verify.go` accepts the
+overlay proof in a package plan stream (it flagged it as an "incomplete
+package plan"). The driving test is `tools/upstream-harness/
+package-identity-gate.sh` over the outside-corpus module
+`testdata/go-backend/testdata/sprint165/package-identity/` (`lib`: the
+three-role shape; `cmdmain`: cmd/compile's shape, a main package with an
+in-package test; `xonly`: cmd/internal/testdir's shape), each the parent of
+its own internal tree, replayed through the exact patched cmd/go in both
+modes with the hook's unit tests run in that overlay.
+
 The overlay proof event records the pinned Go binary, the overlay JSON and
 digest, and each original/generated pair with the generated-file digest.  The
 package verifier reads the overlay itself and rejects a result unless every
