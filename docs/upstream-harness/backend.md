@@ -507,3 +507,50 @@ patched runner in both modes (positive: a body-less declaration implemented
 in assembly, the asmhdr shape, the Go-only directory; negative: a missing
 assembly body fails at link; a runindir module with assembly stays the D3(b)
 execute-phase refusal — issue15609 / issue74648 are untouched).
+
+## Sprint 165 — the identity handoff for single-file and single-package phases (D8)
+
+Sprint 165 D8 (a) makes the checker decide `internal` visibility on the
+program's *declared* identity (`--go-import-path`, cmd/go's rule on
+identities). The testdir backend handed that identity only for directory
+packages (`compileInDir`'s `-D`/`-p`); a single-file compile phase carried
+none and a single-package directory program's execute phase carried none,
+so `escape_runtime_atomic.go` (`errorcheck -0 -m -l`, upstream `-p=p`) and
+`intrinsic.go` interpreted (`-p=main` at check, nothing at execute) stayed
+refused by the directory rule. The seam now hands upstream's OWN identity in
+both places and never invents one:
+
+- **Single-file compile phases** (`compile`, `errorcheck*`,
+  `errorcheckoutput`'s compile, the directory build's compile): the `-D` /
+  `-p` of upstream's direct `go tool compile` argv, read the way the
+  compiler's own flag parsing reads them — the last occurrence wins, so a
+  recipe's own `-p=…` after upstream's `-p=p` is the identity gc compiles
+  under (a dotted one is a user identity and is refused with gc's wording);
+  compile inputs excluded by name. `go run` / `go build` argv carry no `-p`
+  and hand none: the checker keeps its directory rule.
+- **The remembered program** of every directory compile phase carries the
+  identity and its `--go-import-base/--go-import-path` map args, a
+  single-package program included, so the interpreted execute phase runs
+  under the `-p main` its compile phase was checked under.
+- Every backend event records `import_base` / `import_path`; the program
+  record does too. `backend-verify.go` derives the identity from the recorded
+  native argv itself (`compilerIdentity`) and requires equality for every
+  `check-*` / `transpile-*` disposition — a dropped or invented identity is a
+  seam failure — and requires the rundir/builddir program to carry its
+  compile phase's identity in its map args. (The compiled rundir link check
+  was stale since the direct-gc route of Sprint 162 — it wanted the compile
+  object as the link's program artifact where the seam records the linked
+  `a.exe`; it now checks the link input against the compile object and the
+  program artifact against the link's own artifact, as `verifyBuildDirRow`
+  already did.)
+
+Driving test: `tools/upstream-harness/identity-handoff-gate.sh` over
+`testdata/backend/testdata/sprint165/identity-handoff/` through the exact
+patched runner in both modes (positive: the single-file `-p=p` shape with
+and without `-m`, the single-package `-p=main` directory shape importing
+`internal/runtime/sys`, an ordinary errorcheck root; negative: a recipe's
+dotted `-p` refused with gc's wording as the expected diagnostic, a `go run`
+root refused with no identity invented). What the product does after
+admission is the product's: the interpreted execute of the `sys` program
+reaches the bridge worker build, which still applies the directory rule
+(§4.3 of the multi-package design, not applied this sprint).

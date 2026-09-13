@@ -1,0 +1,13 @@
+# root	mode	upstream terminal	verifier status (ERE)	first phase exit 0 (yes/no/-)	upstream output must match (ERE; - none)	upstream output must not match (ERE; - none)
+atomicfile.go	interpreted	pass	COMPILE-ONLY-PASS	yes	-	-
+atomicfile.go	compiled	pass	COMPILE-ONLY-PASS	yes	-	-
+atomicescape.go	interpreted	fail	UNSUPPORTED	-	-	could not import
+atomicescape.go	compiled	pass	DIAG-PASS	yes	-	-
+plainfile.go	interpreted	pass	DIAG-PASS	no	-	-
+plainfile.go	compiled	pass	DIAG-PASS	no	-	-
+dottedfile.go	interpreted	pass	DIAG-PASS	no	-	-
+dottedfile.go	compiled	pass	DIAG-PASS	no	-	-
+nonefile.go	interpreted	fail	RUN-PRODUCT-FAIL	no	nonefile\.go:14:2: could not import internal/runtime/atomic \(use of internal package internal/runtime/atomic not allowed\)	-
+nonefile.go	compiled	fail	RUN-PRODUCT-FAIL	no	nonefile\.go:14:2: could not import internal/runtime/atomic \(use of internal package internal/runtime/atomic not allowed\)	-
+sysdir.go	interpreted	fail	RUNDIR-PRODUCT-FAIL	yes	-	could not import internal/runtime/sys
+sysdir.go	compiled	pass	RUNDIR-PASS	yes	-	-
