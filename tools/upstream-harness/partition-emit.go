@@ -2,6 +2,7 @@
 // Sprint: #151; Story: #58; Story-ID: fd3a390ec1f2
 // Sprint: #154; Story: S154.0; Story-ID: 4877afd3a207
 // Sprint: #155; Story: S155.11; Story-ID: 5004b3c3
+// Sprint: #165; Story: S165.0; Story-ID: 1528c3c2b1df
 //
 // partition-emit turns the two corpus evidence lanes into the active product
 // manifests. The go test streams remain the authority for root identity,
@@ -96,13 +97,30 @@ func main() {
 	interpreted := flag.String("evidence-interpreted", "", "interpreted evidence directory")
 	compiled := flag.String("evidence-compiled", "", "compiled evidence directory")
 	out := flag.String("out", "docs/upstream-harness", "manifest output directory")
+	corpus := flag.String("corpus", "", "upstream Go test directory (GOROOT/test) the testdir roots were read from; required for the v10.6 cgo rule")
+	manifests := flag.String("manifests", "", "replay the root-level v10.6 rules over the manifests in this directory instead of reading evidence")
 	flag.Parse()
 
+	if *manifests != "" {
+		if *interpreted != "" || *compiled != "" {
+			fmt.Fprintln(os.Stderr, "partition-emit: -manifests replays recorded rows; it takes no evidence directories")
+			os.Exit(1)
+		}
+		if err := replayPartitions(*manifests, *corpus, *out, os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, "partition-emit:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	if *interpreted == "" || *compiled == "" {
 		fmt.Fprintln(os.Stderr, "partition-emit: -evidence-interpreted and -evidence-compiled are required")
 		os.Exit(1)
 	}
-	hasFailures, err := emitPartitions(*interpreted, *compiled, *out, os.Stdout)
+	if *corpus == "" {
+		fmt.Fprintln(os.Stderr, "partition-emit: -corpus is required (the v10.6 cgo rule reads the root's build constraint and imports)")
+		os.Exit(1)
+	}
+	hasFailures, err := emitPartitions(*interpreted, *compiled, *out, os.Stdout, corpusRoot(*corpus))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "partition-emit:", err)
 		os.Exit(1)
@@ -112,7 +130,7 @@ func main() {
 	}
 }
 
-func emitPartitions(interpreted, compiled, out string, stdout io.Writer) (bool, error) {
+func emitPartitions(interpreted, compiled, out string, stdout io.Writer, corpus corpusRoot) (bool, error) {
 	roots := map[string]*rootEvidence{}
 	recipes := map[string]map[string]recipeEvidence{}
 	typeSeams := typecheckerSeam{}
@@ -170,6 +188,7 @@ func emitPartitions(interpreted, compiled, out string, stdout io.Writer) (bool, 
 	}
 
 	rows := make(map[string][]manifestRow, len(owners))
+	var rules []ruleRow
 	runnerCounts := map[string]map[string]int{}
 	ownerCounts := map[string]int{}
 	for _, root := range rootNames {
@@ -192,6 +211,10 @@ func emitPartitions(interpreted, compiled, out string, stdout io.Writer) (bool, 
 
 		owner := "" // no candidate yet; ranks below every owner, retained included
 		var failing []manifestRow
+		cgo, err := corpus.cgoRoot(root)
+		if err != nil {
+			return false, err
+		}
 		for _, mode := range modes {
 			me := ev.modes[mode]
 			if me.action != "fail" {
@@ -199,11 +222,17 @@ func emitPartitions(interpreted, compiled, out string, stdout io.Writer) (bool, 
 			}
 			line, diagnostic := firstLine(me.lines)
 			column := errorCheckVerdictOf(me.lines)
-			candidate := classify(line, mode, diagnostic, ev.runner, recipes[root][mode], column.class)
+			candidate := classify(line, mode, diagnostic, ev.runner, recipes[root][mode], column.class, cgo)
 			if ownerRank(candidate) < ownerRank(owner) {
 				owner = candidate
 			}
 			failing = append(failing, manifestRow{root, mode, line, column.column()})
+			if cgo {
+				rules = append(rules, ruleRow{root, mode, ruleCgo, candidate})
+			}
+			if column.class == "multiplicity" {
+				rules = append(rules, ruleRow{root, mode, ruleMultiplicity, candidate})
+			}
 		}
 		// PASS/SKIP is still a FAIL verdict by definition. Keep the observed
 		// modes without fabricating a diagnostic so the root remains visible.
@@ -214,6 +243,10 @@ func emitPartitions(interpreted, compiled, out string, stdout io.Writer) (bool, 
 		}
 		if owner == "" {
 			owner = "unclassified"
+		}
+		if routed, rule, mode := routeRoot(failing); routed != "" {
+			rules = append(rules, ruleRow{root, mode, rule, routed})
+			owner = routed
 		}
 		rows[owner] = append(rows[owner], failing...)
 		ownerCounts[owner]++
@@ -232,6 +265,9 @@ func emitPartitions(interpreted, compiled, out string, stdout io.Writer) (bool, 
 		return false, err
 	}
 	if err := writeSummary(filepath.Join(out, "active-summary.tsv"), runnerCounts, ownerCounts, len(nativeOnly)); err != nil {
+		return false, err
+	}
+	if err := writeRules(filepath.Join(out, "active-rules.tsv"), rules); err != nil {
 		return false, err
 	}
 	for _, root := range nativeOnly {
@@ -798,12 +834,25 @@ func runtimeShape(line string) bool {
 // classify names the owner of one failing manifest row. The S154.0 rules key
 // on the recipe flags and verdict shape only, never on expected strings; the
 // remaining rules are the first-line substring partition (classifyLine).
-func classify(line, mode string, hasDiagnostic bool, runner string, recipe recipeEvidence, verdictClass string) string {
+func classify(line, mode string, hasDiagnostic bool, runner string, recipe recipeEvidence, verdictClass string, cgo bool) string {
 	// Package roots are a distinct upstream runner kind. Their failures are
 	// owned by the package seam regardless of the first diagnostic line or
 	// mode; this also keeps internal-import diagnostics out of retained.
 	if runner == "package" {
 		return "package"
+	}
+	// v10.6 (d): a root whose source carries `//go:build cgo` or imports "C"
+	// is a cgo root, whatever phase refused it first (issue47185 surfaced as
+	// a module with non-Go inputs). The product declares no cgo support:
+	// the compiled row is a lowering row, the interpreted row is retained,
+	// exactly the Sprint 162 D4 disposition of the first-line cgo patterns
+	// below. As with retained generally, a real failure in the other mode
+	// still wins (ownerRank).
+	if cgo {
+		if mode == "compiled" {
+			return "152"
+		}
+		return "retained"
 	}
 	// D1: optimizer diagnostics are a compiler artifact; the check interface
 	// has no inliner, escape analysis, or SSA — the same shape as interpreted
@@ -831,6 +880,14 @@ func classify(line, mode string, hasDiagnostic bool, runner string, recipe recip
 		if mode == "compiled" && optimizerDiagnosticFlags(recipe.flags) && verdictClass != "-" {
 			return "152"
 		}
+	}
+	// v10.6 (c): a multiplicity verdict — only extra diagnostics, each at a
+	// position that also matched — is decided by the verdict column alone
+	// (nul1: the expected NUL diagnostic matched and a second one surfaced at
+	// the same position). The first line of such a row is the product's
+	// extra diagnostic, whose wording must never pick the owner.
+	if verdictClass == "multiplicity" {
+		return "154"
 	}
 	// D2: diagnostic multiplicity (a tab-continuation of a multi-part
 	// types.Error, %q-escaped as \t) and the missing assert/trace test
@@ -1114,4 +1171,339 @@ func writeSummary(name string, runnerCounts map[string]map[string]int, ownerCoun
 	}
 	fmt.Fprintf(&b, "total\t%d\n", fail)
 	return os.WriteFile(name, []byte(b.String()), 0o644)
+}
+
+// Partition v10.6 (Sprint 165 D11). Each rule below was proven by a Barrier C
+// row that v10.5 filed under an owner who cannot fix it. They key on mode,
+// verdict shape and root kind (what the root's own source declares), never
+// on expected strings.
+
+const (
+	ruleLowering     = "v10.6a"
+	ruleInternal     = "v10.6b"
+	ruleMultiplic    = "v10.6c"
+	ruleCgoSource    = "v10.6d"
+	ruleCgo          = ruleCgoSource + " cgo-root"
+	ruleMultiplicity = ruleMultiplic + " multiplicity-verdict"
+)
+
+// ruleRow is one v10.6 decision recorded for the ledger: the root and mode
+// the rule fired on, the rule, and the owner it produced.
+type ruleRow struct {
+	root, mode, rule, owner string
+}
+
+var (
+	// A mangled package-qualified name the emitter invented: the original
+	// program never contained it, so any row that shows one is lowering
+	// fidelity, whether gc, the runtime or the program's own self-check
+	// printed it.
+	mangledNameRe = regexp.MustCompile(`__gosource_pkg_[0-9]+_`)
+	// gc's refusal of a pragma on the generated file: the emitter placed the
+	// directive where gc no longer accepts it.
+	pragmaRefusalRe = regexp.MustCompile(`^[^\s:]+:[0-9]+(:[0-9]+)?: //go:`)
+	// gc's unused-import diagnostic on the generated file.
+	unusedImportRe = regexp.MustCompile(`^[^\s:]+:[0-9]+(:[0-9]+)?: "[^"]+" imported and not used`)
+	// The checker's internal-visibility refusal (go/types wording).
+	internalVisibilityRe = regexp.MustCompile(`use of internal package \S+ not allowed`)
+)
+
+// loweringShape names the v10.6 (a) shape of one compiled row's first line,
+// or "" when the row is not a lowering-fidelity row. Only compiled rows are
+// read: the same first line in interpreted mode is the checker's or the
+// evaluator's.
+func loweringShape(mode, line string) string {
+	if mode != "compiled" {
+		return ""
+	}
+	switch {
+	case strings.Contains(line, "LOWER-"):
+		return "lower-diagnostic"
+	case mangledNameRe.MatchString(line):
+		return "mangled-name"
+	case pragmaRefusalRe.MatchString(line):
+		return "pragma-position"
+	case unusedImportRe.MatchString(line):
+		return "unused-import"
+	case line == "compilation succeeded unexpectedly":
+		// gc compiled the generated file and found nothing to report: the
+		// lowering changed the program (interpreted mode's unexpected
+		// success is D5's gc-only check, a different row).
+		return "unexpected-success"
+	case strings.HasPrefix(line, "gosource:") && strings.Contains(line, "in the lowered file"):
+		return "lowered-namespace"
+	}
+	return ""
+}
+
+// routeRoot applies the root-level v10.6 rules to the failing rows of one
+// root, after the per-mode owners were ranked: (b) a row refused by the
+// checker's internal-visibility rule belongs to the package/D8 owner whatever
+// the root kind; (a) a compiled lowering-fidelity row belongs to the lower
+// owner whatever the other mode says — the compiled row must be fixed by the
+// emitter before the root can pass, and the evaluator must not be staffed on
+// it. (a) reads testdir roots only. It returns the owner, the rule and the
+// mode of the deciding row, or "" when no rule applies.
+func routeRoot(rows []manifestRow) (owner, rule, mode string) {
+	for _, row := range rows {
+		if internalVisibilityRe.MatchString(row.firstLine) {
+			return "package", ruleInternal + " internal-visibility", row.mode
+		}
+	}
+	for _, row := range rows {
+		// Every package: root is the package owner (v10.5); the lower owner
+		// reads that manifest for its fidelity rows (ir's unused import).
+		if !strings.HasPrefix(row.root, "testdir:") {
+			continue
+		}
+		if shape := loweringShape(row.mode, row.firstLine); shape != "" {
+			return "152", ruleLowering + " " + shape, row.mode
+		}
+	}
+	return "", "", ""
+}
+
+// corpusRoot is the upstream test directory the testdir roots were read from
+// (GOROOT/test of the pinned toolchain copy). The v10.6 cgo rule reads a
+// root's own source there: nothing else in the partition touches the corpus.
+type corpusRoot string
+
+var (
+	importCRe          = regexp.MustCompile(`(?m)^\s*(import\s+)?"C"\s*$`)
+	importRuntimeCgoRe = regexp.MustCompile(`(?m)^\s*(import\s+)?"runtime/cgo"\s*$`)
+	buildConstraintRe  = regexp.MustCompile(`^//go:build\b|^// \+build\b`)
+)
+
+// cgoRoot reports whether a testdir root is a cgo root: a program the
+// product cannot honestly run because it is cgo — it imports "C" (in the
+// root file or a Go file of its companion directory: issue47185's bad.go),
+// or it imports "runtime/cgo" and upstream's recipe executes it (the
+// interpreter refuses that import at run time; the check interface resolves
+// it like any other package, so an errorcheck root importing runtime/cgo is
+// checked, not cgo). The `//go:build cgo` constraint alone is not a cgo
+// declaration: every -race root carries it and never touches cgo. Roots of
+// other runners, and any root when no corpus was given, are never cgo. A
+// root the corpus does not contain is an input error: the partition must
+// not decide the cgo rule on a guess.
+func (c corpusRoot) cgoRoot(root string) (bool, error) {
+	if c == "" || !strings.HasPrefix(root, "testdir:") {
+		return false, nil
+	}
+	rel := strings.TrimPrefix(root, "testdir:")
+	file := filepath.Join(string(c), filepath.FromSlash(rel))
+	src, err := os.ReadFile(file)
+	if err != nil {
+		return false, fmt.Errorf("v10.6 cgo rule: %w", err)
+	}
+	sources := [][]byte{src}
+	dir := strings.TrimSuffix(file, ".go") + ".dir"
+	err = filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".go") {
+			return nil
+		}
+		companion, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		sources = append(sources, companion)
+		return nil
+	})
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return false, fmt.Errorf("v10.6 cgo rule: %w", err)
+	}
+	executes := recipeExecutes(recipeAction(src))
+	for _, source := range sources {
+		if importCRe.Match(source) {
+			return true, nil
+		}
+		if executes && importRuntimeCgoRe.Match(source) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// recipeAction reads the upstream recipe of a testdir root the way
+// testdir_test.go does: the first non-empty line that is not a build
+// constraint is the recipe comment, and its first word is the action.
+func recipeAction(src []byte) string {
+	for _, line := range strings.Split(string(src), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || buildConstraintRe.MatchString(line) {
+			continue
+		}
+		if !strings.HasPrefix(line, "//") {
+			return ""
+		}
+		fields := strings.Fields(strings.TrimPrefix(line, "//"))
+		if len(fields) == 0 {
+			return ""
+		}
+		return fields[0]
+	}
+	return ""
+}
+
+// recipeExecutes reports whether an upstream action runs the program (or its
+// generator) rather than only compiling or checking it.
+func recipeExecutes(action string) bool {
+	switch action {
+	case "run", "rundir", "runindir", "runoutput", "buildrun", "buildrundir", "errorcheckandrundir", "errorcheckoutput":
+		return true
+	}
+	return false
+}
+
+func writeRules(name string, rules []ruleRow) error {
+	var b strings.Builder
+	b.WriteString("root\tmode\trule\towner\n")
+	for _, row := range rules {
+		fmt.Fprintf(&b, "%s\t%s\t%s\t%s\n", row.root, row.mode, row.rule, row.owner)
+	}
+	return os.WriteFile(name, []byte(b.String()), 0o644)
+}
+
+// replayPartitions regenerates a recorded manifest set under the root-level
+// v10.6 rules (a) and (b), which read only the rows a manifest already
+// carries (root, mode, first line, verdict). It is how a barrier recorded
+// under an earlier partition moves by rule commit + regeneration rather than
+// in place, when its evidence lane is no longer at hand. The row-level rules
+// (c) and (d) need the evidence lane (recipe flags decide the owner of the
+// other mode's row) and are annotated in active-rules.tsv only: at Barrier C
+// both already sit at their v10.6 owner. The runner verdict block of the
+// summary is copied verbatim — a replay changes owners, never verdicts.
+func replayPartitions(manifests, corpus, out string, stdout io.Writer) error {
+	type recorded struct {
+		owner string
+		rows  []manifestRow
+	}
+	roots := map[string]*recorded{}
+	var order []string
+	for _, owner := range owners {
+		name := filepath.Join(manifests, manifestName(owner))
+		rows, err := readManifest(name)
+		if err != nil {
+			return err
+		}
+		for _, row := range rows {
+			r := roots[row.root]
+			if r == nil {
+				r = &recorded{owner: owner}
+				roots[row.root] = r
+				order = append(order, row.root)
+			} else if r.owner != owner {
+				return fmt.Errorf("root %s is recorded under both %s and %s", row.root, r.owner, owner)
+			}
+			r.rows = append(r.rows, row)
+		}
+	}
+	sort.Strings(order)
+
+	c := corpusRoot(corpus)
+	rows := make(map[string][]manifestRow, len(owners))
+	ownerCounts := map[string]int{}
+	var rules []ruleRow
+	for _, root := range order {
+		r := roots[root]
+		owner := r.owner
+		cgo, err := c.cgoRoot(root)
+		if err != nil {
+			return err
+		}
+		for _, row := range r.rows {
+			if cgo {
+				rules = append(rules, ruleRow{root, row.mode, ruleCgo, owner})
+			}
+			if strings.HasSuffix(row.verdict, ";class=multiplicity") {
+				rules = append(rules, ruleRow{root, row.mode, ruleMultiplicity, owner})
+			}
+		}
+		if routed, rule, mode := routeRoot(r.rows); routed != "" {
+			rules = append(rules, ruleRow{root, mode, rule, routed})
+			owner = routed
+		}
+		rows[owner] = append(rows[owner], r.rows...)
+		ownerCounts[owner]++
+	}
+
+	if err := os.MkdirAll(out, 0o755); err != nil {
+		return err
+	}
+	for _, owner := range owners {
+		if err := writeManifest(filepath.Join(out, manifestName(owner)), rows[owner]); err != nil {
+			return err
+		}
+	}
+	if err := writeRules(filepath.Join(out, "active-rules.tsv"), rules); err != nil {
+		return err
+	}
+	if err := replaySummary(filepath.Join(manifests, "active-summary.tsv"), filepath.Join(out, "active-summary.tsv"), ownerCounts); err != nil {
+		return err
+	}
+	for _, owner := range owners {
+		rootsForOwner := uniqueRoots(rows[owner])
+		h := sha256.New()
+		for _, root := range rootsForOwner {
+			fmt.Fprintln(h, root)
+		}
+		fmt.Fprintf(stdout, "active_%s_rootlist\t%s\n", owner, hex.EncodeToString(h.Sum(nil)))
+	}
+	return nil
+}
+
+func readManifest(name string) ([]manifestRow, error) {
+	f, err := os.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	s := bufio.NewScanner(f)
+	s.Buffer(make([]byte, 1<<20), 1<<28)
+	var rows []manifestRow
+	lineNo := 0
+	for s.Scan() {
+		lineNo++
+		if lineNo == 1 {
+			if s.Text() != "root\tmode\tfirst_line\tverdict" {
+				return nil, fmt.Errorf("%s: not a manifest: %q", name, s.Text())
+			}
+			continue
+		}
+		fields := strings.Split(s.Text(), "\t")
+		if len(fields) != 4 {
+			return nil, fmt.Errorf("%s:%d: want 4 columns, got %d", name, lineNo, len(fields))
+		}
+		rows = append(rows, manifestRow{fields[0], fields[1], fields[2], fields[3]})
+	}
+	if err := s.Err(); err != nil {
+		return nil, fmt.Errorf("%s: %w", name, err)
+	}
+	return rows, nil
+}
+
+// replaySummary copies the runner and product blocks of a recorded summary
+// and writes the owner block from the replayed counts.
+func replaySummary(src, dst string, ownerCounts map[string]int) error {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	text := string(data)
+	i := strings.Index(text, "owner\tcount\n")
+	if i < 0 {
+		return fmt.Errorf("%s: no owner block", src)
+	}
+	var b strings.Builder
+	b.WriteString(text[:i])
+	b.WriteString("owner\tcount\n")
+	total := 0
+	for _, owner := range owners {
+		fmt.Fprintf(&b, "%s\t%d\n", owner, ownerCounts[owner])
+		total += ownerCounts[owner]
+	}
+	fmt.Fprintf(&b, "total\t%d\n", total)
+	return os.WriteFile(dst, []byte(b.String()), 0o644)
 }

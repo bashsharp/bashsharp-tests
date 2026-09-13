@@ -162,3 +162,42 @@ move out), package 0 -> 26, and 152 gains the non-package compiled product
 rows from the retained lane in addition to its existing 19 roots. The copied
 backend-event evidence needed to regenerate the full v10.5 manifests was not
 present in this checkout; run 0 is the authoritative regeneration venue.
+
+## Sprint 165 partition v10.6
+
+v10.6 (Sprint 165 D11) adds four rules, each proven by a Barrier C row that
+v10.5 filed under an owner who cannot fix it. They key on mode, verdict shape
+and root kind, never on expected strings, and every firing is recorded in
+`active-rules.tsv` (root · mode · rule · owner) for the by-ID ledger.
+
+- **(a) lowering rows route the root** — a testdir root with a *compiled*
+  row whose first line is a `LOWER-*` diagnostic, names an emitter-invented
+  `__gosource_pkg_N_` identifier (gc, the runtime or the program's own
+  self-check printing it), is gc's refusal of a `//go:` pragma on the
+  generated file, is gc's `"<pkg>" imported and not used` on the generated
+  file, is `compilation succeeded unexpectedly` (gc found nothing to report
+  in the generated file — interpreted mode's unexpected success stays D5's
+  gc-only check), or is `gosource:` … `in the lowered file`, belongs to 152
+  whatever the other mode says: the emitter must fix that row before the root
+  can pass, and the evaluator is not staffed on it.
+- **(b) internal visibility routes the root** — a row refused by the
+  checker's `use of internal package … not allowed` belongs to the
+  `package`/D8 owner whatever the root kind (one decision, one mechanism).
+- **(c) multiplicity by verdict** — a `class=multiplicity` verdict (only
+  extra diagnostics, each at a matched position) is a 154 row by the verdict
+  column alone; the extra diagnostic's wording never picks the owner.
+- **(d) cgo by the root's source** — a testdir root is cgo when its file or
+  a companion imports `"C"`, or imports `"runtime/cgo"` under a recipe that
+  executes the program (the interpreter refuses that import at run time; the
+  check interface resolves it, so an errorcheck root importing runtime/cgo
+  is checked, not cgo). `//go:build cgo` alone is not a declaration: every
+  `-race` root carries it. A cgo row is compiled 152 / interpreted retained
+  (D4) whatever phase refused it first. `partition-emit -corpus` names the
+  test tree; `corpus-gate.sh` passes the toolchain copy's `test/`.
+
+`partition-emit -manifests <dir> -out <dir>` replays the root-level rules
+(a) and (b) over a recorded manifest set whose evidence lane is no longer at
+hand and annotates (c) and (d); `barrier-c-v10.6/` is Barrier C under v10.6
+(151 326 → 309, 152 29 → 46, 153 143 → 142, package 26 → 28, unclassified
+32 → 31, retained 175; 559 blocking unchanged). Barrier D regenerates from
+evidence.
