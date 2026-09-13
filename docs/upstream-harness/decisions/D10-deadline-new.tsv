@@ -1,9 +1,16 @@
 root	mode	decision	ground
-testdir:chan/select2.go	interpreted	D10-pending	reached the deadline only after its evaluator FAIL closed at C; decide on the profile shard
-testdir:divmod.go	interpreted	D10-pending	reached the deadline only after its evaluator FAIL closed at C; decide on the profile shard
-testdir:fixedbugs/issue80196.go	interpreted	D10-pending	reached the deadline only after its evaluator FAIL closed at C; decide on the profile shard
-testdir:heapsampling.go	interpreted	D10-pending	reached the deadline only after its evaluator FAIL closed at C; decide on the profile shard
-testdir:ken/chan.go	interpreted	D10-pending	reached the deadline only after its evaluator FAIL closed at C; decide on the profile shard
-testdir:typeparam/list2.go	interpreted	D10-pending	reached the deadline only after its evaluator FAIL closed at C; decide on the profile shard
-testdir:typeparam/listimp2.go	interpreted	D10-pending	reached the deadline only after its evaluator FAIL closed at C; decide on the profile shard
-testdir:rangegen.go	compiled	D10-pending	COMPILED deadline: backend second-lowering cost, owner 152 — not D2
+testdir:atomicload.go	interpreted	D10a-mechanism	at the bound (0.85–1.25×, PASS in both 165 leaves, FAIL at C): per-call-cost trim candidate, runtime lane wave 2 — not by ID
+testdir:fixedbugs/issue22781.go	interpreted	D10a-mechanism	at the bound (0.85–1.25×, PASS in both 165 leaves, FAIL at C): per-call-cost trim candidate, runtime lane wave 2 — not by ID
+testdir:fixedbugs/issue80196.go	interpreted	D10a-mechanism	at the bound (0.85–1.25×, PASS in both 165 leaves, FAIL at C): per-call-cost trim candidate, runtime lane wave 2 — not by ID
+testdir:rotate1.go	interpreted	D10a-mechanism	at the bound (0.85–1.25×, PASS in both 165 leaves, FAIL at C): per-call-cost trim candidate, runtime lane wave 2 — not by ID
+testdir:rotate2.go	interpreted	D10a-mechanism	at the bound (0.85–1.25×, PASS in both 165 leaves, FAIL at C): per-call-cost trim candidate, runtime lane wave 2 — not by ID
+testdir:ken/chan.go	interpreted	D10a-mechanism	2.0× (120 s at 600 s bound): trim candidate; joins D2 by ID only if the measured trim < 2.0×
+testdir:divmod.go	interpreted	D2	> 600 s (> 10×) — interpreter per-call cost (D10b)
+testdir:heapsampling.go	interpreted	D2	> 600 s (> 10×) — interpreter per-call cost (D10b)
+testdir:rangegen.go	interpreted	D2	288 s (4.8×) to a next defect — interpreter per-call cost (D10c)
+testdir:rangegen.go	compiled	152-mechanism	gc 'compile: signal: killed' at 160 s on the lowered generated program (native gc compiles the original) — lower size/fidelity, NOT D2 (D10c)
+testdir:chan/select2.go	interpreted	153-mechanism	128 s (2.1×) then next defect 'memstats has no fields' — runtime lane; time verdict after the fix (D10d)
+testdir:closure.go	interpreted	153-mechanism	'goroutine stack exceeds' in 4–10 s: native stack per interpreted frame or infinite recursion — runtime lane triage, not time (D10e)
+testdir:peano.go	interpreted	153-mechanism	'goroutine stack exceeds' in 4–10 s: native stack per interpreted frame or infinite recursion — runtime lane triage, not time (D10e)
+testdir:typeparam/list2.go	interpreted	153-mechanism	'goroutine stack exceeds' in 4–10 s: native stack per interpreted frame or infinite recursion — runtime lane triage, not time (D10e)
+testdir:typeparam/listimp2.go	interpreted	153-mechanism	'goroutine stack exceeds' in 4–10 s: native stack per interpreted frame or infinite recursion — runtime lane triage, not time (D10e)

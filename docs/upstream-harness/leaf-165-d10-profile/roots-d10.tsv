@@ -1,0 +1,13 @@
+root
+testdir:atomicload.go
+testdir:fixedbugs/issue22781.go
+testdir:rotate1.go
+testdir:rotate2.go
+testdir:chan/select2.go
+testdir:divmod.go
+testdir:fixedbugs/issue80196.go
+testdir:heapsampling.go
+testdir:ken/chan.go
+testdir:typeparam/list2.go
+testdir:typeparam/listimp2.go
+testdir:rangegen.go

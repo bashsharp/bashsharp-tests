@@ -1,0 +1,4 @@
+root	mode	first_line	verdict
+testdir:chan/select2.go	interpreted	BASHPP-ESELECTOR-TYPE: memstats has no fields	missing=0;wording=0;extra=0;class=-
+testdir:rangegen.go	interpreted	BASHPP-EBUILTIN-TYPE: BASHPP-ECOLLECTION-ELEMENT: scalar cannot be used as interface	missing=0;wording=0;extra=0;class=-
+testdir:rangegen.go	compiled	bashpp_s1572: /srv/sprint162/leaf-165-d10-profile/evidence/goroot/pkg/tool/linux_amd64/compile: signal: killed	missing=0;wording=0;extra=0;class=-

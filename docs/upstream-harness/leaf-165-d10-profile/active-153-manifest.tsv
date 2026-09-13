@@ -1,0 +1,5 @@
+root	mode	first_line	verdict
+testdir:divmod.go	interpreted	command exceeded time limit	missing=0;wording=0;extra=0;class=-
+testdir:heapsampling.go	interpreted	command exceeded time limit	missing=0;wording=0;extra=0;class=-
+testdir:typeparam/list2.go	interpreted	runtime: goroutine stack exceeds 1000000000-byte limit	missing=0;wording=0;extra=0;class=-
+testdir:typeparam/listimp2.go	interpreted	runtime: goroutine stack exceeds 1000000000-byte limit	missing=0;wording=0;extra=0;class=-
