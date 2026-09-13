@@ -1022,8 +1022,15 @@ func verifyRunDirRow(row matrixRow, ev evidence, mode, goAction string) (string,
 			if backend.Disposition != wantLink || backend.Program == nil || !reflect.DeepEqual(backend.Program.Files, last.CompileInputs) {
 				return "", fmt.Errorf("phase %d: link did not adopt the last compiled package: disposition=%s program=%v want files %v", i, backend.Disposition, backend.Program, last.CompileInputs)
 			}
-			if mode == "compiled" && (len(last.Artifacts) != 2 || backend.Program.Artifact != last.Artifacts[1]) {
-				return "", fmt.Errorf("phase %d: link adopted artifact %q, want the last compile phase's %v", i, backend.Program.Artifact, last.Artifacts)
+			// The link input is upstream's object name for the last compile
+			// phase's artifact; the program the link phase records is the
+			// linked a.exe it produced (its one artifact), which the execute
+			// phase then runs.
+			if len(backend.CompileInputs) != 1 || (mode == "compiled" && (len(last.Artifacts) != 2 || filepath.Base(last.Artifacts[1]) != filepath.Base(backend.CompileInputs[0]))) {
+				return "", fmt.Errorf("phase %d: link input %v is not the last compile phase's object %v", i, backend.CompileInputs, last.Artifacts)
+			}
+			if mode == "compiled" && (len(backend.Artifacts) != 1 || backend.Program.Artifact != backend.Artifacts[0]) {
+				return "", fmt.Errorf("phase %d: link must record the linked program as its artifact: artifacts=%v program=%v", i, backend.Artifacts, backend.Program)
 			}
 			program = backend.Program
 			stage = "link"

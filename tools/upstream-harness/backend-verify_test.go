@@ -1,6 +1,7 @@
 // Copyright 2026 The bashpp-tests Authors. All rights reserved.
 // Sprint: #149; Story: S149.4; Story-ID: 60134b3f734f
 // Sprint: #154; Story: S154.0; Story-ID: 4877afd3a207
+// Sprint: #165; Story: S165.0; Story-ID: 1528c3c2b1df
 package main
 
 import (
@@ -604,5 +605,87 @@ func TestVerifierBuildDirRejectsPermissiveShapes(t *testing.T) {
 				t.Fatalf("error = %v, want %q", err, tt.want)
 			}
 		})
+	}
+}
+
+// runDirEvidence is the phase sequence of a single-package rundir root: one
+// directory compile under upstream's `-D test -p=main`, the link adopting
+// it, the execute running the remembered program.
+func runDirEvidence(mode string) []eventRecord {
+	test := "sysdir.go"
+	cwd, dir := "/tmp/testdir", "/goroot/test/sysdir.dir"
+	gos := []string{dir + "/main.go"}
+	goTool := "/goroot/bin/go"
+	tool := toolIdentity{Path: "/bin/bashy", Version: "test"}
+	mk := func(kind, phaseKind string, inputs, argv []string) eventRecord {
+		return eventRecord{Kind: kind, Test: test, BackendSchema: backendSchema, Mode: mode, Tool: tool, Action: "rundir", Phase: phaseKind, PhaseKind: phaseKind, CompileInputs: inputs, ProgramArgv: []string{}, RecipeFlags: []string{}, NativeArgv: argv, Argv: argv, Cwd: cwd, Deviations: []string{"structured evidence"}}
+	}
+	result := func() eventRecord { return eventRecord{Kind: "phase_result", Test: test, Exit: 0} }
+	compileArgv := append([]string{goTool, "tool", "compile", "-e", "-D", "test", "-importcfg=/tmp/importcfg", "-p=main"}, gos...)
+	phase, backend := mk("phase", "compile", gos, compileArgv), mk("backend", "compile", gos, compileArgv)
+	phase.Package = &packageID{Base: "test", Path: "main"}
+	backend.PackageMap = &packageMap{Base: "test", Path: "main"}
+	generated := "/tmp/module/main.go"
+	proof := result()
+	if mode == "compiled" {
+		backend.Disposition = "transpile-compile-package-map"
+		backend.Artifacts = []string{generated, cwd + "/main.o"}
+		backend.Maps = []string{generated + ".map"}
+		backend.CompilerArgv = append(append([]string(nil), compileArgv[:len(compileArgv)-1]...), generated)
+		proof.ArtifactProof = []fileProof{{Path: generated, Exists: true, Bytes: 10, SHA256: strings.Repeat("a", 64)}, {Path: cwd + "/main.o", Exists: true, Bytes: 20, SHA256: strings.Repeat("b", 64)}}
+		proof.MapProof = []fileProof{{Path: generated + ".map", Exists: true, Bytes: 5, SHA256: strings.Repeat("c", 64)}}
+	} else {
+		backend.Disposition = "check-package-map"
+	}
+	records := []eventRecord{phase, backend, proof}
+	program := &programRec{Files: gos}
+	linkArgv := []string{goTool, "tool", "link", "-o", "a.exe", "-importcfg=/tmp/importcfg", "main.o"}
+	phase, backend = mk("phase", "link", []string{"main.o"}, linkArgv), mk("backend", "link", []string{"main.o"}, linkArgv)
+	backend.Disposition, backend.Program = "link-adopt-check", program
+	if mode == "compiled" {
+		program.Artifact, program.Object = cwd+"/a.exe", "a.exe"
+		backend.Disposition, backend.Artifacts = "link-adopt-artifact", []string{cwd + "/a.exe"}
+	}
+	records = append(records, phase, backend, result())
+	runArgv := []string{cwd + "/a.exe"}
+	phase, backend = mk("phase", "execute", []string{}, runArgv), mk("backend", "execute", []string{}, runArgv)
+	backend.Disposition, backend.Program = "run-remembered-program", program
+	if mode == "compiled" {
+		backend.Disposition, backend.Artifacts = "run-artifact", []string{cwd + "/a.exe"}
+	}
+	records = append(records, phase, backend, result())
+	return records
+}
+
+func verifyRunDirEvidence(t *testing.T, mode, goAction string, records []eventRecord) (string, error) {
+	t.Helper()
+	dir := t.TempDir()
+	base := filepath.Join(dir, "sysdir_go")
+	writeJSONLines(t, base+".go-test.json", goRecord{Action: goAction, Test: "Test/sysdir.go"})
+	items := make([]any, 0, len(records)+1)
+	for _, record := range records {
+		items = append(items, record)
+	}
+	items = append(items, eventRecord{Kind: "terminal", Test: "sysdir.go", Failed: goAction == "fail"})
+	writeJSONLines(t, base+".events.jsonl", items...)
+	return verifyRow(matrixRow{Test: "sysdir.go", Action: "rundir"}, dir, mode, "test", "/bin/bashy")
+}
+
+// TestVerifierRunDirLinkAdoptsCompiledObject pins the compiled rundir link
+// check against the seam as it records it since the direct-gc route (S162):
+// the link input is upstream's object name for the compile phase's artifact
+// and the link phase records the a.exe it linked as the program artifact.
+func TestVerifierRunDirLinkAdoptsCompiledObject(t *testing.T) {
+	records := runDirEvidence("compiled")
+	records[4].CompileInputs, records[3].CompileInputs = []string{"other.o"}, []string{"other.o"}
+	if _, err := verifyRunDirEvidence(t, "compiled", "pass", records); err == nil || !strings.Contains(err.Error(), "not the last compile phase's object") {
+		t.Fatalf("foreign link input: error = %v", err)
+	}
+	records = runDirEvidence("compiled")
+	copied := *records[4].Program
+	copied.Artifact = "/tmp/testdir/main.o"
+	records[4].Program = &copied
+	if _, err := verifyRunDirEvidence(t, "compiled", "pass", records); err == nil || !strings.Contains(err.Error(), "linked program as its artifact") {
+		t.Fatalf("link recording the object: error = %v", err)
 	}
 }
