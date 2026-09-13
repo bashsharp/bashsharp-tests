@@ -76,3 +76,65 @@ func TestBashppParseGotypesDropsGcShapedContinuation(t *testing.T) {
 		t.Fatalf("leading continuation: errs, unparsed = %d, %d; want 0, 1", len(errs), unparsed)
 	}
 }
+
+// Sprint: #165; Story: S165.0; Story-ID: 1528c3c2b1df
+// An unpositioned TAB line is the primary's own continuation (go/types joins
+// sub-errors without a position into one Msg, and the ERROR comments match
+// against that joined message); a positioned TAB line, in either the go/types
+// (": \t") or the gc ("\t<pos>: ") shape, stays the secondary upstream ignores.
+func TestBashppParseGotypesFoldsUnpositionedContinuation(t *testing.T) {
+	fset, known := gotypesFixture()
+	errs, unparsed := bashppParseGotypesDiagnostics(fset, known, "file.go:4:5: not enough arguments in call to f\n\thave ()\n\twant (int)\nfile.go:3:5: \tother declaration of x\n\tfile.go:2:5: previous case\n")
+	if unparsed != 0 || len(errs) != 1 {
+		t.Fatalf("errs, unparsed = %d, %d; want 1, 0: %v", len(errs), unparsed, errs)
+	}
+	if got := errs[0].(Error).Msg; got != "not enough arguments in call to f\n\thave ()\n\twant (int)" {
+		t.Fatalf("Msg = %q", got)
+	}
+}
+
+// Sprint: #165; Story: S165.0; Story-ID: 1528c3c2b1df
+// Mixed continuations: unpositioned lines fold into the primary they follow
+// even across a dropped positioned secondary, a second primary starts a new
+// Msg, and a method-signature detail folds like have/want does.
+func TestBashppParseGotypesFoldsMixedContinuations(t *testing.T) {
+	fset, known := gotypesFixture()
+	out := "file.go:2:5: cannot use x (variable of type T) as I value in assignment: T does not implement I (wrong type for method M)\n" +
+		"\t\thave M(int)\n" +
+		"\t\twant M(string)\n" +
+		"\tfile.go:3:5: other declaration of x\n" +
+		"\tsee also\n" +
+		"file.go:4:5: x redeclared in this block\n" +
+		"file.go:3:5: \tother declaration of x\n" +
+		"\thave ()\n"
+	errs, unparsed := bashppParseGotypesDiagnostics(fset, known, out)
+	if unparsed != 0 || len(errs) != 2 {
+		t.Fatalf("errs, unparsed = %d, %d; want 2, 0: %v", len(errs), unparsed, errs)
+	}
+	want := []string{
+		"cannot use x (variable of type T) as I value in assignment: T does not implement I (wrong type for method M)\n\t\thave M(int)\n\t\twant M(string)\n\tsee also",
+		"x redeclared in this block\n\thave ()",
+	}
+	for i, w := range want {
+		if got := errs[i].(Error).Msg; got != w {
+			t.Fatalf("errs[%d].Msg = %q, want %q", i, got, w)
+		}
+	}
+	if got := fset.Position(errs[1].(Error).Pos); got.Line != 4 || got.Column != 5 {
+		t.Fatalf("errs[1] position = %v, want file.go:4:5", got)
+	}
+}
+
+// Sprint: #165; Story: S165.0; Story-ID: 1528c3c2b1df
+// An unpositioned continuation with no primary to belong to is unattributed,
+// exactly as a leading positioned one is.
+func TestBashppParseGotypesLeadingUnpositionedContinuationIsUnparsed(t *testing.T) {
+	fset, known := gotypesFixture()
+	errs, unparsed := bashppParseGotypesDiagnostics(fset, known, "\thave ()\n\twant (int)\nfile.go:4:5: not enough arguments in call to f\n")
+	if len(errs) != 1 || unparsed != 2 {
+		t.Fatalf("errs, unparsed = %d, %d; want 1, 2: %v", len(errs), unparsed, errs)
+	}
+	if got := errs[0].(Error).Msg; got != "not enough arguments in call to f" {
+		t.Fatalf("Msg = %q", got)
+	}
+}

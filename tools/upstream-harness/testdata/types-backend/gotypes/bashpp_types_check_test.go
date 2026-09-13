@@ -124,13 +124,27 @@ func bashppParseGotypesDiagnostics(fset *token.FileSet, known map[string]*token.
 			continue
 		}
 		// A TAB-prefixed line is gc's continuation of the previous error
-		// (the sub-error of a multi-part diagnostic, rendered as
-		// "\t<pos>: <msg>"; upstream errorCheck joins it, testdir_test.go:1169).
-		// go/types reports that part as a separate secondary Error that
+		// (upstream errorCheck joins it, testdir_test.go:1169). Only a
+		// POSITIONED continuation ("\t<pos>: <msg>", the sub-error of a
+		// multi-part diagnostic) is the separate secondary Error that
 		// upstream check_test.go ignores (`": \t"`), so it is neither an
-		// error nor unattributed here.
+		// error nor unattributed here. An unpositioned continuation
+		// ("\thave ()", "\tT does not implement I (...)") is part of the
+		// primary's own Msg in go/types (errors.go report: sub-errors
+		// without a position are joined into one message) and the ERROR
+		// comments match against it, so it folds into the previous error.
 		if strings.HasPrefix(line, "\t") {
-			if len(errs) == 0 {
+			if bashppDiagRx.MatchString(strings.TrimPrefix(line, "\t")) {
+				if len(errs) == 0 {
+					unparsed++
+				}
+				continue
+			}
+			if n := len(errs); n > 0 {
+				prev := errs[n-1].(Error)
+				prev.Msg += "\n" + line
+				errs[n-1] = prev
+			} else {
 				unparsed++
 			}
 			continue
