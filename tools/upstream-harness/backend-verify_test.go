@@ -414,3 +414,195 @@ func TestVerifierBuildRunProgramContinuity(t *testing.T) {
 		})
 	}
 }
+
+// Sprint: #165; Story: S165.0; Story-ID: 1528c3c2b1df
+//
+// buildDirEvidence is the compiled phase sequence of a buildrundir root with
+// one .s companion (asmhdr / retjmp shape): upstream's -gensymabis generate
+// phase, the one Go compile with -asmhdr/-symabis, the object assembly, pack,
+// link and execute — each assembly phase run natively by the pinned
+// assembler and recorded, the Go files transpiled and compiled directly.
+func buildDirEvidence(mode string, assembly bool) []eventRecord {
+	test := "asmdir.go"
+	cwd, dir := "/tmp/testdir", "/goroot/test/asmdir.dir"
+	gos, asms := []string{dir + "/main.go"}, []string{dir + "/f.s"}
+	goTool := "/goroot/bin/go"
+	tool := toolIdentity{Path: "/bin/bashy", Version: "test"}
+	mk := func(kind, phaseKind string, inputs, argv []string) eventRecord {
+		return eventRecord{Kind: kind, Test: test, BackendSchema: backendSchema, Mode: mode, Tool: tool, Action: "buildrundir", Phase: phaseKind, PhaseKind: phaseKind, CompileInputs: inputs, ProgramArgv: []string{}, RecipeFlags: []string{}, NativeArgv: argv, Argv: argv, Cwd: cwd, Deviations: []string{"structured evidence"}}
+	}
+	result := func() eventRecord { return eventRecord{Kind: "phase_result", Test: test, Exit: 0} }
+	var records []eventRecord
+	compileArgv := []string{goTool, "tool", "compile", "-p=main", "-e", "-D", ".", "-importcfg=/tmp/importcfg", "-o", "go.o"}
+	if assembly {
+		symabis := append([]string{goTool, "tool", "asm", "-p=main", "-gensymabis", "-o", "symabis"}, asms...)
+		phase, backend := mk("phase", "generate", asms, symabis), mk("backend", "generate", asms, symabis)
+		backend.Disposition, backend.Artifacts = "assemble-native", []string{cwd + "/symabis"}
+		records = append(records, phase, backend, result())
+		compileArgv = append(compileArgv, "-asmhdr", "go_asm.h", "-symabis", "symabis")
+	}
+	compileArgv = append(compileArgv, gos...)
+	phase, backend := mk("phase", "compile", gos, compileArgv), mk("backend", "compile", gos, compileArgv)
+	generated := "/tmp/module/main.go"
+	compilerArgv := append(append([]string(nil), compileArgv[:len(compileArgv)-len(gos)]...), generated)
+	proof := result()
+	if mode == "compiled" {
+		backend.Disposition = "transpile-compile-directory-build"
+		backend.Artifacts = []string{generated, cwd + "/go.o"}
+		backend.Maps = []string{generated + ".map"}
+		backend.CompilerArgv = compilerArgv
+		proof.ArtifactProof = []fileProof{{Path: generated, Exists: true, Bytes: 10, SHA256: strings.Repeat("a", 64)}, {Path: cwd + "/go.o", Exists: true, Bytes: 20, SHA256: strings.Repeat("b", 64)}}
+		proof.MapProof = []fileProof{{Path: generated + ".map", Exists: true, Bytes: 5, SHA256: strings.Repeat("c", 64)}}
+	} else {
+		backend.Disposition = "check-only"
+	}
+	records = append(records, phase, backend, proof)
+	objects := []string{"go.o"}
+	var assembled []string
+	if assembly {
+		asm := append([]string{goTool, "tool", "asm", "-p=main", "-e", "-I", ".", "-o", "asm.o"}, asms...)
+		phase, backend := mk("phase", "compile", asms, asm), mk("backend", "compile", asms, asm)
+		backend.Disposition, backend.Artifacts = "assemble-native", []string{cwd + "/asm.o"}
+		records = append(records, phase, backend, result())
+		objects = append(objects, "asm.o")
+		assembled = []string{cwd + "/asm.o"}
+	}
+	packArgv := append([]string{goTool, "tool", "pack", "c", "all.a"}, objects...)
+	phase, backend = mk("phase", "link", objects, packArgv), mk("backend", "link", objects, packArgv)
+	packed := &programRec{Files: gos, Object: "all.a", Assembled: assembled}
+	backend.Disposition, backend.Program = "pack-adopt-check", packed
+	if mode == "compiled" {
+		packed.Artifact = cwd + "/all.a"
+		backend.Disposition, backend.Artifacts = "pack-adopt-artifact", []string{cwd + "/all.a"}
+	}
+	records = append(records, phase, backend, result())
+	linkArgv := []string{goTool, "tool", "link", "-o", "a.exe", "-importcfg=/tmp/importcfg", "all.a"}
+	phase, backend = mk("phase", "link", []string{"all.a"}, linkArgv), mk("backend", "link", []string{"all.a"}, linkArgv)
+	linked := &programRec{Files: gos, Object: "a.exe", Assembled: assembled}
+	backend.Disposition, backend.Program = "link-adopt-check", linked
+	if mode == "compiled" {
+		linked.Artifact = cwd + "/a.exe"
+		backend.Disposition, backend.Artifacts = "link-adopt-artifact", []string{cwd + "/a.exe"}
+	}
+	records = append(records, phase, backend, result())
+	runArgv := []string{cwd + "/a.exe"}
+	phase, backend = mk("phase", "execute", []string{}, runArgv), mk("backend", "execute", []string{}, runArgv)
+	backend.Disposition, backend.Program = "run-remembered-program", linked
+	if mode == "compiled" {
+		backend.Disposition, backend.Artifacts = "run-artifact", []string{cwd + "/a.exe"}
+	}
+	records = append(records, phase, backend, result())
+	return records
+}
+
+func verifyBuildDirEvidence(t *testing.T, mode, action, goAction string, records []eventRecord) (string, error) {
+	t.Helper()
+	dir := t.TempDir()
+	base := filepath.Join(dir, "asmdir_go")
+	writeJSONLines(t, base+".go-test.json", goRecord{Action: goAction, Test: "Test/asmdir.go"})
+	items := make([]any, 0, len(records)+1)
+	for _, record := range records {
+		items = append(items, record)
+	}
+	items = append(items, eventRecord{Kind: "terminal", Test: "asmdir.go", Failed: goAction == "fail"})
+	writeJSONLines(t, base+".events.jsonl", items...)
+	return verifyRow(matrixRow{Test: "asmdir.go", Action: action}, dir, mode, "test", "/bin/bashy")
+}
+
+func TestVerifierBuildDirAssemblyCompanions(t *testing.T) {
+	// The compiled sequence with a companion passes; without one (Go-only
+	// directory) it passes too, in both modes.
+	for _, tt := range []struct {
+		mode     string
+		assembly bool
+	}{{"compiled", true}, {"compiled", false}, {"interpreted", false}} {
+		status, err := verifyBuildDirEvidence(t, tt.mode, "buildrundir", "pass", buildDirEvidence(tt.mode, tt.assembly))
+		if err != nil || status != "BUILDDIR-PASS" {
+			t.Fatalf("%s assembly=%v: verifyRow = %q, %v", tt.mode, tt.assembly, status, err)
+		}
+	}
+	// builddir stops at link: an execute phase is not a builddir phase.
+	records := buildDirEvidence("compiled", true)
+	if status, err := verifyBuildDirEvidence(t, "compiled", "builddir", "pass", records[:len(records)-3]); err != nil || status != "BUILDDIR-PASS" {
+		t.Fatalf("builddir: verifyRow = %q, %v", status, err)
+	}
+	if _, err := verifyBuildDirEvidence(t, "compiled", "builddir", "pass", records); err == nil || !strings.Contains(err.Error(), "execute after link for builddir") {
+		t.Fatalf("builddir with an execute phase: error = %v", err)
+	}
+	// The interpreted companion refusal is the declared generate-phase
+	// limitation: one unsupported phase over the .s inputs, a failed terminal.
+	records = buildDirEvidence("compiled", true)[:3]
+	for i := range records {
+		records[i].Mode = "interpreted"
+	}
+	records[1].Disposition, records[1].Artifacts = "unsupported", nil
+	if status, err := verifyBuildDirEvidence(t, "interpreted", "buildrundir", "fail", records); err != nil || status != "UNSUPPORTED" {
+		t.Fatalf("interpreted companion: verifyRow = %q, %v", status, err)
+	}
+	if _, err := verifyBuildDirEvidence(t, "interpreted", "buildrundir", "pass", records); err == nil {
+		t.Fatal("an interpreted refusal with a passing terminal must be rejected")
+	}
+	// A link failure (a declaration no assembly implements) is a product
+	// failure with its recorded nonzero exit, never a pass.
+	records = buildDirEvidence("compiled", true)
+	records = records[:len(records)-3]
+	records[len(records)-1].Exit = 2
+	if status, err := verifyBuildDirEvidence(t, "compiled", "buildrundir", "fail", records); err != nil || status != "BUILDDIR-PRODUCT-FAIL" {
+		t.Fatalf("link failure: verifyRow = %q, %v", status, err)
+	}
+	records[len(records)-1].Exit = 0
+	if _, err := verifyBuildDirEvidence(t, "compiled", "buildrundir", "fail", records); err == nil || !strings.Contains(err.Error(), "nonzero phase exit") {
+		t.Fatalf("failure without a nonzero exit: error = %v", err)
+	}
+}
+
+func TestVerifierBuildDirRejectsPermissiveShapes(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(records []eventRecord)
+		want   string
+	}{
+		{"compiled unsupported phase", func(r []eventRecord) { r[1].Disposition = "unsupported" }, "recorded meaning in every phase"},
+		{"assembly not run through go tool asm", func(r []eventRecord) { r[1].NativeArgv[2] = "compile"; r[0].Argv[2] = "compile" }, "not go tool asm"},
+		{"symabis phase without -gensymabis", func(r []eventRecord) {
+			r[1].NativeArgv = append([]string{r[1].NativeArgv[0], "tool", "asm", "-o", "symabis"}, r[1].CompileInputs...)
+			r[0].Argv = r[1].NativeArgv
+		}, "-gensymabis wanted true"},
+		{"assembly phase claiming a generated artifact", func(r []eventRecord) { r[1].Maps = []string{"/tmp/x.map"} }, "nothing generated"},
+		{"Go compile dropped -symabis", func(r []eventRecord) {
+			var argv []string
+			for _, a := range r[4].CompilerArgv {
+				if a != "-symabis" && a != "symabis" {
+					argv = append(argv, a)
+				}
+			}
+			r[4].CompilerArgv = argv
+		}, "-symabis"},
+		{"Go compile through cmd/go", func(r []eventRecord) {
+			r[4].CompilerArgv = []string{"/goroot/bin/go", "build", "-o", "go.o", "/tmp/module/main.go"}
+		}, "direct upstream-shaped compiler argv"},
+		{"pack adopting a foreign object", func(r []eventRecord) { r[10].Program.Assembled = []string{"/elsewhere/other.o"} }, "assembled objects"},
+		{"pack with a non-Go source compiled as Go", func(r []eventRecord) {
+			r[4].CompileInputs = append(r[4].CompileInputs, "/goroot/test/asmdir.dir/f.s")
+			r[3].CompileInputs = r[4].CompileInputs
+		}, "non-Go input"},
+		{"link adopting another program", func(r []eventRecord) { r[13].Program.Files = []string{"/goroot/test/other.go"} }, "did not adopt the packed archive"},
+		{"execute running something else", func(r []eventRecord) {
+			r[16].Program = &programRec{Files: r[16].Program.Files, Object: "b.exe", Artifact: "/tmp/testdir/b.exe"}
+		}, "did not run the linked program"},
+		{"execute before link", func(r []eventRecord) {
+			r[12].PhaseKind, r[12].CompileInputs, r[13].Phase, r[13].CompileInputs = "execute", []string{}, "execute", []string{}
+			r[13].Disposition = "run-artifact"
+		}, "execute after pack"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			records := buildDirEvidence("compiled", true)
+			tt.mutate(records)
+			_, err := verifyBuildDirEvidence(t, "compiled", "buildrundir", "pass", records)
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %v, want %q", err, tt.want)
+			}
+		})
+	}
+}

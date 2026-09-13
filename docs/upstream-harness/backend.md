@@ -465,3 +465,45 @@ Product (sh): gc's `cmd/compile/internal/syntax` is vendored as
 `gosource/internal/gcsyntax` and is the syntax verdict; a multi-part
 go/types sub-error renders in gc's shape. Leaf runs r0 → r1c
 (`leaf-154r{0,1a,1b,1c}/`): 317 roots, 12 → 182 PASS; 154 = 160 → 4.
+
+## Sprint 165 — the directory build's assembly companions (D3(a))
+
+`builddir` / `buildrundir` roots (S165.0): upstream compiles the directory's
+Go files with one direct `go tool compile -p=main -e -D . -importcfg -o go.o`
+(plus `-asmhdr go_asm.h -symabis symabis` when the directory carries `.s`
+files), hands the `.s` files to `go tool asm` twice (`-gensymabis` as its
+generate phase before the compile; the object assembly as a compile phase
+after it), packs the objects into `all.a`, links it and, for buildrundir,
+runs `a.exe`. The seam gives every phase its meaning:
+
+- **Go compile** → `transpile-compile-directory-build` (compiled): the Go
+  files are transpiled to one generated file and compiled with upstream's
+  exact argv, inputs replaced by the generated file — `-o go.o`, `-D .` and
+  `-asmhdr`/`-symabis` retained in the upstream working directory, so the
+  assembler sees the generated file's constants and layouts (`go_asm.h`) and
+  the compiler sees the assembly's ABI (`symabis`). Interpreted mode is
+  `check-only` (no object; the sources stay the program).
+- **Assembly** → `assemble-native` (compiled only): assembly is a compiler
+  artifact (Sprint 155 D3). The pinned toolchain's `go tool asm` runs
+  upstream's exact argv on the upstream `.s` files, natively and unchanged,
+  as a recorded phase with its one output; the assembled object is remembered
+  for pack and nothing else may consume it. No Go source of the root runs
+  natively. Interpreted mode keeps the generate-phase refusal (`compile input
+  "…/a.s" is not a Go source file`), which the partition retains.
+- **Pack** → `pack-adopt-artifact` / `pack-adopt-check`: the inputs must be
+  exactly upstream's object name for the seam's compiler artifact (the `-o`
+  operand, `go.o`) plus the seam's assembled objects; the archive becomes the
+  program. **Link** over `all.a` → `link-adopt-artifact` / `link-adopt-check`;
+  **execute** → `run-artifact` / `run-remembered-program` as before. A
+  declaration no assembly implements fails at link with the linker's own
+  message and stays a product failure.
+
+`backend-verify.go` (`verifyBuildDirRow`) accepts no `unsupported` phase in
+compiled mode any more and checks the sequence, the retained
+`-asmhdr`/`-symabis`, the native `go tool asm` argv and the object
+adoption. The driving test is `tools/upstream-harness/asm-companion-gate.sh`
+over `testdata/backend/testdata/sprint165/asm-companion/` through the exact
+patched runner in both modes (positive: a body-less declaration implemented
+in assembly, the asmhdr shape, the Go-only directory; negative: a missing
+assembly body fails at link; a runindir module with assembly stays the D3(b)
+execute-phase refusal — issue15609 / issue74648 are untouched).

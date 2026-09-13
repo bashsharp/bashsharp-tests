@@ -1,6 +1,7 @@
 // Copyright 2026 The bashpp-tests Authors. All rights reserved.
 // Sprint: #157; Story: S157.2; Story-ID: 31520c72b5e0
 // Sprint: #154; Story: S154.0; Story-ID: 4877afd3a207
+// Sprint: #165; Story: S165.0; Story-ID: 1528c3c2b1df
 //
 // Verify the small direct-source seam. Go's testdir runner still owns recipe
 // selection and terminal verdicts; this verifier names observed limitations.
@@ -77,6 +78,11 @@ type programRec struct {
 	Files    []string `json:"files"`
 	MapArgs  []string `json:"map_args"`
 	Artifact string   `json:"artifact"`
+	// S165.0: upstream's own object name for the artifact (builddir's go.o,
+	// then all.a) and the objects the pinned assembler produced natively
+	// from the directory's .s companions.
+	Object    string   `json:"object"`
+	Assembled []string `json:"assembled"`
 }
 
 // packageID is the upstream compiler's naming of a directory package
@@ -245,11 +251,10 @@ func verifyRow(row matrixRow, dir, mode, version, tool string) (string, error) {
 	switch row.Action {
 	case "errorcheck", "errorcheckwithauto", "errorcheckoutput":
 		return verifyDiagnosticsRow(row, ev, mode, goAction)
-	case "compiledir", "errorcheckdir", "builddir", "buildrundir":
-		// buildrundir (S150.4) is builddir plus an execute phase; every
-		// authenticated root carries a .s input, so upstream stops at its
-		// generate phase and the directory rule classifies it.
+	case "compiledir", "errorcheckdir":
 		return verifyDirectoryRow(row, ev, mode, goAction)
+	case "builddir", "buildrundir":
+		return verifyBuildDirRow(row, ev, mode, goAction)
 	case "asmcheck":
 		if status, handled, err := verifyAssemblyRow(row, ev, mode, goAction); handled {
 			return status, err
@@ -516,6 +521,218 @@ func verifyDirectoryRow(row matrixRow, ev evidence, mode, goAction string) (stri
 		return "DIR-PRODUCT-FAIL", nil
 	}
 	return "DIR-PRODUCT-FAIL", nil
+}
+
+// verifyBuildDirRow checks a builddir / buildrundir root (S165.0, D3(a)).
+// Upstream compiles the directory's Go files with one direct `go tool
+// compile` and hands its .s companions to `go tool asm` twice (-gensymabis
+// before the compile, the object assembly after it), packs the objects into
+// all.a, links it and, for buildrundir, runs a.exe. In compiled mode the
+// seam must have transpiled the Go files and compiled the generated file
+// with upstream's exact argv (-asmhdr/-symabis included), run upstream's
+// own assembler invocations natively and unchanged (assembly is a compiler
+// artifact — never a Go source of the root), and adopted the compiler
+// object plus the assembled objects through pack, link and execute. No
+// phase may be "unsupported" any more. In interpreted mode an assembly
+// companion is a declared limitation at the generate phase (retained by the
+// partition); a Go-only directory is checked, then adopted through pack and
+// link and run from the remembered sources.
+func verifyBuildDirRow(row matrixRow, ev evidence, mode, goAction string) (string, error) {
+	if goAction == "skip" {
+		if len(ev.Phases) != 0 {
+			return "", fmt.Errorf("upstream skip with %d recorded phases", len(ev.Phases))
+		}
+		return "UPSTREAM-SKIP", nil
+	}
+	if len(ev.Backends) == 0 || len(ev.Results) != len(ev.Backends) {
+		return "", fmt.Errorf("wanted at least one phase with one result each, got %d backends / %d results", len(ev.Backends), len(ev.Results))
+	}
+	if mode != "interpreted" && mode != "compiled" {
+		return "", fmt.Errorf("unknown backend mode %q", mode)
+	}
+	first := ev.Backends[0]
+	if mode == "interpreted" && first.Disposition == "unsupported" {
+		if !assemblySources(first.CompileInputs) || first.Phase != "generate" || len(ev.Backends) != 1 || goAction != "fail" {
+			return "", fmt.Errorf("interpreted directory build declared unsupported outside the assembly generate phase: phase=%s inputs=%v action=%s", first.Phase, first.CompileInputs, goAction)
+		}
+		return "UNSUPPORTED", nil
+	}
+	wantCompile := map[string]string{"interpreted": "check-only", "compiled": "transpile-compile-directory-build"}[mode]
+	wantPack := map[string]string{"interpreted": "pack-adopt-check", "compiled": "pack-adopt-artifact"}[mode]
+	wantLink := map[string]string{"interpreted": "link-adopt-check", "compiled": "link-adopt-artifact"}[mode]
+	wantRun := map[string]string{"interpreted": "run-remembered-program", "compiled": "run-artifact"}[mode]
+	stage := "start"
+	assembly := false
+	var compile *eventRecord
+	var assembled []string
+	var program *programRec
+	for i := range ev.Backends {
+		backend := &ev.Backends[i]
+		if backend.Disposition == "unsupported" || backend.Disposition == "configuration-error" {
+			return "", fmt.Errorf("phase %d (%s) is %s: the directory build family has a recorded meaning in every phase", i, backend.Phase, backend.Disposition)
+		}
+		if len(backend.ProgramArgv) != 0 {
+			return "", fmt.Errorf("phase %d must carry an empty program argv, got %v", i, backend.ProgramArgv)
+		}
+		switch {
+		case backend.Phase == "generate" && assemblySources(backend.CompileInputs):
+			if stage != "start" || mode != "compiled" {
+				return "", fmt.Errorf("phase %d: assembly generate phase after %s in %s mode", i, stage, mode)
+			}
+			if err := checkAssembleNative(backend, true); err != nil {
+				return "", fmt.Errorf("phase %d: %v", i, err)
+			}
+			assembly, stage = true, "symabis"
+		case backend.Phase == "compile" && assemblySources(backend.CompileInputs):
+			if stage != "compile" || !assembly || mode != "compiled" {
+				return "", fmt.Errorf("phase %d: object assembly after %s (assembly=%v) in %s mode", i, stage, assembly, mode)
+			}
+			if err := checkAssembleNative(backend, false); err != nil {
+				return "", fmt.Errorf("phase %d: %v", i, err)
+			}
+			assembled = append(assembled, backend.Artifacts[0])
+			stage = "assemble"
+		case backend.Phase == "compile":
+			if stage != "start" && stage != "symabis" {
+				return "", fmt.Errorf("phase %d: Go compile after %s", i, stage)
+			}
+			if ev.Phases[i].Package != nil || backend.Disposition != wantCompile {
+				return "", fmt.Errorf("phase %d is not the directory build compile: disposition=%s package=%v", i, backend.Disposition, ev.Phases[i].Package)
+			}
+			for _, input := range backend.CompileInputs {
+				if !strings.HasSuffix(input, ".go") {
+					return "", fmt.Errorf("phase %d: Go compile carries a non-Go input %q", i, input)
+				}
+			}
+			if mode == "compiled" {
+				if len(backend.Artifacts) != 2 || len(backend.Maps) != 1 {
+					return "", fmt.Errorf("phase %d: compiled directory build must transpile with a map and compile only", i)
+				}
+				if len(backend.CompilerArgv) < 4 || backend.CompilerArgv[1] != "tool" || backend.CompilerArgv[2] != "compile" || !hasPrefix(backend.CompilerArgv, "-importcfg=") || contains(backend.CompilerArgv, "-complete") || backend.CompilerArgv[len(backend.CompilerArgv)-1] != backend.Artifacts[0] {
+					return "", fmt.Errorf("phase %d lacks the direct upstream-shaped compiler argv: %v", i, backend.CompilerArgv)
+				}
+				for _, flag := range []string{"-asmhdr", "-symabis", "-o", "-p=main"} {
+					if contains(backend.NativeArgv, flag) != contains(backend.CompilerArgv, flag) {
+						return "", fmt.Errorf("phase %d: compiler argv does not retain upstream's %s: native=%v got=%v", i, flag, backend.NativeArgv, backend.CompilerArgv)
+					}
+				}
+				if assembly && (!contains(backend.CompilerArgv, "-symabis") || !contains(backend.CompilerArgv, "-asmhdr")) {
+					return "", fmt.Errorf("phase %d: a directory with assembly companions compiles with -asmhdr and -symabis, got %v", i, backend.CompilerArgv)
+				}
+			}
+			compile, stage = backend, "compile"
+		case backend.Phase == "link" && len(backend.NativeArgv) >= 5 && backend.NativeArgv[1] == "tool" && backend.NativeArgv[2] == "pack":
+			if (stage != "compile" && stage != "assemble") || compile == nil || (assembly && stage != "assemble") {
+				return "", fmt.Errorf("phase %d: pack after %s (assembly=%v)", i, stage, assembly)
+			}
+			if backend.Disposition != wantPack || backend.Program == nil || !reflect.DeepEqual(backend.Program.Files, compile.CompileInputs) {
+				return "", fmt.Errorf("phase %d: pack did not adopt the compiled directory: disposition=%s program=%v want files %v", i, backend.Disposition, backend.Program, compile.CompileInputs)
+			}
+			if !reflect.DeepEqual(nonEmpty(backend.Program.Assembled), nonEmpty(assembled)) {
+				return "", fmt.Errorf("phase %d: pack adopted assembled objects %v, want exactly the seam's %v", i, backend.Program.Assembled, assembled)
+			}
+			if mode == "compiled" && (len(backend.Artifacts) != 1 || backend.Program.Artifact != backend.Artifacts[0] || backend.Program.Object != filepath.Base(backend.Artifacts[0])) {
+				return "", fmt.Errorf("phase %d: pack must record the archive as the program artifact: artifacts=%v program=%v", i, backend.Artifacts, backend.Program)
+			}
+			program, stage = backend.Program, "pack"
+		case backend.Phase == "link":
+			if stage != "pack" || program == nil {
+				return "", fmt.Errorf("phase %d: link without a pack phase", i)
+			}
+			if backend.Disposition != wantLink || backend.Program == nil || !reflect.DeepEqual(backend.Program.Files, program.Files) || len(backend.CompileInputs) != 1 || filepath.Base(backend.CompileInputs[0]) != program.Object {
+				return "", fmt.Errorf("phase %d: link did not adopt the packed archive: disposition=%s inputs=%v program=%v", i, backend.Disposition, backend.CompileInputs, backend.Program)
+			}
+			if mode == "compiled" && (len(backend.Artifacts) != 1 || backend.Program.Artifact != backend.Artifacts[0]) {
+				return "", fmt.Errorf("phase %d: link must record the linked program as its artifact: artifacts=%v program=%v", i, backend.Artifacts, backend.Program)
+			}
+			program, stage = backend.Program, "link"
+		case backend.Phase == "execute":
+			if row.Action != "buildrundir" || stage != "link" || program == nil {
+				return "", fmt.Errorf("phase %d: execute after %s for %s", i, stage, row.Action)
+			}
+			if backend.Disposition != wantRun || len(backend.CompileInputs) != 0 || backend.Program == nil || !reflect.DeepEqual(backend.Program, program) {
+				return "", fmt.Errorf("phase %d: execute did not run the linked program: disposition=%s program=%v want %v", i, backend.Disposition, backend.Program, program)
+			}
+			stage = "execute"
+		default:
+			return "", fmt.Errorf("phase %d: unexpected %s phase (%s) with inputs %v", i, backend.Phase, backend.Disposition, backend.CompileInputs)
+		}
+	}
+	lastExit := ev.Results[len(ev.Results)-1].Exit
+	if goAction == "pass" {
+		want := "link"
+		if row.Action == "buildrundir" {
+			want = "execute"
+		}
+		if stage != want {
+			return "", fmt.Errorf("upstream pass stopped at the %s phase, want %s", stage, want)
+		}
+		for i, result := range ev.Results {
+			if result.Exit != 0 {
+				return "", fmt.Errorf("upstream pass with nonzero phase %d exit %d", i, result.Exit)
+			}
+		}
+		if mode == "compiled" && (!validProofs(compile.Artifacts, ev.Results[indexOf(ev.Backends, compile)].ArtifactProof) || !validProofs(compile.Maps, ev.Results[indexOf(ev.Backends, compile)].MapProof)) {
+			return "", fmt.Errorf("compiled directory build lacks generated/map/artifact existence and hash proof")
+		}
+		return "BUILDDIR-PASS", nil
+	}
+	if lastExit == 0 {
+		return "", fmt.Errorf("upstream failure without a recorded nonzero phase exit")
+	}
+	return "BUILDDIR-PRODUCT-FAIL", nil
+}
+
+// checkAssembleNative checks one native assembly phase: upstream's own
+// `go tool asm` argv (with -gensymabis exactly when symabis is wanted) on
+// .s inputs only, recorded with its one output.
+func checkAssembleNative(backend *eventRecord, symabis bool) error {
+	if backend.Disposition != "assemble-native" {
+		return fmt.Errorf("assembly phase disposition = %s, want assemble-native", backend.Disposition)
+	}
+	if len(backend.NativeArgv) < 4 || backend.NativeArgv[1] != "tool" || backend.NativeArgv[2] != "asm" {
+		return fmt.Errorf("assembly phase native argv %v is not go tool asm", backend.NativeArgv)
+	}
+	if contains(backend.NativeArgv, "-gensymabis") != symabis {
+		return fmt.Errorf("assembly phase argv %v: -gensymabis wanted %v", backend.NativeArgv, symabis)
+	}
+	for _, input := range backend.CompileInputs {
+		if !contains(backend.NativeArgv, input) {
+			return fmt.Errorf("assembly phase input %q is not an operand of the native argv %v", input, backend.NativeArgv)
+		}
+	}
+	if len(backend.Artifacts) != 1 || len(backend.Maps) != 0 || len(backend.CompilerArgv) != 0 {
+		return fmt.Errorf("assembly phase must record exactly its one output and nothing generated: artifacts=%v maps=%v", backend.Artifacts, backend.Maps)
+	}
+	return nil
+}
+
+func assemblySources(inputs []string) bool {
+	if len(inputs) == 0 {
+		return false
+	}
+	for _, input := range inputs {
+		if !strings.HasSuffix(input, ".s") {
+			return false
+		}
+	}
+	return true
+}
+
+func nonEmpty(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	return values
+}
+
+func indexOf(records []eventRecord, record *eventRecord) int {
+	for i := range records {
+		if &records[i] == record {
+			return i
+		}
+	}
+	return -1
 }
 
 // verifyAssemblyRow checks an asmcheck root in compiled mode: one

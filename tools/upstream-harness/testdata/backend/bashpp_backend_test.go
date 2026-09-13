@@ -3,6 +3,7 @@
 // Sprint: #149; Stories: S149.1 (3f416ade73ef), S149.2 (1e87cb008ec3), S149.3 (60d35d1ec914)
 // Sprint: #150; Stories: S150.6 (4228ed646074), S150.5 (e87e1cbcbb20), S150.1 (a136a527c0b3), S150.2 (8f758b9dcd5a)
 // Sprint: #154; Story: S154.0; Story-ID: 4877afd3a207
+// Sprint: #165; Story: S165.0; Story-ID: 1528c3c2b1df
 //
 // Direct Go-source backend for the authenticated Go 1.27 testdir seam. The
 // only program description accepted here is the compileInputs/programArgv
@@ -134,13 +135,49 @@ type backendProgram struct {
 	mapArgs      []string
 	artifact     string
 	compilerArgv []string
+	// object is upstream's own name for the artifact of the last phase
+	// (its -o operand: builddir's go.o, then all.a), when it had one; the
+	// directory compile without -o keeps the .go -> .o rule instead.
+	object string
+	// assembled is the objects the pinned assembler produced natively from
+	// the directory's .s companions (S165.0, D3(a)); pack may consume them
+	// and nothing else may.
+	assembled []string
 }
 
 // backendPrograms is keyed by the upstream test identity, like backendPackages.
 var backendPrograms sync.Map
 
 func (p backendProgram) record() map[string]any {
-	return map[string]any{"files": nonNil(p.files), "map_args": nonNil(p.mapArgs), "artifact": p.artifact, "compiler_argv": nonNil(p.compilerArgv)}
+	return map[string]any{"files": nonNil(p.files), "map_args": nonNil(p.mapArgs), "artifact": p.artifact, "compiler_argv": nonNil(p.compilerArgv), "object": p.object, "assembled": nonNil(p.assembled)}
+}
+
+// owns reports whether a link-phase input set is exactly what this test's
+// earlier phases handed the seam: the object of its compiler artifact (by
+// upstream's -o name or the .go -> .o rule) and, for `go tool pack`, any
+// object the seam assembled natively for the same test.
+func (p backendProgram) owns(compileInputs []string, pack bool) bool {
+	if len(p.files) == 0 || len(compileInputs) == 0 || (!pack && len(compileInputs) != 1) {
+		return false
+	}
+	assembled := make(map[string]bool, len(p.assembled))
+	for _, object := range p.assembled {
+		assembled[filepath.Base(object)] = true
+	}
+	compiler := 0
+	for _, input := range compileInputs {
+		base := filepath.Base(input)
+		switch {
+		case p.object != "" && base == p.object:
+			compiler++
+		case p.object == "" && strings.TrimSuffix(base, ".o")+".go" == filepath.Base(p.files[0]):
+			compiler++
+		case pack && assembled[base]:
+		default:
+			return false
+		}
+	}
+	return compiler == 1
 }
 
 // directCompileCommand is the upstream compiler invocation with the original
@@ -218,24 +255,37 @@ func backendModule(t test, shellrt string) (moduleDir string, err error) {
 func (t test) backendLink(step *planStep, mode, action string, compileInputs, programArgv, recipeFlags, nativeArgv, deviations []string) {
 	value, ok := backendPrograms.Load(t.eventName())
 	program, _ := value.(backendProgram)
-	object := ""
-	if len(compileInputs) == 1 {
-		object = strings.TrimSuffix(filepath.Base(compileInputs[0]), ".o") + ".go"
-	}
-	if !ok || len(program.files) == 0 || object != filepath.Base(program.files[0]) {
+	// builddir/buildrundir pack the compiler object (and the natively
+	// assembled objects) into all.a before linking it; the archive is the
+	// program the following link phase adopts.
+	pack := len(nativeArgv) >= 5 && nativeArgv[1] == "tool" && nativeArgv[2] == "pack" && nativeArgv[3] == "c"
+	if !ok || !program.owns(compileInputs, pack) {
 		step.backendErr = fmt.Errorf("Bash++ backend unsupported link phase: input %v is not the program this test's compile phases handed the seam", compileInputs)
 		t.backendEvent(mode, action, "link", "unsupported", compileInputs, programArgv, recipeFlags, nativeArgv, nil, nil,
 			append(deviations, "the link input is not the object of the last directory package upstream compiled through Bash++"))
 		return
 	}
-	deviations = append(deviations,
-		"the link input is upstream's object name for the last package it compiled; the seam adopts the program that compile phase handed it and never links objects",
-		"upstream -ldflags are retained as evidence only")
+	stage, adopt := "link", "link-adopt"
+	if pack {
+		stage, adopt = "pack", "pack-adopt"
+		deviations = append(deviations,
+			"the pack inputs are upstream's object names for the generated package's compiler artifact and the natively assembled companions; the seam adopts them and never packs anything else")
+	} else {
+		deviations = append(deviations,
+			"the link input is upstream's object name for the last package it compiled; the seam adopts the program that compile phase handed it and never links objects",
+			"upstream -ldflags are retained as evidence only")
+	}
 	switch mode {
 	case "interpreted":
+		if pack {
+			// The following link phase names the archive; the sources stay
+			// the program.
+			program.object = filepath.Base(nativeArgv[4])
+			backendPrograms.Store(t.eventName(), program)
+		}
 		*step.cmd = *directSourceCommand(step.cmd, "/bin/sh", "-c", ":")
-		t.backendEventProgram(mode, action, "link", "link-adopt-check", compileInputs, programArgv, recipeFlags, nativeArgv, nil, nil,
-			append(deviations, "an interpreter has nothing to link: the checked sources are the program and run at the execute phase"), nil, program.record())
+		t.backendEventProgram(mode, action, "link", adopt+"-check", compileInputs, programArgv, recipeFlags, nativeArgv, nil, nil,
+			append(deviations, "an interpreter has nothing to "+stage+": the checked sources are the program and run at the execute phase"), nil, program.record())
 	case "compiled":
 		if program.artifact == "" {
 			step.backendErr = fmt.Errorf("Bash++ backend unsupported link phase: no artifact was built for this program")
@@ -243,21 +293,110 @@ func (t test) backendLink(step *planStep, mode, action string, compileInputs, pr
 			return
 		}
 		linkArgv := append([]string(nil), nativeArgv...)
+		assembled := make(map[string]string, len(program.assembled))
+		for _, object := range program.assembled {
+			assembled[filepath.Base(object)] = object
+		}
 		for i, arg := range linkArgv {
-			if strings.HasSuffix(arg, ".o") {
+			if i < 3 {
+				continue
+			}
+			switch {
+			case pack && i == 4:
+				// the archive upstream names
+			case assembled[arg] != "":
+				linkArgv[i] = assembled[arg]
+			case (program.object != "" && arg == program.object) || (program.object == "" && strings.HasSuffix(arg, ".o")):
 				linkArgv[i] = program.artifact
 			}
 		}
-		linked := compilerOutput(linkArgv, "", step.cmd.Dir)
+		var linked string
+		if pack {
+			linked = linkArgv[4]
+			if !filepath.IsAbs(linked) {
+				linked = filepath.Join(step.cmd.Dir, linked)
+			}
+		} else {
+			linked = compilerOutput(linkArgv, "", step.cmd.Dir)
+		}
 		program.artifact = linked
+		program.object = filepath.Base(linked)
 		backendPrograms.Store(t.eventName(), program)
 		*step.cmd = *directSourceCommand(step.cmd, linkArgv[0], linkArgv[1:]...)
-		t.backendEventProgram(mode, action, "link", "link-adopt-artifact", compileInputs, programArgv, recipeFlags, nativeArgv, []string{linked}, nil,
-			append(deviations, "the pinned Go linker receives the object produced by the generated source; upstream link flags and importcfg are retained exactly"), nil, program.record())
+		deviation := "the pinned Go linker receives the object produced by the generated source; upstream link flags and importcfg are retained exactly"
+		if pack {
+			deviation = "the pinned Go packer receives the object produced by the generated source and the natively assembled objects; upstream's archive name is retained exactly"
+		}
+		t.backendEventProgram(mode, action, "link", adopt+"-artifact", compileInputs, programArgv, recipeFlags, nativeArgv, []string{linked}, nil,
+			append(deviations, deviation), nil, program.record())
 	default:
 		step.backendErr = fmt.Errorf("unsupported Bash++ backend mode %q", mode)
 		t.backendEvent(mode, action, "link", "configuration-error", compileInputs, programArgv, recipeFlags, nativeArgv, nil, nil, deviations)
 	}
+}
+
+// assemblyInputs reports whether every compile input is an assembly source.
+func assemblyInputs(inputs []string) bool {
+	if len(inputs) == 0 {
+		return false
+	}
+	for _, input := range inputs {
+		if !strings.HasSuffix(input, ".s") {
+			return false
+		}
+	}
+	return true
+}
+
+// backendAssemble gives the .s companions of a builddir/buildrundir root
+// their D3(a) meaning (S165.0). Upstream hands them to `go tool asm`
+// directly, twice: `-gensymabis` (its generate phase, before the Go compile)
+// and the object assembly (a compile phase, after it). Assembly is a
+// compiler artifact: in compiled mode the pinned assembler runs upstream's
+// exact argv, natively and unchanged, and the seam records it as a phase of
+// the test — no Go source of the root is ever run natively (the Go files go
+// through transpile + direct compile like every compile-only recipe, and the
+// object assembly is remembered for pack). Interpreted mode has no assembly
+// meaning and stays unsupported with its recorded reason.
+func (t test) backendAssemble(step *planStep, mode, action, phase string, compileInputs, programArgv, recipeFlags, nativeArgv, deviations []string) {
+	if mode == "interpreted" {
+		step.backendErr = fmt.Errorf("Bash++ backend unsupported %s phase: compile input %q is not a Go source file", phase, compileInputs[0])
+		t.backendEvent(mode, action, phase, "unsupported", compileInputs, programArgv, recipeFlags, nativeArgv, nil, nil,
+			append(deviations, "assembly is a compiler artifact; an interpreter has no assembly meaning and the companion's Go declarations have no body to run"))
+		return
+	}
+	if len(nativeArgv) < 4 || nativeArgv[1] != "tool" || nativeArgv[2] != "asm" {
+		step.backendErr = fmt.Errorf("Bash++ backend unsupported %s phase: assembly inputs %v are not handed to go tool asm: %v", phase, compileInputs, nativeArgv)
+		t.backendEvent(mode, action, phase, "unsupported", compileInputs, programArgv, recipeFlags, nativeArgv, nil, nil,
+			append(deviations, "assembly sources have a meaning only as upstream's own go tool asm invocation"))
+		return
+	}
+	if mode != "compiled" {
+		step.backendErr = fmt.Errorf("unsupported Bash++ backend mode %q", mode)
+		t.backendEvent(mode, action, phase, "configuration-error", compileInputs, programArgv, recipeFlags, nativeArgv, nil, nil, deviations)
+		return
+	}
+	output := compilerOutput(nativeArgv, "", step.cmd.Dir)
+	symabis := false
+	for _, arg := range nativeArgv {
+		if arg == "-gensymabis" {
+			symabis = true
+		}
+	}
+	// step.cmd is left exactly as upstream built it: the pinned assembler
+	// on the upstream .s files in the upstream working directory.
+	step.artifacts = []string{output}
+	if !symabis {
+		if value, ok := backendPrograms.Load(t.eventName()); ok {
+			program := value.(backendProgram)
+			program.assembled = append(append([]string(nil), program.assembled...), output)
+			backendPrograms.Store(t.eventName(), program)
+		}
+	}
+	t.backendEvent(mode, action, phase, "assemble-native", compileInputs, programArgv, recipeFlags, nativeArgv, step.artifacts, nil,
+		append(deviations,
+			"D3(a): assembly is a compiler artifact; the pinned toolchain's go tool asm runs upstream's exact argv on the upstream .s files, natively and unchanged, as a recorded phase of this test",
+			"no Go source of the root runs natively: the directory's Go files reach the compiler only as the transpiled file, and the assembled object is consumed only by this test's pack phase"))
 }
 
 // goListPackage is the subset of `go list -json` the seam reads.
@@ -483,6 +622,14 @@ func (t test) backendPlan(step *planStep, action, phase string, pkg *packageIden
 		sourceFiles, moduleMapArgs, moduleMap = resolved, mapArgs, record
 		record["files"] = nonNil(resolved)
 	}
+	// builddir/buildrundir (S165.0): the directory's .s companions are
+	// assembled by upstream's own go tool asm invocations around the one
+	// Go compile; see backendAssemble.
+	directoryBuild := (action == "builddir" || action == "buildrundir") && pkg == nil && (phase == "compile" || phase == "generate")
+	if directoryBuild && assemblyInputs(sourceFiles) {
+		t.backendAssemble(step, mode, action, phase, compileInputs, programArgv, recipeFlags, nativeArgv, deviations)
+		return
+	}
 	for _, input := range sourceFiles {
 		if !strings.HasSuffix(input, ".go") {
 			step.backendErr = fmt.Errorf("Bash++ backend unsupported %s phase: compile input %q is not a Go source file", phase, input)
@@ -494,17 +641,21 @@ func (t test) backendPlan(step *planStep, action, phase string, pkg *packageIden
 	// An upstream "generate" phase is a `go run` of the selected source whose
 	// output becomes the next phase's input (runoutput, errorcheckoutput);
 	// it has exactly the execute phase's direct meaning.
-	run := phase == "execute" || phase == "generate"
+	run := (phase == "execute" || phase == "generate") && !directoryBuild
 	compileOnly := action == "compile" && phase == "compile"
+	// The Go files of a builddir/buildrundir directory: one direct compile
+	// with upstream's exact flags (-p=main -e -D . -importcfg, -o go.o and,
+	// with companions, -asmhdr go_asm.h -symabis symabis).
+	directoryBuild = directoryBuild && phase == "compile"
 	buildOnly := (action == "build" || action == "buildrun") && phase == "compile"
 	diagnostics := phase == "compile" && pkg == nil &&
 		(action == "errorcheck" || action == "errorcheckoutput" || action == "errorcheckwithauto")
 	directory := phase == "compile" && pkg != nil
 	assembly := action == "asmcheck" && phase == "compile"
-	if !run && !compileOnly && !buildOnly && !diagnostics && !directory && !assembly {
+	if !run && !compileOnly && !buildOnly && !diagnostics && !directory && !assembly && !directoryBuild {
 		step.backendErr = fmt.Errorf("Bash++ backend unsupported source phase %q", phase)
 		t.backendEvent(mode, action, phase, "unsupported", compileInputs, programArgv, recipeFlags, nativeArgv, nil, nil,
-			append(deviations, "only upstream execute/generate phases and the compile phases of compile, build, errorcheck, directory and asmcheck actions have a direct Bash++ meaning"))
+			append(deviations, "only upstream execute/generate phases and the compile phases of compile, build, builddir, errorcheck, directory and asmcheck actions have a direct Bash++ meaning"))
 		return
 	}
 	if tool == "" || os.Getenv("BASHPP_TESTDIR_VERSION") == "" {
@@ -580,11 +731,17 @@ func (t test) backendPlan(step *planStep, action, phase string, pkg *packageIden
 			t.backendEventMap(mode, action, phase, "check-package-map", compileInputs, programArgv, recipeFlags, nativeArgv, nil, nil,
 				append(deviations, "directory package phase stops after Bash++ check against the explicit package map; no init or main is executed"), packageMap)
 			return
-		case compileOnly || buildOnly:
+		case compileOnly || buildOnly || directoryBuild:
 			*step.cmd = *directSourceCommand(step.cmd, tool, checkArgs...)
 			checkDeviations := append(append([]string(nil), deviations...),
 				"the Bash++ check interface does not accept compiler recipe flags; they remain explicit evidence",
 				"compile-only phase stops after Bash++ check; no init or main is executed")
+			if directoryBuild {
+				checkDeviations = append(append([]string(nil), deviations...),
+					"the Bash++ check interface has no compiler or artifact semantics; upstream's direct compile flags and the go.o object remain explicit evidence only",
+					"directory build phase stops after Bash++ check; no object is produced and no init or main is executed")
+				backendPrograms.Store(t.eventName(), backendProgram{files: append([]string(nil), compileInputs...), object: filepath.Base(compilerOutput(nativeArgv, compileInputs[0], step.cmd.Dir))})
+			}
 			if buildOnly {
 				checkDeviations = append(append([]string(nil), deviations...),
 					"the Bash++ check interface has no compiler or artifact semantics; upstream go-command recipe flags and the cwd a.exe artifact remain explicit evidence only",
@@ -686,7 +843,7 @@ func (t test) backendPlan(step *planStep, action, phase string, pkg *packageIden
 					"the upstream-selected GOOS/GOARCH environment is preserved unchanged; the program is never executed"))
 			return
 		}
-		if compileOnly || diagnostics || directory {
+		if compileOnly || diagnostics || directory || directoryBuild {
 			transpileArgs = append(transpileArgs, "--map", sourceMap)
 			compilerArgv, err := directCompileCommand(nativeArgv, compileInputs, generated)
 			if err != nil {
@@ -717,6 +874,12 @@ func (t test) backendPlan(step *planStep, action, phase string, pkg *packageIden
 					program.compilerArgv = append([]string(nil), compilerArgv...)
 					backendPrograms.Store(t.eventName(), program)
 				}
+			case directoryBuild:
+				disposition = "transpile-compile-directory-build"
+				compileDeviations = append(compileDeviations,
+					"the direct compiler keeps upstream's -o object, -D . and, with .s companions, -asmhdr go_asm.h / -symabis symabis in the upstream working directory; the generated file's constants and declarations are what the assembler sees",
+					"the object is the program this test's pack, link and execute phases act on")
+				backendPrograms.Store(t.eventName(), backendProgram{files: append([]string(nil), compileInputs...), artifact: artifact, compilerArgv: append([]string(nil), compilerArgv...), object: filepath.Base(artifact)})
 			}
 			t.backendEventCompiler(mode, action, phase, disposition, compileInputs, programArgv, recipeFlags, nativeArgv,
 				step.artifacts, step.maps, compileDeviations, packageMap, compilerArgv)
@@ -742,5 +905,50 @@ func (t test) backendPlan(step *planStep, action, phase string, pkg *packageIden
 	default:
 		step.backendErr = fmt.Errorf("unsupported Bash++ backend mode %q", mode)
 		t.backendEvent(mode, action, phase, "configuration-error", compileInputs, programArgv, recipeFlags, nativeArgv, nil, nil, deviations)
+	}
+}
+
+// Sprint: #165; Story: S165.0; Story-ID: 1528c3c2b1df
+func TestAssemblyInputsAreOnlyAssemblySources(t *testing.T) {
+	if !assemblyInputs([]string{"/t/a.s"}) || !assemblyInputs([]string{"/t/a.s", "/t/b_amd64.s"}) {
+		t.Error("assembly-only inputs must be recognized")
+	}
+	for _, inputs := range [][]string{nil, {}, {"/t/main.go"}, {"/t/a.s", "/t/main.go"}, {"."}} {
+		if assemblyInputs(inputs) {
+			t.Errorf("assemblyInputs(%v) = true", inputs)
+		}
+	}
+}
+
+// TestProgramOwnsLinkInputs pins what pack and link may adopt: upstream's own
+// object name for the seam's compiler artifact, the objects the seam
+// assembled natively (pack only), and nothing else.
+func TestProgramOwnsLinkInputs(t *testing.T) {
+	built := backendProgram{files: []string{"/t/main.go"}, artifact: "/w/go.o", object: "go.o", assembled: []string{"/w/asm.o"}}
+	if !built.owns([]string{"go.o", "asm.o"}, true) || !built.owns([]string{"go.o"}, true) || !built.owns([]string{"go.o"}, false) {
+		t.Error("the compiler object and the assembled objects must be owned")
+	}
+	for _, tt := range []struct {
+		inputs []string
+		pack   bool
+	}{
+		{[]string{"asm.o"}, true},           // no compiler object
+		{[]string{"go.o", "other.o"}, true}, // an object the seam never produced
+		{[]string{"go.o", "asm.o"}, false},  // link takes one input
+		{[]string{"go.o", "go.o"}, true},    // the compiler object once
+		{[]string{"main.o"}, false},         // the .go -> .o rule does not apply once -o named the object
+		{nil, true},
+	} {
+		if built.owns(tt.inputs, tt.pack) {
+			t.Errorf("owns(%v, pack=%v) = true", tt.inputs, tt.pack)
+		}
+	}
+	// Without -o the directory compile keeps the .go -> .o rule.
+	directory := backendProgram{files: []string{"/t/b.go", "/t/a.go"}, artifact: "/w/main.o"}
+	if !directory.owns([]string{"b.o"}, false) || directory.owns([]string{"a.o"}, false) || directory.owns([]string{"b.o", "asm.o"}, true) {
+		t.Error("the directory rule must adopt exactly the first file's object")
+	}
+	if (backendProgram{}).owns([]string{"go.o"}, false) {
+		t.Error("a program with no files owns nothing")
 	}
 }
