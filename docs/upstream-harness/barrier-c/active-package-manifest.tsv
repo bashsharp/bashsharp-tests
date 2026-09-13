@@ -1,0 +1,50 @@
+root	mode	first_line	verdict
+package:cmd/compile	interpreted	gosource: duplicate file "/srv/sprint162/barrier-c/evidence/goroot/src/cmd/compile/script_test.go" in package "cmd/compile"	missing=0;wording=0;extra=0;class=-
+package:cmd/compile	compiled	src/cmd/compile/main.go:23:2: could not import internal/buildcfg (use of internal package internal/buildcfg not allowed)	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/abt	interpreted	gosource: duplicate file "/srv/sprint162/barrier-c/evidence/goroot/src/cmd/compile/internal/abt/avlint32_test.go" in package "cmd/compile/internal/abt"	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/amd64	interpreted	src/cmd/compile/internal/amd64/galign.go:8:2: could not import cmd/compile/internal/ssagen (use of internal package cmd/compile/internal/ssagen not allowed)	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/amd64	compiled	exit status 1	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/base	interpreted	gosource: duplicate file "/srv/sprint162/barrier-c/evidence/goroot/src/cmd/compile/internal/base/hashdebug_test.go" in package "cmd/compile/internal/base"	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/base	compiled	src/cmd/compile/internal/base/flag.go:13:2: could not import internal/buildcfg (use of internal package internal/buildcfg not allowed)	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/compare	interpreted	gosource: duplicate file "/srv/sprint162/barrier-c/evidence/goroot/src/cmd/compile/internal/compare/compare_test.go" in package "cmd/compile/internal/compare"	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/devirtualize	interpreted	gosource: duplicate file "/srv/sprint162/barrier-c/evidence/goroot/src/cmd/compile/internal/devirtualize/pgo_test.go" in package "cmd/compile/internal/devirtualize"	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/dwarfgen	interpreted	gosource: duplicate file "/srv/sprint162/barrier-c/evidence/goroot/src/cmd/compile/internal/dwarfgen/linenum_test.go" in package "cmd/compile/internal/dwarfgen"	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/dwarfgen	compiled	src/cmd/compile/internal/dwarfgen/dwarf.go:11:2: could not import internal/buildcfg (use of internal package internal/buildcfg not allowed)	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/importer	interpreted	gosource: duplicate file "/srv/sprint162/barrier-c/evidence/goroot/src/cmd/compile/internal/importer/gcimporter_test.go" in package "cmd/compile/internal/importer"	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/importer	compiled	src/cmd/compile/internal/importer/gcimporter.go:12:2: could not import internal/exportdata (use of internal package internal/exportdata not allowed)	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/inline/inlheur	interpreted	gosource: duplicate file "/srv/sprint162/barrier-c/evidence/goroot/src/cmd/compile/internal/inline/inlheur/debugflags_test.go" in package "cmd/compile/internal/inline/inlheur"	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/inline/inlheur	compiled	src/cmd/compile/internal/inline/inlheur/analyze.go:14:2: could not import internal/buildcfg (use of internal package internal/buildcfg not allowed)	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/ir	interpreted	gosource: duplicate file "/srv/sprint162/barrier-c/evidence/goroot/src/cmd/compile/internal/ir/dump_test.go" in package "cmd/compile/internal/ir"	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/ir	compiled	src/cmd/compile/internal/ir/abi.go:7:1: LOWER-ETYPE: "unsafe" imported and not used	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/liveness	interpreted	gosource: duplicate file "/srv/sprint162/barrier-c/evidence/goroot/src/cmd/compile/internal/liveness/intervals_test.go" in package "cmd/compile/internal/liveness"	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/liveness	compiled	src/cmd/compile/internal/liveness/arg.go:9:2: could not import internal/abi (use of internal package internal/abi not allowed)	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/logopt	interpreted	gosource: duplicate file "/srv/sprint162/barrier-c/evidence/goroot/src/cmd/compile/internal/logopt/logopt_test.go" in package "cmd/compile/internal/logopt"	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/logopt	compiled	src/cmd/compile/internal/logopt/log_opts.go:12:2: could not import internal/buildcfg (use of internal package internal/buildcfg not allowed)	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/loopvar	interpreted	src/cmd/compile/internal/loopvar/loopvar.go:10:2: could not import cmd/compile/internal/base (use of internal package cmd/compile/internal/base not allowed)	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/loopvar	compiled	exit status 1	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/noder	interpreted	gosource: duplicate file "/srv/sprint162/barrier-c/evidence/goroot/src/cmd/compile/internal/noder/lex_test.go" in package "cmd/compile/internal/noder"	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/noder	compiled	src/cmd/compile/internal/noder/codes.go:7:8: could not import internal/pkgbits (use of internal package internal/pkgbits not allowed)	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/rangefunc	interpreted	src/cmd/compile/internal/rangefunc/rewrite.go:529:1: package rangefunc; expected package rangefunc_test	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/rangefunc	compiled	exit status 1	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/reflectdata	interpreted	src/cmd/compile/internal/reflectdata/alg.go:13:2: could not import cmd/compile/internal/base (use of internal package cmd/compile/internal/base not allowed)	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/reflectdata	compiled	exit status 1	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/ssa	interpreted	Bash++ gotest backend: non-Go inputs	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/ssa	compiled	exit status 1	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/ssagen	interpreted	gosource: duplicate file "/srv/sprint162/barrier-c/evidence/goroot/src/cmd/compile/internal/ssagen/intrinsics_test.go" in package "cmd/compile/internal/ssagen"	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/ssagen	compiled	src/cmd/compile/internal/ssagen/abi.go:9:2: could not import internal/buildcfg (use of internal package internal/buildcfg not allowed)	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/syntax	interpreted	gosource: duplicate file "/srv/sprint162/barrier-c/evidence/goroot/src/cmd/compile/internal/syntax/dumper_test.go" in package "cmd/compile/internal/syntax"	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/syntax	compiled	src/cmd/compile/internal/syntax/error_test.go:34:2: could not import internal/testenv (use of internal package internal/testenv not allowed)	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/test	interpreted	gosource: duplicate file "/srv/sprint162/barrier-c/evidence/goroot/src/cmd/compile/internal/test/abiutils_test.go" in package "cmd/compile/internal/test"	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/test	compiled	src/cmd/compile/internal/test/clobberdead_test.go:8:2: could not import internal/testenv (use of internal package internal/testenv not allowed)	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/typecheck	interpreted	gosource: duplicate file "/srv/sprint162/barrier-c/evidence/goroot/src/cmd/compile/internal/typecheck/builtin_test.go" in package "cmd/compile/internal/typecheck"	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/typecheck	compiled	src/cmd/compile/internal/typecheck/builtin_test.go:9:2: could not import internal/testenv (use of internal package internal/testenv not allowed)	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/types	interpreted	gosource: duplicate file "/srv/sprint162/barrier-c/evidence/goroot/src/cmd/compile/internal/types/sizeof_test.go" in package "cmd/compile/internal/types"	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/types	compiled	exit status 1	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/types2	interpreted	gosource: duplicate file "/srv/sprint162/barrier-c/evidence/goroot/src/cmd/compile/internal/types2/context_test.go" in package "cmd/compile/internal/types2"	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/types2	compiled	exit status 1	missing=0;wording=0;extra=0;class=-
+package:cmd/internal/testdir	interpreted	src/cmd/internal/testdir/testdir_test.go:17:2: could not import internal/testenv (use of internal package internal/testenv not allowed)	missing=0;wording=0;extra=0;class=-
+package:cmd/internal/testdir	compiled	src/cmd/internal/testdir/testdir_test.go:17:2: could not import internal/testenv (use of internal package internal/testenv not allowed)	missing=0;wording=0;extra=0;class=-
+package:go/types	interpreted	gosource: duplicate file "/srv/sprint162/barrier-c/evidence/goroot/src/go/types/context_test.go" in package "go/types"	missing=0;wording=0;extra=0;class=-
+package:go/types	compiled	exit status 1	missing=0;wording=0;extra=0;class=-
+package:internal/types/errors	interpreted	src/internal/types/errors/codes_test.go:5:1: package errors_test; expected package errors	missing=0;wording=0;extra=0;class=-
+package:internal/types/errors	compiled	exit status 1	missing=0;wording=0;extra=0;class=-

@@ -1,0 +1,5 @@
+pin override (candidate integ-3): shellrt_commit=2004a4a07e00b3338fb8575b4a049241123629ac bashpp_version=bashy, GNU Bash 5.3 compatible, version 5.3.0(1)-bashy-dev (fe204ec)
+barrier=barrier-c host=certification harness=b94bfc8a bashpp=3b09dfe341dd2a8c sh=2004a4a07e candidate=integ-3 start=2026-09-13T09:02:59Z
+corpus exit=3 start=2026-09-13T09:02:59Z end=2026-09-13T10:29:39Z
+survivors: 0
+DONE barrier-c
