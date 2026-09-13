@@ -1,5 +1,6 @@
 // Copyright 2026 The bashpp-tests Authors. All rights reserved.
 // Sprint: #150; Story: S150.8; Story-ID: 65db485f62ab
+// Sprint: #165; Story: S165.0; Story-ID: 1528c3c2b1df
 //
 // Direct Bash++ backend for Go's own package-test runner (cmd/go). The
 // unmodified cmd/go enumerates the tests (load.TestPackagesFor generates
@@ -300,14 +301,26 @@ func bashppTestPlan(p *load.Package, buildAction *work.Action, args []string) []
 	record["program"] = map[string]any{"path": pmain.ImportPath, "packages": packages, "files": []string{testmain}}
 	testArgs := args[1:]
 	record["program_argv"] = testArgs
+	// The program's declared identity is cmd/go's own testmain package
+	// (load/test.go: ImportPath p.ImportPath + ".test"), and this is the one
+	// site that knows the program it runs IS that testmain: cmd/go exempts
+	// the importer whose import stack label is "testmain" from the internal
+	// rule (load/pkg.go disallowInternal). Bash++ receives the fact
+	// explicitly (--go-test-main, S165.0 for D8) rather than inferring it
+	// from the ".test" suffix; the identity-keyed visibility rule admits
+	// internal imports on the identity and this fact, never on a name.
+	identity := []string{"--go-import-path", pmain.ImportPath, "--go-test-main"}
+	record["import_path"] = pmain.ImportPath
+	record["test_main"] = true
 	deviations := []string{
 		"cmd/go enumerated the tests and built the native test binary; the binary is never executed while the backend is selected",
 		"the tested package, its in-package test files and the external test package are handed to Bash++ as an explicit package map with the generated _testmain.go as the main package",
+		"the program's declared identity is cmd/go's testmain package (<pkg>.test) and the backend asserts the TestMain fact (--go-test-main) at the site where cmd/go would run the test binary",
 	}
 	var plan []string
 	switch mode {
 	case "interpreted":
-		plan = append([]string{tool, "--bashpp", "--source=go", "--go-import-path", pmain.ImportPath}, mapArgs...)
+		plan = append(append([]string{tool, "--bashpp", "--source=go"}, identity...), mapArgs...)
 		plan = append(plan, "--go-file", testmain)
 		if len(testArgs) != 0 {
 			plan = append(plan, "--")
@@ -351,7 +364,7 @@ func bashppTestPlan(p *load.Package, buildAction *work.Action, args []string) []
 			return []string{"/bin/sh", "-c", "exit 1"}
 		}
 		libraryArgs := bashppLibraryArgs(classified)
-		transpile := append([]string{tool, "transpile", "--bashpp", "--source=go", "--go-import-path", pmain.ImportPath, "--go-library", libraryDir}, libraryArgs...)
+		transpile := append(append(append([]string{tool, "transpile", "--bashpp", "--source=go"}, identity...), "--go-library", libraryDir), libraryArgs...)
 		transpileWords := make([]string, len(transpile))
 		for i, word := range transpile {
 			transpileWords[i] = bashppQuote(word)

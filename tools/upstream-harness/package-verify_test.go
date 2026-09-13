@@ -65,3 +65,47 @@ func TestOverlayProofRequiresEveryPackageFile(t *testing.T) {
 		t.Fatalf("missing sibling error = %v", err)
 	}
 }
+
+// Sprint: #165; Story: S165.0; Story-ID: 1528c3c2b1df
+// The TestMain fact (D8): the plan must declare cmd/go's testmain identity
+// (<pkg>.test) and assert --go-test-main on the Bash++ invocation, in the
+// interpreted argv and inside the compiled transpile script alike.
+func TestVerifyIdentityRequiresTheTestMainFact(t *testing.T) {
+	pkg, tool := "cmd/compile/internal/abt", "/pinned/bashy"
+	interpreted := planRecord{ImportPath: pkg + ".test", TestMain: true, Argv: []string{tool, "--bashpp", "--source=go", "--go-import-path", pkg + ".test", "--go-test-main", "--go-package", pkg + "=/src/a.go", "--go-file", "/tmp/_testmain.go"}}
+	if err := verifyIdentity(interpreted, pkg, "interpreted", tool); err != nil {
+		t.Fatalf("interpreted: %v", err)
+	}
+	script := "set -e\n'" + tool + "' 'transpile' '--bashpp' '--source=go' '--go-import-path' '" + pkg + ".test' '--go-test-main' '--go-library' '/tmp/lib' '--go-file' '/src/a.go' > '/tmp/out'\nexec env -u BASHPP_GOTEST_BACKEND '/pinned/go' 'test' '-overlay=/tmp/overlay.json' '" + pkg + "'"
+	compiled := planRecord{ImportPath: pkg + ".test", TestMain: true, Argv: []string{"/bin/sh", "-c", script}}
+	if err := verifyIdentity(compiled, pkg, "compiled", tool); err != nil {
+		t.Fatalf("compiled: %v", err)
+	}
+	for name, tt := range map[string]struct {
+		mode   string
+		mutate func(p *planRecord)
+		want   string
+	}{
+		"fact not declared":        {"interpreted", func(p *planRecord) { p.TestMain = false }, "TestMain fact"},
+		"identity is the package":  {"interpreted", func(p *planRecord) { p.ImportPath = pkg }, "testmain identity"},
+		"flag missing from argv":   {"interpreted", func(p *planRecord) { p.Argv = append(p.Argv[:5:5], p.Argv[6:]...) }, "--go-test-main"},
+		"flag on another identity": {"interpreted", func(p *planRecord) { p.Argv[4] = pkg }, "--go-test-main"},
+		"flag missing from script": {"compiled", func(p *planRecord) { p.Argv[2] = strings.Replace(p.Argv[2], " '--go-test-main'", "", 1) }, "testmain identity and fact"},
+		"script identity is dotted": {"compiled", func(p *planRecord) {
+			p.Argv[2] = strings.Replace(p.Argv[2], "'"+pkg+".test'", "'example.com/m.test'", 1)
+		}, "testmain identity and fact"},
+		"not one shell script": {"compiled", func(p *planRecord) { p.Argv = []string{tool, "transpile"} }, "one /bin/sh -c script"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			p := interpreted
+			if tt.mode == "compiled" {
+				p = compiled
+			}
+			p.Argv = append([]string(nil), p.Argv...)
+			tt.mutate(&p)
+			if err := verifyIdentity(p, pkg, tt.mode, tool); err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %v, want %q", err, tt.want)
+			}
+		})
+	}
+}

@@ -1,5 +1,6 @@
 // Copyright 2026 The bashpp-tests Authors. All rights reserved.
 // Sprint: #150; Story: S150.8; Story-ID: 65db485f62ab
+// Sprint: #165; Story: S165.0; Story-ID: 1528c3c2b1df
 //
 // package-verify checks the evidence of the package packet: for every
 // authenticated package, in the requested mode, cmd/go enumerated a non-zero
@@ -34,6 +35,8 @@ type planRecord struct {
 	Argv        []string `json:"argv"`
 	Testmain    string   `json:"testmain"`
 	Disposition string   `json:"disposition"`
+	ImportPath  string   `json:"import_path"`
+	TestMain    bool     `json:"test_main"`
 	Overlay     string   `json:"overlay"`
 	Artifacts   []string `json:"artifacts"`
 	Deviations  []string `json:"deviations"`
@@ -204,6 +207,9 @@ func verify(pkg, dir, mode, version, tool string) (string, error) {
 	if p.Argv[0] == p.NativeArgv[0] {
 		return "", fmt.Errorf("the native test binary was the executed argv")
 	}
+	if err := verifyIdentity(p, pkg, mode, tool); err != nil {
+		return "", err
+	}
 	switch mode {
 	case "interpreted":
 		if p.Argv[0] != tool || !contains(p.Argv, "--go-file") {
@@ -224,6 +230,37 @@ func verify(pkg, dir, mode, version, tool string) (string, error) {
 		return "PACKAGE-PASS", nil
 	}
 	return "PACKAGE-PRODUCT-FAIL", nil
+}
+
+// verifyIdentity checks the TestMain fact (S165.0, D8): the plan declares
+// the program's identity as cmd/go's testmain package (<pkg>.test) and
+// asserts --go-test-main on the Bash++ invocation that checks or transpiles
+// it — the interpreted argv directly, the compiled transpile inside the
+// /bin/sh script — so the identity-keyed internal-visibility rule is fed the
+// fact from the one site that knows it, never a name.
+func verifyIdentity(p planRecord, pkg, mode, tool string) error {
+	if p.ImportPath != pkg+".test" || !p.TestMain {
+		return fmt.Errorf("plan does not declare the testmain identity %s.test with the TestMain fact: import_path=%q test_main=%v", pkg, p.ImportPath, p.TestMain)
+	}
+	switch mode {
+	case "interpreted":
+		for i, arg := range p.Argv {
+			if arg == "--go-import-path" && i+2 < len(p.Argv) && p.Argv[i+1] == pkg+".test" && p.Argv[i+2] == "--go-test-main" {
+				return nil
+			}
+		}
+		return fmt.Errorf("interpreted argv does not carry --go-import-path %s.test --go-test-main: %v", pkg, p.Argv[:min(8, len(p.Argv))])
+	case "compiled":
+		if len(p.Argv) != 3 || p.Argv[0] != "/bin/sh" || p.Argv[1] != "-c" {
+			return fmt.Errorf("compiled argv is not one /bin/sh -c script: %v", p.Argv[:min(3, len(p.Argv))])
+		}
+		want := "'" + tool + "' 'transpile' '--bashpp' '--source=go' '--go-import-path' '" + pkg + ".test' '--go-test-main' '--go-library'"
+		if !strings.Contains(p.Argv[2], want) {
+			return fmt.Errorf("compiled transpile does not carry the testmain identity and fact (%s)", want)
+		}
+		return nil
+	}
+	return fmt.Errorf("unknown backend mode %q", mode)
 }
 
 func contains(list []string, want string) bool {
