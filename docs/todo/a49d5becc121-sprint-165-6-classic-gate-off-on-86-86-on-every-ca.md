@@ -3,7 +3,7 @@ id: a49d5becc121
 kind: task
 title: 'Sprint 165.6: classic gate OFF/ON 86/86 on every candidate (regression guard)'
 seq: 74
-status: todo
+status: doing
 priority: p1
 created: 2026-09-13T09:06:27.632152Z
 sprint: 165

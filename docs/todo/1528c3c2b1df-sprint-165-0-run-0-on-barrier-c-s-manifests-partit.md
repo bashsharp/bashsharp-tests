@@ -3,7 +3,7 @@ id: 1528c3c2b1df
 kind: task
 title: 'Sprint 165.0: run 0 on Barrier C''s manifests, partition v10.6 if proven, Barrier D at the end'
 seq: 73
-status: todo
+status: doing
 priority: p0
 created: 2026-09-13T09:06:27.607173Z
 sprint: 165
