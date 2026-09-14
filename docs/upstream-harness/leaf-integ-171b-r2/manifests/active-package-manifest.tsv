@@ -1,0 +1,7 @@
+root	mode	first_line	verdict
+package:cmd/compile/internal/abt	interpreted	gosource: original callback with copied slice references is unsupported	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/ssa	interpreted	Bash++ gotest backend: non-Go inputs	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/types2	interpreted	src/cmd/compile/internal/types2/importer_test.go:34:9: cannot use 1st function result (value of type *types2.Package) as *types2.Package value in return statement	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/types2	compiled	src/cmd/compile/internal/types2/resolver.go:58:2: LOWER-EUNDEFINED: undefined: errors	missing=0;wording=0;extra=0;class=-
+package:go/types	interpreted	src/go/types/api_test.go:30:9: cannot use importer.ForCompiler(fset, runtime.Compiler, nil) (value of interface type types.Importer) as types.Importer value in return statement: types.Importer does not implement types.Importer (wrong type for method Import)	missing=0;wording=0;extra=0;class=-
+package:go/types	compiled	src/go/types/resolver.go:62:2: LOWER-EUNDEFINED: undefined: errors	missing=0;wording=0;extra=0;class=-
