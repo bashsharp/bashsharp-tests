@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Product-level gate for Bash++ naked Python source fences.
+# Product-level gate for Bash++ naked Python and TypeScript source fences.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
 BASHY="${BASHY:-${here}/../../bashy/bin/bash}"
 [ -x "$BASHY" ] || { echo "polyglot-gate: bashy oracle is not executable: $BASHY" >&2; exit 1; }
 command -v python3 >/dev/null || { echo "polyglot-gate: python3 is required" >&2; exit 1; }
+command -v node >/dev/null || { echo "polyglot-gate: node is required" >&2; exit 1; }
 
 scratch="$(mktemp -d)"
 trap 'rm -rf "$scratch"' EXIT
@@ -40,6 +41,25 @@ BPP
 got="$("$BASHY" --bashpp "$scratch/qualified.bpp")"
 [ "$got" = 'ok!::caught' ] || { printf 'polyglot-gate: qualified output = %q\n' "$got" >&2; exit 1; }
 
+cat >"$scratch/typescript.bpp" <<'BPP'
+~~~python as py
+def twice(value: int) -> int:
+    return value * 2
+~~~
+~~~typescript as ts
+interface Pair { left: number; right: number }
+type Numeric = number
+export function add(a: Numeric, b: Numeric): number { console.log("typescript"); return a + b }
+function answer(): number { return 42 }
+~~~
+x := ts.add(20, 22)
+y := ts.answer()
+z := py.twice(3)
+echo "$x:$y:$z"
+BPP
+got="$("$BASHY" --bashpp "$scratch/typescript.bpp")"
+[ "$got" = $'typescript\n42:42:6' ] || { printf 'polyglot-gate: TypeScript output = %q\n' "$got" >&2; exit 1; }
+
 # The runtime is discovered only when a foreign block is prepared. A plain
 # Bash++ script succeeds with an empty PATH; a Python fence fails explicitly.
 PATH=/nonexistent "$BASHY" --bashpp -c 'echo lazy' >"$scratch/lazy.out"
@@ -54,5 +74,7 @@ grep -q 'Python runtime unavailable' "$scratch/missing.err"
 # opening line. Parse-only avoids trying to execute that ordinary command.
 printf '%s\n' '~~~python' | "$BASHY" --no-bashpp -n
 printf '%s\n' '~~~python' | "$BASHY" --posix -n
+printf '%s\n' '~~~typescript' | "$BASHY" --no-bashpp -n
+printf '%s\n' '~~~typescript' | "$BASHY" --posix -n
 
-echo "polyglot-gate: OK — direct, qualified, dynamic, hidden-state, lazy-runtime and mode-isolation cases passed"
+echo "polyglot-gate: OK — Python/TypeScript direct, qualified, mixed-runtime, hidden-state, lazy-runtime and mode-isolation cases passed"
