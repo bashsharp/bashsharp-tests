@@ -3,9 +3,10 @@ id: b37922fded80
 kind: task
 title: S170.4 freeze roots integrate once publish once and leaf once
 seq: 76
-status: todo
+status: assigned
 priority: p0
 created: 2026-09-14T09:02:18.112608Z
+assignee: codex-gpt-5.5
 sprint: 170
 ---
 
