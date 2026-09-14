@@ -1,7 +1,4 @@
-	# Partition v10.6 (D11) reads a testdir root's own source for the cgo
-	# rule; the corpus is the pinned toolchain copy the roots ran from.
-	"$tmp/partition-emit" -evidence-interpreted "$tmp/evidence-interpreted" -evidence-compiled "$tmp/evidence-compiled" \
-		-corpus "$tmp/goroot/test" -out "$manifest_out" || emit_status=$?#!/usr/bin/env bash
+#!/usr/bin/env bash
 # Sprint: #151; Story: S151.0; Story-ID: fd3a390ec1f2
 # Sprint: #155; Story: S155.11; Story-ID: 5004b3c3
 #
