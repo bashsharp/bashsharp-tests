@@ -1,0 +1,5 @@
+pin override (candidate integ-171): shellrt_commit=b5b18f269472dfb888bd609243f9386452212305 bashpp_version=bashy, GNU Bash 5.3 compatible, version 5.3.0(1)-bashy-dev (b414705)
+leaf=integ-171-r1 host=sprint162-leaf harness=f54715f bashpp=ff0ec82be75c5063 sh=b5b18f26 candidate=integ-171 manifest=/srv/sprint162/in/in-sprint171-roots.tsv roots=66 start=2026-09-14T13:41:39Z
+leaf exit=3 start=2026-09-14T13:41:39Z end=2026-09-14T14:05:39Z
+survivors: 0
+DONE leaf-integ-171-r1

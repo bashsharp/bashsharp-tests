@@ -1,0 +1,5 @@
+root	mode	first_line	verdict
+testdir:fixedbugs/issue18895.go	interpreted	p.go:7: missing error "can inline"	missing=3;wording=0;extra=0;class=missing
+testdir:fixedbugs/issue19261.go	interpreted	p.go:7: missing error "can inline F"	missing=2;wording=0;extra=0;class=missing
+testdir:fixedbugs/issue42284.go	interpreted	a.go:10: missing error "can inline T.M"	missing=13;wording=0;extra=0;class=missing
+testdir:fixedbugs/issue56280.go	interpreted	a.go:7: missing error "can inline F"	missing=5;wording=0;extra=0;class=missing

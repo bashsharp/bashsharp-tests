@@ -1,0 +1,19 @@
+root	mode	first_line	verdict
+testdir:blank.go	interpreted	gosource: build dependency bridge: exit status 2: /srv/sprint162/leaf-integ-171-r1/tmp/.bashpp-eval-960023205/bashpp-session-1929707913.go:191:22: cannot use _ as value or type	missing=0;wording=0;extra=0;class=-
+testdir:const8.go	interpreted	const8.go:18:10: const8.go:18:10: BASHPP-EEXPR-UNDEFINED: undefined: iota	missing=0;wording=0;extra=0;class=-
+testdir:fixedbugs/bug424.go	interpreted	test/fixedbugs/bug424.dir/main.go:53:6: BASHPP-EINTERFACE-MISSING: *myT2 does not implement interface (missing method m)	missing=0;wording=0;extra=0;class=-
+testdir:fixedbugs/issue20014.go	interpreted	gosource: build dependency bridge: exit status 2: /srv/sprint162/leaf-integ-171-r1/tmp/.bashpp-eval-769166439/bashpp-session-754586980.go:266:103: tracked field must be in named struct type	missing=0;wording=0;extra=0;class=-
+testdir:fixedbugs/issue20014.go	compiled	output does not match expected in fixedbugs/issue20014.out. Instead saw	missing=0;wording=0;extra=0;class=-
+testdir:fixedbugs/issue24547.go	interpreted	unknown imported symbol or method: String	missing=0;wording=0;extra=0;class=-
+testdir:fixedbugs/issue53137.go	interpreted	fixedbugs/issue53137.go:23:8: BASHPP-EUNSAFE-OFFSET: operand is not a supported struct field selector	missing=0;wording=0;extra=0;class=-
+testdir:fixedbugs/issue54220.go	interpreted	fixedbugs/issue54220.go:23:10: BASHPP-EUNSAFE-OFFSET: operand is not a supported struct field selector	missing=0;wording=0;extra=0;class=-
+testdir:fixedbugs/issue57823.go	interpreted	unknown imported symbol or method: unsafe.SliceData	missing=0;wording=0;extra=0;class=-
+testdir:fixedbugs/issue59293.go	interpreted	fixedbugs/issue59293.go:13:9: unknown imported symbol or method: unsafe.SliceData	missing=0;wording=0;extra=0;class=-
+testdir:fixedbugs/issue60601.go	interpreted	fixedbugs/issue60601.go:15:14: BASHPP-EUNSAFE-TYPE: operand type has no supported Go layout	missing=0;wording=0;extra=0;class=-
+testdir:fixedbugs/issue9604b.go	interpreted	BASHPP-EBUILTIN-TYPE: BASHPP-ECOLLECTION-ELEMENT: scalar cannot be used as *big.Int	missing=0;wording=0;extra=0;class=-
+testdir:linkname3.go	interpreted	compilation succeeded unexpectedly	missing=0;wording=0;extra=0;class=-
+testdir:shift3.go	interpreted	shift3.go:27:2: shift3.go:27:4: BASHPP-EEXPR-SHIFT: shift count must be an unsigned integer	missing=0;wording=0;extra=0;class=-
+testdir:sizeof.go	interpreted	sizeof.go:43:5: BASHPP-EUNSAFE-OFFSET: operand is not a supported struct field selector	missing=0;wording=0;extra=0;class=-
+testdir:typeparam/issue47716.go	interpreted	typeparam/issue47716.go:44:28: typeparam/issue47716.go:44:28: BASHPP-EUNSAFE-TYPE: operand type has no supported Go layout	missing=0;wording=0;extra=0;class=-
+testdir:typeparam/pair.go	interpreted	typeparam/pair.go:21:18: typeparam/pair.go:21:18: BASHPP-EUNSAFE-TYPE: operand type has no supported Go layout	missing=0;wording=0;extra=0;class=-
+testdir:typeparam/pairimp.go	interpreted	test/typeparam/pairimp.dir/main.go:15:18: /srv/sprint162/leaf-integ-171-r1/evidence/goroot/test/typeparam/pairimp.dir/main.go:15:18: BASHPP-EUNSAFE-TYPE: operand type has no supported Go layout	missing=0;wording=0;extra=0;class=-

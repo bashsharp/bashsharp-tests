@@ -1,0 +1,7 @@
+root	mode	first_line	verdict
+testdir:fixedbugs/bug273.go	interpreted	channel binding requires a registered channel type and one value	missing=0;wording=0;extra=0;class=-
+testdir:fixedbugs/issue24693.go	interpreted	test/fixedbugs/issue24693.dir/b.go:9:1: cyclic type declaration: __gosource_pkg_1_T	missing=0;wording=0;extra=0;class=-
+testdir:fixedbugs/issue37837.go	interpreted	a.go:7: missing error "can inline F"	missing=9;wording=0;extra=0;class=missing
+testdir:fixedbugs/issue37837.go	compiled	gosource: duplicate package path "test/a"	missing=0;wording=0;extra=0;class=-
+testdir:linkname.go	interpreted	linkname1.go:3: missing error "xs does not escape"	missing=2;wording=0;extra=0;class=missing
+testdir:linkname.go	compiled	gosource: duplicate package path "test/linkname1"	missing=0;wording=0;extra=0;class=-

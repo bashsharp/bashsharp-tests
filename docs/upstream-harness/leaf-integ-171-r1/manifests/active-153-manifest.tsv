@@ -1,0 +1,9 @@
+root	mode	first_line	verdict
+testdir:chan/doubleselect.go	interpreted	command exceeded time limit	missing=0;wording=0;extra=0;class=-
+testdir:fixedbugs/issue29612.go	interpreted	panic: interface conversion: *main.__gosource_pkg_1_T is not interface: missing method foo	missing=0;wording=0;extra=0;class=-
+testdir:fixedbugs/issue29919.go	interpreted	panic: missing a.go:15	missing=0;wording=0;extra=0;class=-
+testdir:interface/embed3.go	interpreted	panic: want 'interface conversion: main.X1 is not p.I1: missing method Foo', got 'interface conversion: main.X1 is not main.__gosource_pkg_0_I1: missing method '	missing=0;wording=0;extra=0;class=-
+testdir:rangegen.go	interpreted	command exceeded time limit	missing=0;wording=0;extra=0;class=-
+testdir:rangegen.go	compiled	command exceeded time limit	missing=0;wording=0;extra=0;class=-
+testdir:reflectmethod5.go	interpreted	gosource: dependency mutation of interpreter-owned references is unsupported for reflect.ValueOf	missing=0;wording=0;extra=0;class=-
+testdir:reflectmethod6.go	interpreted	gosource: dependency mutation of interpreter-owned references is unsupported for reflect.ValueOf	missing=0;wording=0;extra=0;class=-

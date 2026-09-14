@@ -1,0 +1,19 @@
+root	mode	first_line	verdict
+package:cmd/compile	interpreted	bash++ import "cmd/compile/internal/amd64": package is not in the reviewed Go standard library	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/abt	interpreted	gosource: original callback with copied slice references is unsupported	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/amd64	interpreted	gosource: build dependency bridge: exit status 2: internal/abi.FuncPCABI0·f: relocation target internal/abi.FuncPCABI0 not defined	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/compare	interpreted	gosource: original callback with copied slice references is unsupported	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/ir	interpreted	function _ redeclared in this session	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/loopvar	interpreted	gosource: original callback with copied slice references is unsupported	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/noder	interpreted	BASHPP-EINTERFACE-EMBED: interface __gosource_pkg_0_ImplicitNode embeds non-interface __gosource_import_0_4_1.Node	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/rangefunc	interpreted	gosource: build dependency bridge: exit status 2: internal/abi.FuncPCABI0·f: relocation target internal/abi.FuncPCABI0 not defined	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/reflectdata	interpreted	gosource: build dependency bridge: exit status 2: internal/abi.FuncPCABI0·f: relocation target internal/abi.FuncPCABI0 not defined	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/ssa	interpreted	Bash++ gotest backend: non-Go inputs	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/ssa	compiled	fork/exec /bin/sh: argument list too long	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/types	interpreted	function _ redeclared in this session	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/types	compiled	src/cmd/compile/internal/types/sym_test.go:53:2: LOWER-EUNDEFINED: undefined: Sym	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/types2	interpreted	src/cmd/compile/internal/types2/importer_test.go:34:9: cannot use 1st function result (value of type *types2.Package) as *types2.Package value in return statement	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/types2	compiled	fork/exec /bin/sh: argument list too long	missing=0;wording=0;extra=0;class=-
+package:go/types	interpreted	src/go/types/api_test.go:30:9: cannot use importer.ForCompiler(fset, runtime.Compiler, nil) (value of interface type types.Importer) as types.Importer value in return statement: types.Importer does not implement types.Importer (wrong type for method Import)	missing=0;wording=0;extra=0;class=-
+package:go/types	compiled	fork/exec /bin/sh: argument list too long	missing=0;wording=0;extra=0;class=-
+package:internal/types/errors	interpreted	gosource: original callback with copied slice references is unsupported	missing=0;wording=0;extra=0;class=-

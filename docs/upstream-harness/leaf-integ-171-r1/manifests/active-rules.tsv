@@ -1,0 +1,2 @@
+root	mode	rule	owner
+testdir:fixedbugs/issue7794.go	compiled	v10.6a lower-diagnostic	152

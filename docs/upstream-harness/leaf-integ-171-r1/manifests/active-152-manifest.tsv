@@ -1,0 +1,6 @@
+root	mode	first_line	verdict
+testdir:closure3.go	interpreted	main.go:15: missing error "can inline main.func1"	missing=139;wording=0;extra=0;class=missing
+testdir:closure3.go	compiled	test/closure3.dir/main.go:16:9: can inline main.func1	missing=22;wording=0;extra=22;class=position
+testdir:fixedbugs/issue7794.go	compiled	test/fixedbugs/issue7794.go:10:2: LOWER-ETYPE: declared and not used: a	missing=0;wording=0;extra=0;class=-
+testdir:live_regabi.go	interpreted	Bash++ backend unsupported: optimizer diagnostics are a compiler artifact; the check interface has no inlining, escape-analysis or SSA meaning	missing=0;wording=0;extra=0;class=-
+testdir:live_regabi.go	compiled	test/live_regabi.go:642:8: gosource: unsupported compound simple statement	missing=0;wording=0;extra=0;class=-
