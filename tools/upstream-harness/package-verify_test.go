@@ -116,7 +116,12 @@ func TestVerifyIdentityRequiresTheTestMainFact(t *testing.T) {
 		"script identity is dotted": {"compiled", func(p *planRecord) {
 			p.Argv[2] = strings.Replace(p.Argv[2], "'"+pkg+"' '--go-library'", "'example.com/m' '--go-library'", 1)
 		}, "tested package's own identity"},
-		"not one shell script": {"compiled", func(p *planRecord) { p.Argv = []string{tool, "transpile"} }, "one /bin/sh -c script"},
+		"not one shell script":             {"compiled", func(p *planRecord) { p.Argv = []string{tool, "transpile"} }, "one /bin/sh script"},
+		"script file not the recorded one": {"compiled", func(p *planRecord) { p.Argv = []string{"/bin/sh", "/tmp/elsewhere.sh"}; p.Script = "/tmp/plan.sh" }, "one /bin/sh script"},
+		"script file missing": {"compiled", func(p *planRecord) {
+			p.Argv = []string{"/bin/sh", "/nonexistent/plan.sh"}
+			p.Script = "/nonexistent/plan.sh"
+		}, "cannot be read"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			p := interpreted
@@ -256,5 +261,44 @@ func TestReadPlansSeparatesProofsFromPlans(t *testing.T) {
 	}
 	if len(plans) != 1 || plans[0].Overlay != "/tmp/overlay.json" || len(proofs) != 1 || proofs[0].Overlay.Path != "/tmp/overlay.json" {
 		t.Fatalf("plans = %+v, proofs = %+v", plans, proofs)
+	}
+}
+
+// TestVerifyIdentityReadsTheScriptFile pins the large-package form of the
+// compiled plan (the Sprint 171 leaf's `fork/exec /bin/sh: argument list
+// too long` on ssa, types2 and go/types): the hook writes the script into
+// the persisted overlay directory and hands `/bin/sh <path>`; the verifier
+// checks the same text it would have checked inline, so every identity and
+// role rule still applies to it.
+func TestVerifyIdentityReadsTheScriptFile(t *testing.T) {
+	const pkg = "example.com/m/avlint32"
+	const tool = "/pinned/bashy"
+	dir := t.TempDir()
+	body := "set -e\n'" + tool + "' 'transpile' '--bashpp' '--source=go' '--go-import-path' '" + pkg + "' '--go-library' '/tmp/lib' '--go-file' '" + dir + "/avlint32.go' > '/tmp/out'\n"
+	script := filepath.Join(dir, "plan.sh")
+	if err := os.WriteFile(script, []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	p := planRecord{ImportPath: pkg + ".test", TestMain: true, Argv: []string{"/bin/sh", script}, Script: script}
+	p.Library.ImportPath = pkg
+	p.Library.Roles = map[string]string{dir + "/avlint32.go": "go"}
+	p.Program.Packages = []struct {
+		Path  string
+		Files []string
+		Roles map[string]string
+	}{{pkg, []string{dir + "/avlint32.go"}, map[string]string{dir + "/avlint32.go": "go"}}}
+	if err := verifyIdentity(p, pkg, "compiled", tool); err != nil {
+		t.Fatalf("file-form identity: %v", err)
+	}
+	if err := verifyRoles(p, pkg, "compiled"); err != nil {
+		t.Fatalf("file-form roles: %v", err)
+	}
+	// The same negatives the inline form has: the wrong identity in the file
+	// is refused from the file's text, not from the argv.
+	if err := os.WriteFile(script, []byte(strings.Replace(body, "'"+pkg+"' '--go-library'", "'"+pkg+".test' '--go-library'", 1)), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyIdentity(p, pkg, "compiled", tool); err == nil || !strings.Contains(err.Error(), "tested package's own identity") {
+		t.Fatalf("file-form wrong identity: %v", err)
 	}
 }

@@ -30,17 +30,20 @@ import (
 const schema = "bashpp-tests/upstream-gotest-backend/v1"
 
 type planRecord struct {
-	Schema      string   `json:"schema"`
-	Kind        string   `json:"kind"`
-	Package     string   `json:"package"`
-	Mode        string   `json:"mode"`
-	NativeArgv  []string `json:"native_argv"`
-	Argv        []string `json:"argv"`
-	Testmain    string   `json:"testmain"`
-	Disposition string   `json:"disposition"`
-	ImportPath  string   `json:"import_path"`
-	TestMain    bool     `json:"test_main"`
-	Overlay     string   `json:"overlay"`
+	Schema     string   `json:"schema"`
+	Kind       string   `json:"kind"`
+	Package    string   `json:"package"`
+	Mode       string   `json:"mode"`
+	NativeArgv []string `json:"native_argv"`
+	Argv       []string `json:"argv"`
+	// Script is the compiled plan's shell script when the hook wrote it to
+	// the overlay directory instead of passing it inline (large packages).
+	Script      string `json:"script"`
+	Testmain    string `json:"testmain"`
+	Disposition string `json:"disposition"`
+	ImportPath  string `json:"import_path"`
+	TestMain    bool   `json:"test_main"`
+	Overlay     string `json:"overlay"`
 	// TranspileStatus is the file the compiled script writes the library
 	// transpile's exit status to before anything else runs.
 	TranspileStatus string   `json:"transpile_status"`
@@ -234,7 +237,9 @@ func verify(pkg, dir, mode, version, tool string) (string, error) {
 			return "", fmt.Errorf("interpreted argv does not run Bash++ on the program: %v", p.Argv[:min(6, len(p.Argv))])
 		}
 	case "compiled":
-		if p.Argv[0] != "/bin/sh" || !strings.Contains(strings.Join(p.Argv, " "), "transpile") {
+		if script, err := compiledScript(p); err != nil {
+			return "", err
+		} else if !strings.Contains(script, "transpile") {
 			return "", fmt.Errorf("compiled argv does not transpile the program")
 		}
 		if refused, err := transpileRefused(p); err != nil {
@@ -300,22 +305,44 @@ func verifyIdentity(p planRecord, pkg, mode, tool string) error {
 		}
 		return nil
 	case "compiled":
-		if len(p.Argv) != 3 || p.Argv[0] != "/bin/sh" || p.Argv[1] != "-c" {
-			return fmt.Errorf("compiled argv is not one /bin/sh -c script: %v", p.Argv[:min(3, len(p.Argv))])
+		script, err := compiledScript(p)
+		if err != nil {
+			return err
 		}
 		if p.Library.ImportPath != pkg || p.Library.TestMain {
 			return fmt.Errorf("plan does not declare the library under the tested package's own identity %s without the TestMain fact: import_path=%q test_main=%v", pkg, p.Library.ImportPath, p.Library.TestMain)
 		}
 		want := "'" + tool + "' 'transpile' '--bashpp' '--source=go' '--go-import-path' '" + pkg + "' '--go-library'"
-		if !strings.Contains(p.Argv[2], want) {
+		if !strings.Contains(script, want) {
 			return fmt.Errorf("compiled transpile does not check the library under the tested package's own identity (%s)", want)
 		}
-		if strings.Contains(p.Argv[2], "'--go-test-main'") {
+		if strings.Contains(script, "'--go-test-main'") {
 			return fmt.Errorf("compiled script asserts the TestMain fact on a library; the fact belongs to cmd/go's own testmain, which the overlay route compiles natively")
 		}
 		return nil
 	}
 	return fmt.Errorf("unknown backend mode %q", mode)
+}
+
+// compiledScript returns the text of the compiled plan's shell script. The
+// hook records it in one of two forms: inline (`/bin/sh -c <script>`) for
+// a small package, or as a file in the persisted overlay directory
+// (`/bin/sh <path>`, also named by the record's `script` field) — the
+// inline form exceeds the kernel's single-argument limit on a large package
+// (cmd/compile/internal/ssa, go/types) and never reaches Bash++. Either
+// way the verifier checks the text the shell actually ran.
+func compiledScript(p planRecord) (string, error) {
+	switch {
+	case len(p.Argv) == 3 && p.Argv[0] == "/bin/sh" && p.Argv[1] == "-c":
+		return p.Argv[2], nil
+	case len(p.Argv) == 2 && p.Argv[0] == "/bin/sh" && p.Argv[1] != "" && p.Argv[1] == p.Script:
+		text, err := os.ReadFile(p.Script)
+		if err != nil {
+			return "", fmt.Errorf("compiled plan script %s cannot be read: %v", p.Script, err)
+		}
+		return string(text), nil
+	}
+	return "", fmt.Errorf("compiled argv is not one /bin/sh script: %v", p.Argv[:min(3, len(p.Argv))])
 }
 
 // verifyRoles checks that every file of the program map was handed once,
@@ -364,7 +391,11 @@ func verifyRoles(p planRecord, pkg, mode string) error {
 				if role != "go" {
 					flag = "--go-" + role + "-file"
 				}
-				if !strings.Contains(p.Argv[2], "'"+flag+"' '"+file+"'") {
+				script, err := compiledScript(p)
+				if err != nil {
+					return err
+				}
+				if !strings.Contains(script, "'"+flag+"' '"+file+"'") {
 					return fmt.Errorf("compiled transpile does not hand %s as %s", file, flag)
 				}
 			}

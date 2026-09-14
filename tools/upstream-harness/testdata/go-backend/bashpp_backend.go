@@ -463,7 +463,21 @@ func bashppTestPlan(p *load.Package, buildAction *work.Action, args []string) []
 		lines = append(lines, strings.Join(dryWords, " ")+" > "+bashppQuote(trace)+" 2>&1")
 		lines = append(lines, bashppOverlayProof(os.Getenv("BASHPP_GOTEST_EVENTS"), p.ImportPath, overlay, trace, goTool, overlayOriginals, generated))
 		lines = append(lines, "exec "+strings.Join(words, " "))
-		plan = []string{"/bin/sh", "-c", "set -e\n" + strings.Join(lines, "\n")}
+		// The script names every original and generated file, so on a
+		// large package (cmd/compile/internal/ssa, go/types) its text
+		// exceeds the kernel's single-argument limit and `/bin/sh -c`
+		// fails with "argument list too long" before Bash++ runs. It is
+		// written into the persisted overlay directory instead and the
+		// shell reads it from there; the verifier reads the same file.
+		script := filepath.Join(overlayDir, "plan.sh")
+		if err := os.WriteFile(script, []byte("set -e\n"+strings.Join(lines, "\n")+"\n"), 0o700); err != nil {
+			record["disposition"] = "configuration-error"
+			record["deviations"] = append(deviations, "could not write the compiled plan script: "+err.Error())
+			bashppEmit(record)
+			return []string{"/bin/sh", "-c", "exit 1"}
+		}
+		plan = []string{"/bin/sh", script}
+		record["script"] = script
 		record["artifacts"] = generated
 		record["overlay"] = overlay
 		record["disposition"] = "transpile-overlay-go-test"
