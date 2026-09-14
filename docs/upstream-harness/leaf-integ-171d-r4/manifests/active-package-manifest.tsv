@@ -1,0 +1,6 @@
+root	mode	first_line	verdict
+package:cmd/compile/internal/abt	interpreted	gosource: original callback with copied slice references is unsupported	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/ssa	interpreted	Bash++ gotest backend: non-Go inputs	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/types	interpreted	function _ redeclared in this session	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/types2	interpreted	src/cmd/compile/internal/types2/alias.go:24:1: BASHPP-ECOLLECTION-KEY: unsupported map key type __gosource_pkg_0_Type	missing=0;wording=0;extra=0;class=-
+package:go/types	interpreted	src/go/types/alias.go:27:1: BASHPP-ECOLLECTION-KEY: unsupported map key type __gosource_import_0_1_2.Expr	missing=0;wording=0;extra=0;class=-
