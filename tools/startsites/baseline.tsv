@@ -171,6 +171,10 @@ embed-heredoc-body	P6	embed	E	accept	accept	yes	embed python as py <<'PY'\ndef f
 embed-call	P6	embed	R	reject	reject	yes	result, err := py.add(40, 2)	result, err := py.add(40, 2)
 embed-cmd-adapter	P6	embed	E	accept	accept	yes	py.add 40 2	py.add 40 2
 embed-ts	P6	embed	E	accept	accept	yes	embed typescript as ts <<'TS'\nexport const x = 1\nTS	embed typescript as ts <<'TS'\nexport const x = 1\nTS
+fence-python-prefix	P6	fence	E	accept	accept	yes	~~~python	~~~python
+fence-python-alias-prefix	P6	fence	E	accept	accept	yes	~~~python as py	~~~python as py
+fence-python-long-prefix	P6	fence	E	accept	accept	yes	~~~~python	~~~~python
+fence-backtick-nearmiss	P6	fence	R	reject	reject	yes	```python	```python
 field-read	P1	selector	E	accept	accept	yes	echo $x.Field	echo $x.Field
 field-assign	P1	selector	E	accept	accept	yes	x.Field = 1	x.Field = 1
 index-slice	P1	index	E	accept	accept	yes	v := s[1]	v := s[1]

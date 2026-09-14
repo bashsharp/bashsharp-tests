@@ -206,6 +206,12 @@ embed-heredoc-body	P6	embed	embed python as py <<'PY'\ndef f(): pass\nPY
 embed-call	P6	embed	result, err := py.add(40, 2)
 embed-cmd-adapter	P6	embed	py.add 40 2
 embed-ts	P6	embed	embed typescript as ts <<'TS'\nexport const x = 1\nTS
+# Sprint 181: naked foreign-source fence prefixes. The complete source block
+# belongs to Bash++; classification measures the command-shaped opening line.
+fence-python-prefix	P6	fence	~~~python
+fence-python-alias-prefix	P6	fence	~~~python as py
+fence-python-long-prefix	P6	fence	~~~~python
+fence-backtick-nearmiss	P6	fence	```python
 field-read	P1	selector	echo $x.Field
 field-assign	P1	selector	x.Field = 1
 index-slice	P1	index	v := s[1]
