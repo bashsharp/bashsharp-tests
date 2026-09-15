@@ -1,0 +1,3 @@
+import python "nanochat.execution" as nano
+
+nano.sprint183_missing_attribute()

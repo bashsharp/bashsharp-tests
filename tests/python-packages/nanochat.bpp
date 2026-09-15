@@ -1,0 +1,12 @@
+import python "nanochat.execution" as nano
+
+result := nano.execute_code("print(6 * 7)", timeout: 5)
+success := result.success
+stdout := result.stdout
+printf '%s %s' "$success" "$stdout"
+
+failure := nano.execute_code("raise ValueError('fixture-boom')", timeout: 5)
+failureSuccess := failure.success
+failureError := failure.error
+printf '%s\n' "$failureSuccess"
+printf '%s\n' "$failureError"
