@@ -1,0 +1,10 @@
+~~~typescript as ts
+import { layout } from "s184-fixture"
+const initialized = "ready"
+export async function inspect(): Promise<string> {
+  const runtime = (globalThis as any).Bun ? "bun" : "node"
+  return `${layout}:${runtime}:${initialized}`
+}
+~~~
+value := ts.inspect()
+echo "$value"

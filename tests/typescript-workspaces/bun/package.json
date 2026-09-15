@@ -1,0 +1,1 @@
+{"name":"s184-bun","private":true,"packageManager":"bun@1.3.14","scripts":{"install":"touch lifecycle-ran"}}

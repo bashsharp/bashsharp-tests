@@ -1,0 +1,1 @@
+{"name":"s184-pnpm","private":true,"packageManager":"pnpm@10.0.0","scripts":{"install":"touch lifecycle-ran"}}

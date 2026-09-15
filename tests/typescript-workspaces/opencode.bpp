@@ -1,0 +1,9 @@
+~~~typescript as ts
+import { fileInDirectory } from "opencode/config/paths"
+export async function paths(): Promise<string> {
+  const value = fileInDirectory("/tmp", "x")
+  return `${value[0]}|${value[1]}`
+}
+~~~
+value := ts.paths()
+echo "$value"
