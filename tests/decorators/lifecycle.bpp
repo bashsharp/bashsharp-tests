@@ -5,19 +5,20 @@
 
 func catch(c *Call) {
     defer func() {
-        if r := recover(); r != nil {
-            echo "caught:[$r]"
-            c.Status = 1
-        }
+        r := recover()
+        echo "caught:[$r]"
+        c.Status = 1
     }()
     c.Next()
 }
 
+func cleanup() { echo "defer:body" }
+
 @catch()
 func panic_maker() {
-    defer echo "defer:body"
+    defer cleanup()
     panic("boom")
 }
 
-panic_maker
+panic_maker()
 echo "status:[$?]"

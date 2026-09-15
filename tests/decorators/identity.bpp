@@ -12,8 +12,11 @@ func identity(ch chan string) chan string {
     return ch
 }
 
-c := make(chan string, 1)
-c <- "token"
-d := identity(c)
-v := <-d
-echo "identity:[$v]"
+func main() {
+    c := make(chan string, 1)
+    c <- "token"
+    d := identity(c)
+    v := <-d
+    echo "identity:[$v]"
+}
+main()
