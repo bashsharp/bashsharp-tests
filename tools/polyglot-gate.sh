@@ -73,6 +73,25 @@ BPP
 got="$("$BASHY" --bashpp "$scratch/typescript.bpp")"
 [ "$got" = $'typescript\n42:42:6' ] || { printf 'polyglot-gate: TypeScript output = %q\n' "$got" >&2; exit 1; }
 
+# A relative import may name its .ts file explicitly — the spelling Node's
+# native type stripping requires — whatever the project's tsconfig says; the
+# fence's checking program must not refuse it (TS5097). The project is the
+# source file's directory (an ESM package.json + one .ts module); the same
+# default compiler as the row above is used, and the runtime stays Node.
+mkdir -p "$scratch/tsproj/src"
+printf '%s\n' '{"type":"module"}' >"$scratch/tsproj/package.json"
+printf '%s\n' 'export function compact(value: number): string { return value >= 1000 ? (value / 1000) + "k" : String(value) }' >"$scratch/tsproj/src/format.ts"
+cat >"$scratch/tsproj/program.bpp" <<'BPP'
+~~~ts as ts
+import { compact } from "./src/format.ts"
+export function launch(n: number): string { return compact(n) }
+~~~
+value := ts.launch(1500)
+echo "$value"
+BPP
+got="$("$BASHY" --bashpp "$scratch/tsproj/program.bpp")"
+[ "$got" = '1.5k' ] || { printf 'polyglot-gate: explicit .ts import output = %q\n' "$got" >&2; exit 1; }
+
 # The runtime is discovered only when a foreign block is prepared. A plain
 # Bash++ script succeeds with an empty PATH; a Python fence fails explicitly.
 PATH=/nonexistent "$BASHY" --bashpp -c 'echo lazy' >"$scratch/lazy.out"
@@ -90,4 +109,4 @@ printf '%s\n' '~~~python' | "$BASHY" --posix -n
 printf '%s\n' '~~~typescript' | "$BASHY" --no-bashpp -n
 printf '%s\n' '~~~typescript' | "$BASHY" --posix -n
 
-echo "polyglot-gate: OK — Python/TypeScript direct, qualified, mixed-runtime, hidden-state, lazy-runtime and mode-isolation cases passed"
+echo "polyglot-gate: OK — Python/TypeScript direct, qualified, mixed-runtime, explicit-.ts-import, hidden-state, lazy-runtime and mode-isolation cases passed"
