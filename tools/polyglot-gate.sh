@@ -216,13 +216,14 @@ Show() { counter=$(( ${counter:-0} + 1 )); var "$1" = "$counter"; }
 ~~~sh
 Join() { printf '%s/%s/%s' "$#" "$1" "$2"; }
 ~~~
+counter=99
 first := bash.Show(alpha)
 second := bash.Show(alpha)
 joined := Join("a b", c)
-printf '%s|%s|%s\n' "$first" "$second" "$joined"
+printf '%s|%s|%s|%s\n' "$first" "$second" "$joined" "$counter"
 BPP
 got="$(PATH=/nonexistent "$BASHY" --bashpp "$scratch/shell-islands.bpp")"
-[ "$got" = 'alpha:=:1|alpha:=:1|2/a b/c' ] || { printf 'polyglot-gate: shell-island output = %q\n' "$got" >&2; exit 1; }
+[ "$got" = 'alpha:=:1|alpha:=:1|2/a b/c|99' ] || { printf 'polyglot-gate: shell-island output = %q\n' "$got" >&2; exit 1; }
 cat >"$scratch/shell-island-error.bpp" <<'BPP'
 ~~~sh as posix
 Fail() { echo shell-detail >&2; return 7; }
