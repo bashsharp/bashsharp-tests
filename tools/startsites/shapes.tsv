@@ -265,8 +265,13 @@ decorator-call-value	S197	decorator	@n(value)
 decorator-call-kwargs	S197	decorator	@n(level: "debug")
 decorator-call-namespaced	S197	decorator	@trace.audit(value)
 decorator-call-empty	S197	decorator	@n()
+decorator-call-int	S197	decorator	@n(3)
+decorator-call-string	S197	decorator	@n("a")
 decorator-body-brace-group	S197	decorator	@n()\n{ :; }
 decorator-body-subshell	S197	decorator	@n()\n( : )
+decorator-body-arithmetic	S197	decorator	@n()\n(( 1 ))
+decorator-body-conditional	S197	decorator	@n()\n[[ -n x ]]
+decorator-body-select	S197	decorator	@n()\nselect x in one; do :; done
 decorator-body-for	S197	decorator	@n()\nfor x in one; do :; done
 decorator-body-case	S197	decorator	@n()\ncase x in x) :;; esac
 decorator-body-if	S197	decorator	@n()\nif :; then :; fi

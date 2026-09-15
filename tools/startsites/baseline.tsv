@@ -224,8 +224,13 @@ decorator-call-value	S197	decorator	R	reject	reject	yes	@n(value)	@n(value)
 decorator-call-kwargs	S197	decorator	R	reject	reject	yes	@n(level: "debug")	@n(level: "debug")
 decorator-call-namespaced	S197	decorator	R	reject	reject	yes	@trace.audit(value)	@trace.audit(value)
 decorator-call-empty	S197	decorator	R	reject	reject	yes	@n()	@n()
+decorator-call-int	S197	decorator	R	reject	reject	yes	@n(3)	@n(3)
+decorator-call-string	S197	decorator	R	reject	reject	yes	@n("a")	@n("a")
 decorator-body-brace-group	S197	decorator	E	accept	accept	yes	@n()\n{ :; }	@n()\n{ :; }
 decorator-body-subshell	S197	decorator	E	accept	accept	yes	@n()\n( : )	@n()\n( : )
+decorator-body-arithmetic	S197	decorator	E	accept	accept	yes	@n()\n(( 1 ))	@n()\n(( 1 ))
+decorator-body-conditional	S197	decorator	E	accept	accept	yes	@n()\n[[ -n x ]]	@n()\n[[ -n x ]]
+decorator-body-select	S197	decorator	E	accept	accept	yes	@n()\nselect x in one; do :; done	@n()\nselect x in one; do :; done
 decorator-body-for	S197	decorator	E	accept	accept	yes	@n()\nfor x in one; do :; done	@n()\nfor x in one; do :; done
 decorator-body-case	S197	decorator	E	accept	accept	yes	@n()\ncase x in x) :;; esac	@n()\ncase x in x) :;; esac
 decorator-body-if	S197	decorator	E	accept	accept	yes	@n()\nif :; then :; fi	@n()\nif :; then :; fi
@@ -235,4 +240,4 @@ decorator-semicolon-same-line	S197	decorator	R	reject	reject	yes	@n(); func semi
 decorator-stacked	S197	decorator	R	reject	reject	yes	@outer()\n@inner()\nfunc stacked() {}	@outer()\n@inner()\nfunc stacked() {}
 decorator-comment-between	S197	decorator	R	reject	reject	yes	@n()\n# attaches across this comment\nfunc commentBetween() {}	@n()\n# attaches across this comment\nfunc commentBetween() {}
 decorator-same-line-declaration	S197	decorator	R	reject	reject	yes	@n() func sameLine() {}	@n() func sameLine() {}
-# 233 shapes: 95 class R, 138 class E, 0 engine disagreement(s)
+# 238 shapes: 97 class R, 141 class E, 0 engine disagreement(s)
