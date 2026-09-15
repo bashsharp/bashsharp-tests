@@ -25,4 +25,4 @@ func target() {
     echo "target:body"
 }
 
-target
+target()

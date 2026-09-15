@@ -27,10 +27,10 @@ func produce() string {
     return "made"
 }
 
-job
+job()
 echo "job-denied:$?"
 allow=1
-job
+job()
 echo "job-allowed:$?"
 
 allow=0

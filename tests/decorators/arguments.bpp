@@ -8,7 +8,8 @@
 # positional/keyword/default binding.
 
 func tag(c *Call, label string, level string = "info") {
-    echo "[$level] $label -> ${c.Name}"
+    name := c.Name
+    echo "[$level] $label -> $name"
     c.Next()
 }
 
@@ -29,8 +30,8 @@ func three() {
     echo "three:body"
 }
 
-one
-two
-three
+one()
+two()
+three()
 suffix="b"
-three
+three()

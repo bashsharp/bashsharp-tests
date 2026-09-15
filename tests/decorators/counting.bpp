@@ -18,7 +18,7 @@ func count(c *Call) {
     c.Next()
 }
 
-work 1
-work 2
-work 3
+work(1)
+work(2)
+work(3)
 echo "calls:$calls"

@@ -26,4 +26,4 @@ restore() {
 
 backup
 restore
-oneliner
+oneliner()

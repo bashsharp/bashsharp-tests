@@ -9,7 +9,8 @@
 # FUNCNEST.
 
 func note(c *Call) {
-    echo "note:${c.Name}"
+    name := c.Name
+    echo "note:$name"
     c.Next()
 }
 
@@ -17,8 +18,8 @@ func note(c *Call) {
 func countdown(n int) {
     echo "n:$n"
     if [ "$n" -gt 0 ]; then
-        countdown $((n - 1))
+        countdown($((n - 1)))
     fi
 }
 
-countdown 2
+countdown(2)
