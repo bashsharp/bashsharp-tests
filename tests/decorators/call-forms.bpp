@@ -1,0 +1,19 @@
+#!/usr/bin/env bashy
+// run
+# bash++ profile: decorators · phase S197 · status: planned
+#
+# The call spelling is intentionally varied before otherwise ordinary Go-style
+# declarations: positional value, keyword argument, namespace-qualified name,
+# and an empty decorator call.
+
+@n("audit")
+func valueDecorated() {}
+
+@n(level: "debug")
+func keywordDecorated() {}
+
+@trace.audit("request")
+func namespacedDecorated() {}
+
+@n()
+func emptyDecorated() {}

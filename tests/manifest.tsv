@@ -21,3 +21,6 @@ tests/00_superset_posix2016/01_posix_baseline.sh	planned	posix-baseline	P0	indep
 tests/01_syntax/01_decl_assign.bpp	planned	declarations	P1	topic: ../go/test/assign.go
 tests/03_concurrency/01_chan_select.bpp	planned	concurrency	P4	topic: ../go/test/chan/select.go
 tests/06_go126_features/01_clear_builtin.bpp	planned	builtins	G127	topic: ../go/test/clear.go
+tests/decorators/call-forms.bpp	planned	decorators	S197	story: 515da1278005
+tests/decorators/declaration-layout.bpp	planned	decorators	S197	story: 515da1278005
+tests/decorators/compound-bodies.bpp	planned	decorators	S197	story: 515da1278005

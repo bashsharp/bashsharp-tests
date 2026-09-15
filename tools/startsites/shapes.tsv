@@ -258,3 +258,21 @@ bash-fence-prefix	S193	fence	~~~bash
 bash-fence-alias-prefix	S193	fence	~~~bash as island
 sh-fence-prefix	S193	fence	~~~sh
 sh-fence-alias-prefix	S193	fence	~~~sh as island
+# Sprint 197: decorator admission and attachment boundaries.  These are all
+# parser commit candidates; classifier output, rather than this file, records
+# their compatibility class.
+decorator-call-value	S197	decorator	@n(value)
+decorator-call-kwargs	S197	decorator	@n(level: "debug")
+decorator-call-namespaced	S197	decorator	@trace.audit(value)
+decorator-call-empty	S197	decorator	@n()
+decorator-body-brace-group	S197	decorator	@n()\n{ :; }
+decorator-body-subshell	S197	decorator	@n()\n( : )
+decorator-body-for	S197	decorator	@n()\nfor x in one; do :; done
+decorator-body-case	S197	decorator	@n()\ncase x in x) :;; esac
+decorator-body-if	S197	decorator	@n()\nif :; then :; fi
+decorator-body-while	S197	decorator	@n()\nwhile :; do :; done
+decorator-body-until	S197	decorator	@n()\nuntil :; do :; done
+decorator-semicolon-same-line	S197	decorator	@n(); func semicolon() {}
+decorator-stacked	S197	decorator	@outer()\n@inner()\nfunc stacked() {}
+decorator-comment-between	S197	decorator	@n()\n# attaches across this comment\nfunc commentBetween() {}
+decorator-same-line-declaration	S197	decorator	@n() func sameLine() {}
