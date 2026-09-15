@@ -3,15 +3,14 @@
 # bash++ profile: decorators · phase S197 · status: planned
 #
 # The call spelling is intentionally varied before otherwise ordinary Go-style
-# declarations: positional value, keyword argument, namespace-qualified name,
-# and an empty decorator call.
+# declarations: positional value, keyword argument, and an empty decorator
+# call. Reserved dotted names have their own negative fixture.
 
 @n("audit")
 func valueDecorated() {}
 
 @n(level: "debug")
 func keywordDecorated() {}
-
 
 @n()
 func emptyDecorated() {}

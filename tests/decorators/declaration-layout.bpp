@@ -3,7 +3,8 @@
 # bash++ profile: decorators · phase S197 · status: planned
 #
 # Layout is grammar: the decorator must retain its association across a
-# semicolon, stacked decorators, a comment, and a same-line declaration.
+# semicolon, stacked decorators, and a comment. The semicolon is required
+# when the declaration shares the decorator's line.
 
 @n(); func semicolonDecorated() {}
 
@@ -14,4 +15,3 @@ func stackedDecorated() {}
 @n()
 # association survives a comment-only line
 func commentDecorated() {}
-
