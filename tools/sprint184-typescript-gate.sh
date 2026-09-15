@@ -36,6 +36,7 @@ BASHY="$scratch/bashy"
 
 before_fixtures="$(git -C "${here}/.." status --porcelain=v1 -- tests/typescript-workspaces)"
 before_opencode="$(git -C "$OPENCODE_ROOT" status --porcelain=v1)"
+[ -z "$before_opencode" ] || fail "OpenCode checkout must be clean before the gate"
 
 run_interpreted() {
 	layout="$1" runtime="$2" expected="$3"
@@ -43,7 +44,7 @@ run_interpreted() {
 	if [ "$runtime" = bun ]; then
 		got="$(BASHPP_TYPESCRIPT_MODULE="$COMPILER" BASHPP_TYPESCRIPT_RUNTIME=bun BASHPP_BUN="$BASHPP_BUN" "$BASH" --bashpp "$program")"
 	else
-		got="$(BASHPP_TYPESCRIPT_MODULE="$COMPILER" BASHPP_TYPESCRIPT_RUNTIME=node BASHPP_NODE="$NODE" "$BASH" --bashpp "$program")"
+		got="$(BASHPP_TYPESCRIPT_MODULE="$COMPILER" BASHPP_NODE="$NODE" "$BASH" --bashpp "$program")"
 	fi
 	[ "$got" = "$expected" ] || fail "$layout/$runtime interpreted output was $(printf %q "$got")"
 }
@@ -58,11 +59,12 @@ run_native() {
 	if [ "$runtime" = bun ]; then
 		(cd "$outdir" && GOPROXY=off GOFLAGS=-mod=mod BASHPP_TYPESCRIPT_MODULE="$COMPILER" BASHPP_TYPESCRIPT_RUNTIME=bun BASHPP_BUN="$BASHPP_BUN" "$BASHY" transpile --bashpp "$program" -o "$outdir/generated.go")
 	else
-		(cd "$outdir" && GOPROXY=off GOFLAGS=-mod=mod BASHPP_TYPESCRIPT_MODULE="$COMPILER" BASHPP_TYPESCRIPT_RUNTIME=node BASHPP_NODE="$NODE" "$BASHY" transpile --bashpp "$program" -o "$outdir/generated.go")
+		(cd "$outdir" && GOPROXY=off GOFLAGS=-mod=mod BASHPP_TYPESCRIPT_MODULE="$COMPILER" BASHPP_NODE="$NODE" "$BASHY" transpile --bashpp "$program" -o "$outdir/generated.go")
 	fi
 	(cd "$outdir" && GOWORK=off GOPROXY=off go build -mod=mod -o program generated.go)
 	got="$("$outdir/program")"
 	[ "$got" = "$expected" ] || fail "$layout/$runtime native output was $(printf %q "$got")"
+	[ ! -e "$outdir/lifecycle-ran" ] || fail "$layout/$runtime native lifecycle script ran"
 }
 
 for layout in npm pnpm; do
