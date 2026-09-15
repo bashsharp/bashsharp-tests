@@ -41,6 +41,19 @@ BPP
 got="$("$BASHY" --bashpp "$scratch/qualified.bpp")"
 [ "$got" = 'ok!::caught' ] || { printf 'polyglot-gate: qualified output = %q\n' "$got" >&2; exit 1; }
 
+# `py` is an alias spelling of `python` (as `ts` is of `typescript`); the
+# `~~~py as py` + `py.main()` shape is the documented launcher form.
+cat >"$scratch/py-alias.bpp" <<'BPP'
+~~~py as py
+def main() -> str:
+    return "launched"
+~~~
+value := py.main()
+echo "$value"
+BPP
+got="$("$BASHY" --bashpp "$scratch/py-alias.bpp")"
+[ "$got" = 'launched' ] || { printf 'polyglot-gate: py alias output = %q\n' "$got" >&2; exit 1; }
+
 cat >"$scratch/typescript.bpp" <<'BPP'
 ~~~python as py
 def twice(value: int) -> int:
