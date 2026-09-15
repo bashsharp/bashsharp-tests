@@ -3,10 +3,14 @@ id: 3e1347caa870
 kind: task
 title: 'S184.3: gate npm pnpm Bun and Node TypeScript workspaces'
 seq: 82
-status: todo
+status: done
 priority: p0
 created: 2026-09-15T05:28:43.250295Z
+weave: 150
+assignee: qiangli
 sprint: 184
+closed: 2026-09-15T06:25:48.360933Z
+closed_by: codex-gpt5.6-sol
 ---
 
 After sh S184.2 merges, add `tools/sprint184-typescript-gate.sh` and
