@@ -214,4 +214,6 @@ agentic-numeric-command	S134	agentic	E	accept	accept	yes	agentic 1	agentic 1
 c-fence-prefix	S189	fence	E	accept	accept	yes	~~~c	~~~c
 cpp-fence-prefix	S189	fence	E	accept	accept	yes	~~~cpp	~~~cpp
 cxx-fence-prefix	S189	fence	E	accept	accept	yes	~~~cxx	~~~cxx
-# 212 shapes: 87 class R, 125 class E, 0 engine disagreement(s)
+go-fence-prefix	S191	fence	E	accept	accept	yes	~~~go	~~~go
+go-fence-alias-prefix	S191	fence	E	accept	accept	yes	~~~go as native	~~~go as native
+# 214 shapes: 87 class R, 127 class E, 0 engine disagreement(s)

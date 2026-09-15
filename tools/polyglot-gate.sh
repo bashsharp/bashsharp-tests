@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Product-level gate for Bash++ Python, TypeScript, Rust, C, and C++ fences.
+# Product-level gate for Bash++ Python, TypeScript, Rust, C, C++, and Go fences.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -10,6 +10,7 @@ command -v node >/dev/null || { echo "polyglot-gate: node is required" >&2; exit
 command -v rustc >/dev/null || { echo "polyglot-gate: rustc is required" >&2; exit 1; }
 command -v clang >/dev/null || { echo "polyglot-gate: clang is required" >&2; exit 1; }
 command -v clang++ >/dev/null || { echo "polyglot-gate: clang++ is required" >&2; exit 1; }
+command -v go >/dev/null || { echo "polyglot-gate: go is required" >&2; exit 1; }
 
 scratch="$(mktemp -d)"
 trap 'rm -rf "$scratch"' EXIT
@@ -166,6 +167,46 @@ if "$BASHY" --bashpp "$scratch/cpp-error.bpp" >"$scratch/cpp-error.out" 2>"$scra
 fi
 grep -q 'cpp boom' "$scratch/cpp-error.err"
 
+mkdir -p "$scratch/goproj/version"
+cat >"$scratch/goproj/go.mod" <<'MOD'
+module example.local/polyglotgate
+
+go 1.25
+MOD
+cat >"$scratch/goproj/version/version.go" <<'GO'
+package version
+const Value = "module"
+GO
+cat >"$scratch/goproj/go.bpp" <<'BPP'
+~~~go as native
+import "example.local/polyglotgate/version"
+import "fmt"
+func Add(a int64, b int64) int64 { fmt.Println(version.Value); return a+b }
+func Blob(value []byte) []byte { return append(value, '!') }
+func Checked(value int64) (int64, error) { if value < 0 { return 0, fmt.Errorf("negative") }; return value, nil }
+~~~
+x := native.Add(20, 22)
+value := native.Blob(ok)
+echo "$x:$value"
+BPP
+before="$(find "$scratch/goproj" -type f -print | sort | xargs shasum -a 256)"
+got="$("$BASHY" --bashpp "$scratch/goproj/go.bpp")"
+[ "$got" = $'module\n42:ok!' ] || { printf 'polyglot-gate: Go output = %q\n' "$got" >&2; exit 1; }
+after="$(find "$scratch/goproj" -type f -print | sort | xargs shasum -a 256)"
+[ "$before" = "$after" ] || { echo "polyglot-gate: Go overlay changed the checkout" >&2; exit 1; }
+cat >"$scratch/goproj/go-error.bpp" <<'BPP'
+~~~go
+import "fmt"
+func Checked(value int64) (int64, error) { return 0, fmt.Errorf("negative") }
+~~~
+failed := Checked(-1)
+BPP
+if "$BASHY" --bashpp "$scratch/goproj/go-error.bpp" >"$scratch/go-error.out" 2>"$scratch/go-error.err"; then
+	echo "polyglot-gate: Go trailing error unexpectedly succeeded" >&2
+	exit 1
+fi
+grep -q 'negative' "$scratch/go-error.err"
+
 # The runtime is discovered only when a foreign block is prepared. A plain
 # Bash++ script succeeds with an empty PATH; a Python fence fails explicitly.
 PATH=/nonexistent "$BASHY" --bashpp -c 'echo lazy' >"$scratch/lazy.out"
@@ -188,5 +229,7 @@ printf '%s\n' '~~~c' | "$BASHY" --no-bashpp -n
 printf '%s\n' '~~~c' | "$BASHY" --posix -n
 printf '%s\n' '~~~cpp' | "$BASHY" --no-bashpp -n
 printf '%s\n' '~~~cpp' | "$BASHY" --posix -n
+printf '%s\n' '~~~go' | "$BASHY" --no-bashpp -n
+printf '%s\n' '~~~go' | "$BASHY" --posix -n
 
-echo "polyglot-gate: OK — Python/TypeScript/Rust/C/C++ direct, qualified, mixed-runtime, errors, lazy-runtime and mode-isolation cases passed"
+echo "polyglot-gate: OK — Python/TypeScript/Rust/C/C++/Go direct, qualified, mixed-runtime, errors, lazy-runtime and mode-isolation cases passed"

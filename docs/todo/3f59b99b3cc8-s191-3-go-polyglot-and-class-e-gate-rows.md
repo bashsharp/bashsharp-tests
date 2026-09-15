@@ -3,9 +3,10 @@ id: 3f59b99b3cc8
 kind: task
 title: S191.3 Go polyglot and Class-E gate rows
 seq: 86
-status: todo
+status: assigned
 priority: p0
 created: 2026-09-15T12:14:16.994575Z
+assignee: codex-gpt-5.5
 sprint: 191
 ---
 

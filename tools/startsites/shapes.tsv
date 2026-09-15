@@ -252,3 +252,5 @@ agentic-numeric-command	S134	agentic	agentic 1
 c-fence-prefix	S189	fence	~~~c
 cpp-fence-prefix	S189	fence	~~~cpp
 cxx-fence-prefix	S189	fence	~~~cxx
+go-fence-prefix	S191	fence	~~~go
+go-fence-alias-prefix	S191	fence	~~~go as native
