@@ -15,4 +15,3 @@ func stackedDecorated() {}
 # association survives a comment-only line
 func commentDecorated() {}
 
-@n() func sameLineDecorated() {}

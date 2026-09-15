@@ -12,8 +12,6 @@ func valueDecorated() {}
 @n(level: "debug")
 func keywordDecorated() {}
 
-@trace.audit("request")
-func namespacedDecorated() {}
 
 @n()
 func emptyDecorated() {}

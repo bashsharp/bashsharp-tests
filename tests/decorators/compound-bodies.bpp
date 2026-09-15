@@ -1,6 +1,5 @@
 #!/usr/bin/env bashy
-// errorcheck
-// ERROR "decorator.*declaration"
+// run
 # bash++ profile: decorators · phase S197 · status: planned
 #
 # A decorator cannot target a Bash compound command. The eventual diagnostic

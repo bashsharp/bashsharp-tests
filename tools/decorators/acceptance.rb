@@ -8,6 +8,15 @@
 require 'open3'
 require 'timeout'
 
+require_supported = false
+ARGV.each do |arg|
+  if arg == '--require-supported'
+    require_supported = true
+  else
+    abort "decorators: unknown option #{arg}"
+  end
+end
+
 root = File.expand_path('../..', __dir__)
 fixtures = File.join(root, 'tests/decorators')
 binary = File.expand_path(ENV.fetch('BASHY_BIN', File.join(root, '../bashy/bin/bash')))
@@ -35,15 +44,18 @@ File.readlines(File.join(root, 'tests/manifest.tsv'), chomp: true).each do |line
   manifest[cols[0]] = cols[1] if cols.size >= 2
 end
 
+if require_supported
+  planned_entries = manifest.select { |k, v| k.start_with?('tests/decorators/') && v == 'planned' }
+  abort "decorators: --require-supported is on but manifest has planned entries" unless planned_entries.empty?
+end
+
 STDERR_CLASSES = {
   'empty'    => nil,
   'undef'    => /EDECO-UNDEF/,
   'self'     => /EDECO-SELF/,
   'cycle'    => /EDECO-CYCLE/,
   'sig'      => /EDECO-SIG/,
-  # NB: never match the literal word "reserved" — stderr carries the fixture
-  # path (dotted-reserved.bpp), which would make the check trivially true.
-  'reserved' => /EDECO/,
+  'reserved' => /EDECO-RESERVED/,
 }.freeze
 abort 'decorators: unknown stderr class in ledger' unless rows.all? { |row| STDERR_CLASSES.key?(row[4]) }
 
