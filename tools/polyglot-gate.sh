@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Product-level gate for Bash++ naked Python and TypeScript source fences.
+# Product-level gate for Bash++ Python, TypeScript, and Rust source fences.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -7,6 +7,7 @@ BASHY="${BASHY:-${here}/../../bashy/bin/bash}"
 [ -x "$BASHY" ] || { echo "polyglot-gate: bashy oracle is not executable: $BASHY" >&2; exit 1; }
 command -v python3 >/dev/null || { echo "polyglot-gate: python3 is required" >&2; exit 1; }
 command -v node >/dev/null || { echo "polyglot-gate: node is required" >&2; exit 1; }
+command -v rustc >/dev/null || { echo "polyglot-gate: rustc is required" >&2; exit 1; }
 
 scratch="$(mktemp -d)"
 trap 'rm -rf "$scratch"' EXIT
@@ -92,6 +93,40 @@ BPP
 got="$("$BASHY" --bashpp "$scratch/tsproj/program.bpp")"
 [ "$got" = '1.5k' ] || { printf 'polyglot-gate: explicit .ts import output = %q\n' "$got" >&2; exit 1; }
 
+cat >"$scratch/rust.bpp" <<'BPP'
+~~~rust
+pub fn add(a: i64, b: i64) -> i64 { println!("rust"); a + b }
+~~~
+x := add(20, 22)
+echo "$x"
+BPP
+got="$("$BASHY" --bashpp "$scratch/rust.bpp")"
+[ "$got" = $'rust\n42' ] || { printf 'polyglot-gate: Rust direct output = %q\n' "$got" >&2; exit 1; }
+
+cat >"$scratch/rs-alias.bpp" <<'BPP'
+~~~rs as native
+pub fn greet(name: &str) -> String { format!("hello {name}") }
+pub fn fail() -> Result<i64, String> {
+    Err("negative".into())
+}
+~~~
+message := native.greet(world)
+echo "$message"
+BPP
+got="$("$BASHY" --bashpp "$scratch/rs-alias.bpp")"
+[ "$got" = 'hello world' ] || { printf 'polyglot-gate: Rust qualified output = %q\n' "$got" >&2; exit 1; }
+cat >"$scratch/rust-error.bpp" <<'BPP'
+~~~rust
+pub fn fail() -> Result<i64, String> { Err("negative".into()) }
+~~~
+failed := fail()
+BPP
+if "$BASHY" --bashpp "$scratch/rust-error.bpp" >"$scratch/rust-error.out" 2>"$scratch/rust-error.err"; then
+	echo "polyglot-gate: Rust Result error unexpectedly succeeded" >&2
+	exit 1
+fi
+grep -q 'negative' "$scratch/rust-error.err"
+
 # The runtime is discovered only when a foreign block is prepared. A plain
 # Bash++ script succeeds with an empty PATH; a Python fence fails explicitly.
 PATH=/nonexistent "$BASHY" --bashpp -c 'echo lazy' >"$scratch/lazy.out"
@@ -108,5 +143,7 @@ printf '%s\n' '~~~python' | "$BASHY" --no-bashpp -n
 printf '%s\n' '~~~python' | "$BASHY" --posix -n
 printf '%s\n' '~~~typescript' | "$BASHY" --no-bashpp -n
 printf '%s\n' '~~~typescript' | "$BASHY" --posix -n
+printf '%s\n' '~~~rust' | "$BASHY" --no-bashpp -n
+printf '%s\n' '~~~rust' | "$BASHY" --posix -n
 
-echo "polyglot-gate: OK — Python/TypeScript direct, qualified, mixed-runtime, explicit-.ts-import, hidden-state, lazy-runtime and mode-isolation cases passed"
+echo "polyglot-gate: OK — Python/TypeScript/Rust direct, qualified, mixed-runtime, explicit-.ts-import, errors, hidden-state, lazy-runtime and mode-isolation cases passed"
