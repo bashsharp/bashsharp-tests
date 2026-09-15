@@ -249,3 +249,6 @@ agentic-nearmiss-function	S134	agentic	agentic function f
 agentic-nearmiss-brace	S134	agentic	agentic {suffix
 agentic-numeric-decl	S134	agentic	agentic(1) func f()	agentic(1) func f() { :; }
 agentic-numeric-command	S134	agentic	agentic 1
+c-fence-prefix	S189	fence	~~~c
+cpp-fence-prefix	S189	fence	~~~cpp
+cxx-fence-prefix	S189	fence	~~~cxx

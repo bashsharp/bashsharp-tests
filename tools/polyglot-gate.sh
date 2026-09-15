@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Product-level gate for Bash++ Python, TypeScript, and Rust source fences.
+# Product-level gate for Bash++ Python, TypeScript, Rust, C, and C++ fences.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -8,6 +8,8 @@ BASHY="${BASHY:-${here}/../../bashy/bin/bash}"
 command -v python3 >/dev/null || { echo "polyglot-gate: python3 is required" >&2; exit 1; }
 command -v node >/dev/null || { echo "polyglot-gate: node is required" >&2; exit 1; }
 command -v rustc >/dev/null || { echo "polyglot-gate: rustc is required" >&2; exit 1; }
+command -v clang >/dev/null || { echo "polyglot-gate: clang is required" >&2; exit 1; }
+command -v clang++ >/dev/null || { echo "polyglot-gate: clang++ is required" >&2; exit 1; }
 
 scratch="$(mktemp -d)"
 trap 'rm -rf "$scratch"' EXIT
@@ -127,6 +129,43 @@ if "$BASHY" --bashpp "$scratch/rust-error.bpp" >"$scratch/rust-error.out" 2>"$sc
 fi
 grep -q 'negative' "$scratch/rust-error.err"
 
+cat >"$scratch/c.bpp" <<'BPP'
+~~~c
+#include <stdint.h>
+#include <stdio.h>
+int64_t add(int64_t a, int64_t b) { puts("c"); return a + b; }
+~~~
+x := add(20, 22)
+echo "$x"
+BPP
+got="$("$BASHY" --bashpp "$scratch/c.bpp")"
+[ "$got" = $'c\n42' ] || { printf 'polyglot-gate: C output = %q\n' "$got" >&2; exit 1; }
+
+cat >"$scratch/cpp.bpp" <<'BPP'
+~~~cxx as native
+#include <stdexcept>
+#include <string>
+std::string greet(const std::string& name) { return "hello "+name; }
+void fail() { throw std::runtime_error("cpp boom"); }
+~~~
+message := native.greet(world)
+echo "$message"
+BPP
+got="$("$BASHY" --bashpp "$scratch/cpp.bpp")"
+[ "$got" = 'hello world' ] || { printf 'polyglot-gate: C++ output = %q\n' "$got" >&2; exit 1; }
+cat >"$scratch/cpp-error.bpp" <<'BPP'
+~~~cpp
+#include <stdexcept>
+void fail() { throw std::runtime_error("cpp boom"); }
+~~~
+fail()
+BPP
+if "$BASHY" --bashpp "$scratch/cpp-error.bpp" >"$scratch/cpp-error.out" 2>"$scratch/cpp-error.err"; then
+	echo "polyglot-gate: C++ exception unexpectedly succeeded" >&2
+	exit 1
+fi
+grep -q 'cpp boom' "$scratch/cpp-error.err"
+
 # The runtime is discovered only when a foreign block is prepared. A plain
 # Bash++ script succeeds with an empty PATH; a Python fence fails explicitly.
 PATH=/nonexistent "$BASHY" --bashpp -c 'echo lazy' >"$scratch/lazy.out"
@@ -145,5 +184,9 @@ printf '%s\n' '~~~typescript' | "$BASHY" --no-bashpp -n
 printf '%s\n' '~~~typescript' | "$BASHY" --posix -n
 printf '%s\n' '~~~rust' | "$BASHY" --no-bashpp -n
 printf '%s\n' '~~~rust' | "$BASHY" --posix -n
+printf '%s\n' '~~~c' | "$BASHY" --no-bashpp -n
+printf '%s\n' '~~~c' | "$BASHY" --posix -n
+printf '%s\n' '~~~cpp' | "$BASHY" --no-bashpp -n
+printf '%s\n' '~~~cpp' | "$BASHY" --posix -n
 
-echo "polyglot-gate: OK — Python/TypeScript/Rust direct, qualified, mixed-runtime, explicit-.ts-import, errors, hidden-state, lazy-runtime and mode-isolation cases passed"
+echo "polyglot-gate: OK — Python/TypeScript/Rust/C/C++ direct, qualified, mixed-runtime, errors, lazy-runtime and mode-isolation cases passed"
