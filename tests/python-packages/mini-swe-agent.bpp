@@ -1,0 +1,5 @@
+import python "minisweagent.agents" as agents
+
+agentType := agents.get_agent_class("default")
+name := agentType.__name__
+echo "$name"
