@@ -1,0 +1,19 @@
+#!/usr/bin/env bashy
+# bash++ profile: decorators · phase S197 · status: planned
+#
+# Typed object identity through no-op decorator.
+
+func noop(c *Call) {
+    c.Next()
+}
+
+@noop()
+func identity(ch chan string) chan string {
+    return ch
+}
+
+c := make(chan string, 1)
+c <- "token"
+d := identity(c)
+v := <-d
+echo "identity:[$v]"

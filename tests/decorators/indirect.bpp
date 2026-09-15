@@ -1,0 +1,19 @@
+#!/usr/bin/env bashy
+# bash++ profile: decorators · phase S197 · status: planned
+#
+# Indirect typed callable route (function handle).
+
+func trace(c *Call) {
+    echo "trace:start"
+    c.Next()
+}
+
+@trace()
+func target(s string) string {
+    return s + "-done"
+}
+
+# Assign to function handle
+h := target
+out := h("val")
+echo "out:[$out]"

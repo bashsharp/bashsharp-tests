@@ -28,7 +28,7 @@ abort 'decorators: GNU Bash 5.3 not found on PATH; set BASH53=/path/to/bash' unl
 [binary, oracle].each { |path| abort "decorators: missing executable #{path}" unless File.executable?(path) }
 
 rows = File.readlines(File.join(fixtures, 'cases.tsv'), chomp: true).reject { |line| line.empty? || line.start_with?('#') }.map { |line| line.split("\t", -1) }
-abort 'decorators: expected 12 unique cases' unless rows.size == 12 && rows.map(&:first).uniq.size == 12
+abort 'decorators: expected 16 unique cases' unless rows.size == 16 && rows.map(&:first).uniq.size == 16
 abort 'decorators: malformed case ledger' unless rows.all? { |row| row.size == 5 }
 
 # S197.1 layout fixtures are graded by the harness's generic loop, not here.

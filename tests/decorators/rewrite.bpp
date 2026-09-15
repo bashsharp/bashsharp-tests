@@ -1,0 +1,19 @@
+#!/usr/bin/env bashy
+# bash++ profile: decorators · phase S197 · status: planned
+#
+# Typed argument and result rewriting.
+
+func rewrite(c *Call) {
+    c.Args[0] = "rewritten-arg"
+    c.Next()
+    c.Results[0] = "rewritten-res"
+}
+
+@rewrite()
+func process(s string) string {
+    echo "body-saw:[$s]"
+    return "original-res"
+}
+
+out := process("original-arg")
+echo "out:[$out]"

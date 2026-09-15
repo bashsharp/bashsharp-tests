@@ -36,3 +36,7 @@ tests/decorators/cycle.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic:
 tests/decorators/signature.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: EDECO-SIG non-*Call first parameter
 tests/decorators/dotted-reserved.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: CPython test_decorators.py test_dotted
 tests/decorators/near-miss-shell.bpp	supported	decorators	S197	story: bb5ee9f84a12 · topic: umbrella F2 never-claimed shapes
+tests/decorators/rewrite.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: typed argument/result rewriting
+tests/decorators/identity.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: typed object identity
+tests/decorators/lifecycle.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: defer/panic/recover lifecycle
+tests/decorators/indirect.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: indirect typed callable route

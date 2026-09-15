@@ -18,3 +18,7 @@ cycle	cycle.bpp	nonzero	cycle.out	cycle
 signature	signature.bpp	nonzero	signature.out	sig
 dotted-reserved	dotted-reserved.bpp	nonzero	dotted-reserved.out	reserved
 near-miss-shell	near-miss-shell.bpp	0	near-miss-shell.out	empty
+rewrite	rewrite.bpp	0	rewrite.out	empty
+identity	identity.bpp	0	identity.out	empty
+lifecycle	lifecycle.bpp	0	lifecycle.out	empty
+indirect	indirect.bpp	0	indirect.out	empty
