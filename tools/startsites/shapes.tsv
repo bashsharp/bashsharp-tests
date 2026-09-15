@@ -254,3 +254,7 @@ cpp-fence-prefix	S189	fence	~~~cpp
 cxx-fence-prefix	S189	fence	~~~cxx
 go-fence-prefix	S191	fence	~~~go
 go-fence-alias-prefix	S191	fence	~~~go as native
+bash-fence-prefix	S193	fence	~~~bash
+bash-fence-alias-prefix	S193	fence	~~~bash as island
+sh-fence-prefix	S193	fence	~~~sh
+sh-fence-alias-prefix	S193	fence	~~~sh as island

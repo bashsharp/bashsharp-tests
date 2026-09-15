@@ -216,4 +216,8 @@ cpp-fence-prefix	S189	fence	E	accept	accept	yes	~~~cpp	~~~cpp
 cxx-fence-prefix	S189	fence	E	accept	accept	yes	~~~cxx	~~~cxx
 go-fence-prefix	S191	fence	E	accept	accept	yes	~~~go	~~~go
 go-fence-alias-prefix	S191	fence	E	accept	accept	yes	~~~go as native	~~~go as native
-# 214 shapes: 87 class R, 127 class E, 0 engine disagreement(s)
+bash-fence-prefix	S193	fence	E	accept	accept	yes	~~~bash	~~~bash
+bash-fence-alias-prefix	S193	fence	E	accept	accept	yes	~~~bash as island	~~~bash as island
+sh-fence-prefix	S193	fence	E	accept	accept	yes	~~~sh	~~~sh
+sh-fence-alias-prefix	S193	fence	E	accept	accept	yes	~~~sh as island	~~~sh as island
+# 218 shapes: 87 class R, 131 class E, 0 engine disagreement(s)

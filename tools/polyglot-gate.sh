@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Product-level gate for Bash++ Python, TypeScript, Rust, C, C++, and Go fences.
+# Product-level gate for Bash++ Python, TypeScript, Rust, C, C++, Go, and
+# embedded Bash/POSIX sh fences.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -199,13 +200,41 @@ cat >"$scratch/goproj/go-error.bpp" <<'BPP'
 import "fmt"
 func Checked(value int64) (int64, error) { return 0, fmt.Errorf("negative") }
 ~~~
-failed := Checked(-1)
+failed := Checked(1)
 BPP
 if "$BASHY" --bashpp "$scratch/goproj/go-error.bpp" >"$scratch/go-error.out" 2>"$scratch/go-error.err"; then
 	echo "polyglot-gate: Go trailing error unexpectedly succeeded" >&2
 	exit 1
 fi
 grep -q 'negative' "$scratch/go-error.err"
+
+cat >"$scratch/shell-islands.bpp" <<'BPP'
+~~~bash as bash
+var() { printf '%s:%s:%s' "$1" "$2" "$3"; }
+Show() { counter=$(( ${counter:-0} + 1 )); var "$1" = "$counter"; }
+~~~
+~~~sh
+Join() { printf '%s/%s/%s' "$#" "$1" "$2"; }
+~~~
+first := bash.Show(alpha)
+second := bash.Show(alpha)
+joined := Join("a b", c)
+printf '%s|%s|%s\n' "$first" "$second" "$joined"
+BPP
+got="$(PATH=/nonexistent "$BASHY" --bashpp "$scratch/shell-islands.bpp")"
+[ "$got" = 'alpha:=:1|alpha:=:1|2/a b/c' ] || { printf 'polyglot-gate: shell-island output = %q\n' "$got" >&2; exit 1; }
+cat >"$scratch/shell-island-error.bpp" <<'BPP'
+~~~sh as posix
+Fail() { echo shell-detail >&2; return 7; }
+~~~
+value := posix.Fail()
+BPP
+if PATH=/nonexistent "$BASHY" --bashpp "$scratch/shell-island-error.bpp" >"$scratch/shell-error.out" 2>"$scratch/shell-error.err"; then
+	echo "polyglot-gate: shell island status unexpectedly succeeded" >&2
+	exit 1
+fi
+grep -q 'shell-detail' "$scratch/shell-error.err"
+grep -q 'status 7' "$scratch/shell-error.err"
 
 # The runtime is discovered only when a foreign block is prepared. A plain
 # Bash++ script succeeds with an empty PATH; a Python fence fails explicitly.
@@ -231,5 +260,9 @@ printf '%s\n' '~~~cpp' | "$BASHY" --no-bashpp -n
 printf '%s\n' '~~~cpp' | "$BASHY" --posix -n
 printf '%s\n' '~~~go' | "$BASHY" --no-bashpp -n
 printf '%s\n' '~~~go' | "$BASHY" --posix -n
+printf '%s\n' '~~~bash' | "$BASHY" --no-bashpp -n
+printf '%s\n' '~~~bash' | "$BASHY" --posix -n
+printf '%s\n' '~~~sh' | "$BASHY" --no-bashpp -n
+printf '%s\n' '~~~sh' | "$BASHY" --posix -n
 
-echo "polyglot-gate: OK — Python/TypeScript/Rust/C/C++/Go direct, qualified, mixed-runtime, errors, lazy-runtime and mode-isolation cases passed"
+echo "polyglot-gate: OK — Python/TypeScript/Rust/C/C++/Go and embedded Bash/POSIX sh direct, qualified, errors, isolation, lazy-runtime and mode-isolation cases passed"
