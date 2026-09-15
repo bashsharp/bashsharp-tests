@@ -1,0 +1,21 @@
+#!/usr/bin/env bashy
+// errorcheck
+// ERROR "EDECO-SIG"
+# bash++ profile: decorators · phase S197 · status: planned
+#
+# dhnt: a function whose first parameter is not the predeclared *Call is
+# simply not a decorator — EDECO-SIG when per-call resolution finds it.
+# Python contrast (PEP 318): any callable may decorate; misuse only surfaces
+# later as a TypeError at some call.
+
+func plain(s string) {
+    echo "plain:$s"
+}
+
+@plain("x")
+func target() {
+    echo "target:body"
+}
+
+echo "registered:ok"
+target

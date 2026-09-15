@@ -1,0 +1,27 @@
+#!/usr/bin/env bashy
+// errorcheck
+// ERROR "EDECO-CYCLE"
+# bash++ profile: decorators · phase S197 · status: planned
+#
+# dhnt: mutual decoration registers cleanly (late resolution) and fails at
+# CALL time with EDECO-CYCLE, before FUNCNEST turns it into a confusing
+# depth error. Python contrast: a decoration cycle cannot be expressed —
+# application is immediate. job's body must never run.
+
+@ring_b()
+func ring_a(c *Call) {
+    c.Next()
+}
+
+@ring_a()
+func ring_b(c *Call) {
+    c.Next()
+}
+
+@ring_a()
+func job() {
+    echo "job:body"
+}
+
+echo "registered:ok"
+job

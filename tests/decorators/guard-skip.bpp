@@ -1,0 +1,41 @@
+#!/usr/bin/env bashy
+# bash++ profile: decorators · phase S197 · status: planned
+#
+# Reference: CPython test_decorators.py test_dbcheck — a failed precondition
+# prevents the body from running. dhnt difference: the guard skips by NOT
+# calling c.Next() (go-decorator's TargetDo semantics): the body is skipped,
+# a typed call settles zero results (zero values), and the call's status is
+# whatever the decorator set — no exception machinery.
+
+allow=0
+
+func gate(c *Call) {
+    if [ "$allow" = "1" ]; then
+        c.Next()
+    else
+        c.Status = 7
+    fi
+}
+
+@gate()
+func job() {
+    echo "job:ran"
+}
+
+@gate()
+func produce() string {
+    return "made"
+}
+
+job
+echo "job-denied:$?"
+allow=1
+job
+echo "job-allowed:$?"
+
+allow=0
+v := produce()
+echo "produce-denied:[$v]"
+allow=1
+w := produce()
+echo "produce-allowed:[$w]"

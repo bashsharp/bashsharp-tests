@@ -1,0 +1,29 @@
+#!/usr/bin/env bashy
+# bash++ profile: decorators · phase S197 · status: planned
+#
+# Design §2 stated cost, pinned here: decorator frames are visible —
+# ${FUNCNAME[1]} inside a decorated function names the innermost decorator.
+# Classic shell functions decorate in both spellings, and `;` separates a
+# decorator from a same-line declaration.
+
+func trace(c *Call) {
+    c.Next()
+}
+
+@trace()
+function backup() {
+    echo "backup:caller:${FUNCNAME[1]}"
+}
+
+@trace()
+restore() {
+    echo "restore:body"
+}
+
+@trace(); func oneliner() {
+    echo "oneliner:body"
+}
+
+backup
+restore
+oneliner

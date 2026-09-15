@@ -1,0 +1,16 @@
+#!/usr/bin/env bashy
+// errorcheck
+// ERROR "EDECO"
+# bash++ profile: decorators · phase S197 · status: planned
+#
+# Reference: CPython test_decorators.py test_dotted — Python resolves dotted
+# decorator names at definition. dhnt difference: @ns.name( parses (Class R)
+# but is RESERVED — rejected at registration in the MVP, so a namespaced
+# spelling stays available later at no cost.
+
+echo "before:dotted"
+
+@ns.trace("x")
+func dotted() {
+    echo "dotted:body"
+}

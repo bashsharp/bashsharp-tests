@@ -24,3 +24,15 @@ tests/06_go126_features/01_clear_builtin.bpp	planned	builtins	G127	topic: ../go/
 tests/decorators/call-forms.bpp	planned	decorators	S197	story: 515da1278005
 tests/decorators/declaration-layout.bpp	planned	decorators	S197	story: 515da1278005
 tests/decorators/compound-bodies.bpp	planned	decorators	S197	story: 515da1278005
+tests/decorators/stack-order.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: CPython test_decorators.py test_order
+tests/decorators/arguments.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: CPython test_decorators.py test_argforms/test_eval_order
+tests/decorators/counting.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: CPython test_decorators.py countcalls
+tests/decorators/guard-skip.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: CPython test_decorators.py test_dbcheck
+tests/decorators/recursion.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: Python naming-and-binding recursion
+tests/decorators/shell-functions.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: design §2 FUNCNAME pin
+tests/decorators/undefined-timing.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: CPython test_decorators.py test_errors
+tests/decorators/self-decoration.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: EDECO-SELF registration timing
+tests/decorators/cycle.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: EDECO-CYCLE call timing
+tests/decorators/signature.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: EDECO-SIG non-*Call first parameter
+tests/decorators/dotted-reserved.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: CPython test_decorators.py test_dotted
+tests/decorators/near-miss-shell.bpp	supported	decorators	S197	story: bb5ee9f84a12 · topic: umbrella F2 never-claimed shapes

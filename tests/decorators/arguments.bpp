@@ -1,0 +1,36 @@
+#!/usr/bin/env bashy
+# bash++ profile: decorators · phase S197 · status: planned
+#
+# Reference: CPython test_decorators.py test_argforms / test_eval_order —
+# Python evaluates the decorator expression and its arguments once, when
+# `def` executes. dhnt difference: @tag(...) arguments are evaluated PER
+# INVOCATION in the declaration's captured scope, with the shipped Bash#
+# positional/keyword/default binding.
+
+func tag(c *Call, label string, level string = "info") {
+    echo "[$level] $label -> ${c.Name}"
+    c.Next()
+}
+
+suffix="a"
+
+@tag("positional")
+func one() {
+    echo "one:body"
+}
+
+@tag(label: "keyword", level: "debug")
+func two() {
+    echo "two:body"
+}
+
+@tag("late-$suffix")
+func three() {
+    echo "three:body"
+}
+
+one
+two
+three
+suffix="b"
+three

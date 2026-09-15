@@ -1,0 +1,24 @@
+#!/usr/bin/env bashy
+# bash++ profile: decorators · phase S197 · status: planned
+#
+# Reference: the countcalls helper in CPython test_decorators.py (call
+# counting / state across invocations). dhnt difference: per-call LATE
+# resolution — the decorator is declared after the decorated function, which
+# in Python raises NameError while `def` executes.
+
+calls=0
+
+@count()
+func work(n int) {
+    echo "work:$n"
+}
+
+func count(c *Call) {
+    calls=$((calls + 1))
+    c.Next()
+}
+
+work 1
+work 2
+work 3
+echo "calls:$calls"

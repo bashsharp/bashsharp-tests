@@ -1,0 +1,13 @@
+#!/usr/bin/env bashy
+# bash++ profile: decorators · phase S197 · status: supported
+#
+# Class E near-misses stay shell territory in EVERY mode (umbrella F2): bare
+# @t is a command name (never claimed), and @t() followed by a compound
+# command is bash's own function definition of @t — any compound body, not
+# only { }. This case is executed, not just parsed, and stream-compared with
+# GNU Bash 5.3 in the classic and POSIX profiles.
+
+@t() { echo "shell-function:@t"; }
+@t
+@t () ( echo "subshell-body:@t" )
+@t

@@ -1,0 +1,20 @@
+# Sprint 197 decorator acceptance ledger (story bb5ee9f84a12).
+# Status is NOT declared here — tests/manifest.tsv is the status of record;
+# the runner reads it and reports planned fixtures as PLANNED, never PASS.
+# The three S197.1 layout fixtures (call-forms, declaration-layout,
+# compound-bodies; story 515da1278005) are exempt from this ledger: the
+# harness's generic loop owns their grading.
+# stderr classes: empty | undef | self | cycle | sig | reserved
+# id	fixture	exit	stdout	stderr
+stack-order	stack-order.bpp	0	stack-order.out	empty
+arguments	arguments.bpp	0	arguments.out	empty
+counting	counting.bpp	0	counting.out	empty
+guard-skip	guard-skip.bpp	0	guard-skip.out	empty
+recursion	recursion.bpp	0	recursion.out	empty
+shell-functions	shell-functions.bpp	0	shell-functions.out	empty
+undefined-timing	undefined-timing.bpp	1	undefined-timing.out	undef
+self-decoration	self-decoration.bpp	nonzero	self-decoration.out	self
+cycle	cycle.bpp	nonzero	cycle.out	cycle
+signature	signature.bpp	nonzero	signature.out	sig
+dotted-reserved	dotted-reserved.bpp	nonzero	dotted-reserved.out	reserved
+near-miss-shell	near-miss-shell.bpp	0	near-miss-shell.out	empty

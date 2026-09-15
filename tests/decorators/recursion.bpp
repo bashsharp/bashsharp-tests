@@ -1,0 +1,24 @@
+#!/usr/bin/env bashy
+# bash++ profile: decorators · phase S197 · status: planned
+#
+# Reference: Python recursion through a decorated name re-enters the wrapper
+# on every level, because the recursive call resolves through the rebound
+# module-level name (language reference, naming and binding). dhnt matches
+# observably: the chain re-enters per level (design: "recursion re-enters the
+# chain on every level — Python semantics"); decorator frames also consume
+# FUNCNEST.
+
+func note(c *Call) {
+    echo "note:${c.Name}"
+    c.Next()
+}
+
+@note()
+func countdown(n int) {
+    echo "n:$n"
+    if [ "$n" -gt 0 ]; then
+        countdown $((n - 1))
+    fi
+}
+
+countdown 2
