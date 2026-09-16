@@ -573,8 +573,50 @@ func resolveModuleProgram(goTool, dir string, env []string) (files, mapArgs []st
 	}
 	record["base"] = ""
 	record["path"] = main.ImportPath
+	record["module"] = main.Module.Path
 	record["packages"] = packages
 	return files, mapArgs, record, nil
+}
+
+// nativeModuleCommands emits each go-list unit separately, preserving the
+// original module identity and dependency order instead of flattening types.
+func nativeModuleCommands(dir, tool, shellrt string, record map[string]any, mainFiles []string) (commands [][]string, artifacts, maps []string, mainDir string, err error) {
+	module, _ := record["module"].(string)
+	mainPath, _ := record["path"].(string)
+	if module == "" || strings.ContainsAny(module, "\\\"\n\r\t ") {
+		return nil, nil, nil, "", fmt.Errorf("invalid module identity %q", module)
+	}
+	packages, _ := record["packages"].([]map[string]any)
+	units := append(append([]map[string]any(nil), packages...), map[string]any{"path": mainPath, "files": mainFiles})
+	var deps []string
+	seen := map[string]bool{}
+	for _, unit := range units {
+		path, _ := unit["path"].(string)
+		files, _ := unit["files"].([]string)
+		rel := strings.TrimPrefix(path, module)
+		if path != module && !strings.HasPrefix(path, module+"/") || strings.Contains(rel, "\\") || strings.Contains(rel, "//") || strings.Contains(rel, "/../") || strings.HasSuffix(rel, "/..") || rel != "" && filepath.Clean(strings.TrimPrefix(rel, "/")) != strings.TrimPrefix(rel, "/") || seen[path] || len(files) == 0 {
+			return nil, nil, nil, "", fmt.Errorf("invalid module unit %q", path)
+		}
+		seen[path] = true
+		unitDir := filepath.Join(dir, strings.TrimPrefix(rel, "/"))
+		if err := os.MkdirAll(unitDir, 0o700); err != nil {
+			return nil, nil, nil, "", err
+		}
+		generated := filepath.Join(unitDir, "main.go")
+		mapFile := generated + ".map"
+		args := []string{tool, "transpile", "--bashpp", "--source=go", "--go-native-unit", "--go-import-path", path}
+		args = append(args, deps...)
+		args = append(args, goFileArgs(files)...)
+		args = append(args, "-o", generated, "--map", mapFile)
+		commands = append(commands, args)
+		artifacts = append(artifacts, generated)
+		maps = append(maps, mapFile)
+		deps = append(deps, "--go-package", path+"="+strings.Join(files, ","))
+		mainDir = unitDir
+	}
+	body := fmt.Sprintf("module %s\n\ngo 1.27\n\nrequire mvdan.cc/sh/v3 v3.13.1\nreplace mvdan.cc/sh/v3 => %s\n", module, shellrt)
+	err = os.WriteFile(filepath.Join(dir, "go.mod"), []byte(body), 0o600)
+	return
 }
 
 // artifactUse states what happens to the cwd a.exe a build-only phase writes:
@@ -1011,6 +1053,22 @@ func (t test) backendPlan(step *planStep, action, phase string, pkg *packageIden
 				step.artifacts, step.maps, compileDeviations, packageMap, compilerArgv)
 			return
 		}
+		if moduleMap != nil {
+			commands, artifacts, maps, mainDir, err := nativeModuleCommands(moduleDir, tool, shellrt, moduleMap, sourceFiles)
+			if err != nil {
+				step.backendErr = err
+				return
+			}
+			buildArgs := append([]string{goTool, "build", "-C", mainDir}, recipeFlags...)
+			buildArgs = append(buildArgs, "-o", artifact, ".")
+			commands = append(commands, buildArgs, append([]string{artifact}, programArgv...))
+			*step.cmd = *shellCommand(step.cmd, commands...)
+			step.artifacts = append(artifacts, artifact)
+			step.maps = maps
+			t.backendEventMap(mode, action, phase, "transpile-build-run", compileInputs, programArgv, recipeFlags, nativeArgv, step.artifacts, step.maps,
+				append(deviations, "each module package is emitted as a native unit at its original import path; upstream go-command recipe flags and environment are preserved"), moduleMap)
+			return
+		}
 		// An ordinary run root with recipe flags reaches this path through
 		// upstream's `go run <flags> <file>` branch; the flags are go-command
 		// flags and are passed verbatim to the pinned build of the generated
@@ -1191,6 +1249,36 @@ func TestDirectoryPackageRecompileReadsCurrentSource(t *testing.T) {
 		got, err := os.ReadFile(dependencies[0].files[0])
 		if err != nil || string(got) != source {
 			t.Fatalf("source=%q err=%v", got, err)
+		}
+	}
+}
+
+func TestNativeModuleCommands(t *testing.T) {
+	dir := t.TempDir()
+	record := map[string]any{"module": "example.test/m", "path": "example.test/m/cmd/app", "packages": []map[string]any{{"path": "example.test/m/a", "files": []string{"/original/a.go"}}}}
+	commands, artifacts, maps, mainDir, err := nativeModuleCommands(dir, "bashy", "/runtime", record, []string{"/original/main.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(commands) != 2 || len(artifacts) != 2 || len(maps) != 2 || mainDir != filepath.Join(dir, "cmd/app") {
+		t.Fatalf("unexpected units: %v %v %v %s", commands, artifacts, maps, mainDir)
+	}
+	first := strings.Join(commands[0], " ")
+	second := strings.Join(commands[1], " ")
+	if !strings.Contains(first, "--go-native-unit --go-import-path example.test/m/a") || strings.Contains(first, "--go-package") || !strings.Contains(second, "--go-package example.test/m/a=/original/a.go") || strings.Contains(second, "--go-import-base") {
+		t.Fatalf("unit routing: %v", commands)
+	}
+	body, err := os.ReadFile(filepath.Join(dir, "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(string(body), "module example.test/m\n") {
+		t.Fatalf("module: %s", body)
+	}
+	for _, path := range []string{"other/a", "example.test/m/../escape", "example.test/m/a/..", "example.test/m//a", "example.test/m/a"} {
+		record["path"] = path
+		if _, _, _, _, err := nativeModuleCommands(t.TempDir(), "bashy", "/runtime", record, []string{"/original/main.go"}); err == nil {
+			t.Errorf("accepted invalid/duplicate unit %q", path)
 		}
 	}
 }
