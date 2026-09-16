@@ -133,6 +133,25 @@ type packageGroup struct {
 // the key is the upstream test identity.
 var backendPackages sync.Map
 
+// rememberDirectoryPackage returns the packages preceding this compile phase.
+func rememberDirectoryPackage(key string, current packageGroup) []packageGroup {
+	var earlier []packageGroup
+	if value, ok := backendPackages.Load(key); ok {
+		earlier = value.([]packageGroup)
+	}
+	// errorcheckandrundir repeats upstream's ordered package list for its
+	// run pass. Start again at the repeated identity: later packages belong
+	// to the previous pass and may import this package themselves.
+	for i, group := range earlier {
+		if group.path == current.path {
+			earlier = earlier[:i]
+			break
+		}
+	}
+	backendPackages.Store(key, append(append([]packageGroup(nil), earlier...), packageGroup{path: current.path, files: append([]string(nil), current.files...)}))
+	return earlier
+}
+
 // backendProgram is what the phases of one upstream test have handed the
 // seam so far as the program: the files (and package map) of the last
 // compile phase and, in compiled mode, the artifact that phase built. A
@@ -789,15 +808,11 @@ func (t test) backendPlan(step *planStep, action, phase string, pkg *packageIden
 	}
 	if directory {
 		key := t.eventName()
-		var earlier []packageGroup
-		if value, ok := backendPackages.Load(key); ok {
-			earlier = value.([]packageGroup)
-		}
+		earlier := rememberDirectoryPackage(key, packageGroup{path: pkg.Path, files: compileInputs})
 		mapArgs = []string{"--go-import-base", pkg.Base, "--go-import-path", pkg.Path}
 		for _, group := range earlier {
 			mapArgs = append(mapArgs, "--go-package", group.path+"="+strings.Join(group.files, ","))
 		}
-		backendPackages.Store(key, append(append([]packageGroup(nil), earlier...), packageGroup{path: pkg.Path, files: append([]string(nil), compileInputs...)}))
 		packages := make([]map[string]any, 0, len(earlier))
 		for _, group := range earlier {
 			packages = append(packages, map[string]any{"path": group.path, "files": nonNil(group.files)})
@@ -1109,5 +1124,73 @@ func TestCompilerIdentityReadsUpstreamArgv(t *testing.T) {
 	}
 	if got := (backendIdentity{}).args(); len(got) != 0 {
 		t.Errorf("args() of no identity = %v", got)
+	}
+}
+
+// Replaying errorcheckandrundir must not import a package into itself or
+// carry the previous pass's main package backward into its dependencies.
+func TestDirectoryPackageReplay(t *testing.T) {
+	key := t.Name()
+	defer backendPackages.Delete(key)
+	for round := 0; round < 2; round++ {
+		for i, path := range []string{"test/a", "test/b", "main"} {
+			earlier := rememberDirectoryPackage(key, packageGroup{path: path, files: []string{path + ".go"}})
+			if len(earlier) != i {
+				t.Fatalf("round %d path %s: previous=%v", round, path, earlier)
+			}
+			for j, g := range earlier {
+				if g.path != []string{"test/a", "test/b"}[j] {
+					t.Fatalf("dependency order=%v", earlier)
+				}
+			}
+		}
+	}
+}
+
+func TestDirectoryPackageReplacementAndIsolation(t *testing.T) {
+	key, other := t.Name(), t.Name()+"/other"
+	defer backendPackages.Delete(key)
+	defer backendPackages.Delete(other)
+	original := []string{"old.go"}
+	rememberDirectoryPackage(key, packageGroup{path: "test/a", files: original})
+	original[0] = "mutated.go"
+	before := rememberDirectoryPackage(key, packageGroup{path: "test/b", files: []string{"b.go"}})
+	if before[0].files[0] != "old.go" {
+		t.Fatal("input slice aliases registry")
+	}
+	if got := rememberDirectoryPackage(other, packageGroup{path: "main", files: []string{"main.go"}}); len(got) != 0 {
+		t.Fatal("root state leaked")
+	}
+	// A recompile supplies the exact new unit. Never concatenate conflicting
+	// old/new definitions; duplicate definitions inside this unit remain input
+	// to the unchanged checker/compiler, rather than being deduplicated here.
+	replacement := []string{"new.go", "conflict.go", "new.go"}
+	if got := rememberDirectoryPackage(key, packageGroup{path: "test/a", files: replacement}); len(got) != 0 {
+		t.Fatalf("stale pass dependencies=%v", got)
+	}
+	replacement[0] = "changed.go"
+	got := rememberDirectoryPackage(key, packageGroup{path: "main", files: []string{"main.go"}})
+	if len(got) != 1 || strings.Join(got[0].files, ",") != "new.go,conflict.go,new.go" {
+		t.Fatalf("replacement changed or merged: %v", got)
+	}
+}
+
+func TestDirectoryPackageRecompileReadsCurrentSource(t *testing.T) {
+	key := t.Name()
+	defer backendPackages.Delete(key)
+	path := filepath.Join(t.TempDir(), "a.go")
+	for _, source := range []string{"package a; const Value = 1", "package a; const Value = 2"} {
+		if err := os.WriteFile(path, []byte(source), 0600); err != nil {
+			t.Fatal(err)
+		}
+		rememberDirectoryPackage(key, packageGroup{path: "test/a", files: []string{path}})
+		dependencies := rememberDirectoryPackage(key, packageGroup{path: "main", files: []string{"main.go"}})
+		if len(dependencies) != 1 || len(dependencies[0].files) != 1 {
+			t.Fatalf("dependencies=%v", dependencies)
+		}
+		got, err := os.ReadFile(dependencies[0].files[0])
+		if err != nil || string(got) != source {
+			t.Fatalf("source=%q err=%v", got, err)
+		}
 	}
 }
