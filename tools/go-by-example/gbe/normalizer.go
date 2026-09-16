@@ -1,7 +1,7 @@
 // Sprint: #155; Story: S155.10; Story-ID: 67bdd9fae2b3
 //
 // Repository-versioned normalization semantics shared by evidence production
-// and verification, ported from tools/go-by-example/normalizer.rb (VERSION 7), now at VERSION 8.
+// and verification, ported from tools/go-by-example/normalizer.rb (VERSION 7), now at VERSION 9.
 // Bump NormalizerVersion whenever these transformations change.
 //
 // VERSION 2 (Sprint 118) dropped `goexit_status`. It existed only because the
@@ -59,7 +59,9 @@ import (
 	"unicode/utf8"
 )
 
-const NormalizerVersion = 8
+// VERSION 9 applies the testing row's existing duration licence to elapsed
+// seconds on Go test result lines. Names, outcomes and other output stay exact.
+const NormalizerVersion = 9
 
 var NormalizerNames = []string{"none", "argv0_path", "env_listing", "file_metadata", "tmp_path", "ephemeral_port", "wallclock", "duration", "panic_trace", "random_stream", "map_order", "interleave_order", "closing_channel_order", "throughput_count", "pointer_address"}
 var stdoutNames = []string{"argv0_path", "env_listing", "file_metadata", "tmp_path", "ephemeral_port", "duration", "random_stream", "map_order", "interleave_order", "closing_channel_order", "throughput_count", "pointer_address"}
@@ -92,6 +94,7 @@ var (
 	reNoonPresent  = regexp.MustCompile(`It's before noon|It's after noon`)
 	reAllDigits    = regexp.MustCompile(`\A\d+\z`)
 	reDuration     = regexp.MustCompile(`\b\d+(?:\.\d+)?(?:ns|µs|us|ms|s)\b`)
+	reTestDuration = regexp.MustCompile(`(?m)^([ \t]*--- (?:PASS|FAIL|SKIP): [^\r\n]+) \([0-9]+\.[0-9]+s\)$`)
 	reGoroutine    = regexp.MustCompile(`\Agoroutine : [012]\n\z`)
 	reWorkerEvent  = regexp.MustCompile(`\AWorker (\d+) (starting|done)\n\z`)
 	rePoolEvent    = regexp.MustCompile(`\Aworker (\d+) (started |finished) job (\d+)\n\z`)
@@ -557,6 +560,13 @@ func Normalize(data []byte, names []string, stream string) (string, error) {
 				output = Generate(Obj("shape", shape, "types", types, "ordered", true))
 			}
 		case "duration":
+			if strings.HasPrefix(output, "=== RUN   ") {
+				if !reTestDuration.MatchString(output) {
+					return "", normErr("test duration shape")
+				}
+				output = reTestDuration.ReplaceAllString(output, "${1} (<elapsed>)")
+				continue
+			}
 			values := reDuration.FindAllString(output, -1)
 			if len(values) == 0 {
 				return "", normErr("duration shape")

@@ -242,3 +242,29 @@ func TestInterleaveOrder(t *testing.T) {
 		t.Fatalf("pool: %s", got)
 	}
 }
+
+// The pinned testing row reports runtime measurements, not expected values.
+// Cancel only the result-line clock; every observable test event stays exact.
+func TestGoTestDurationNormalization(t *testing.T) {
+	base := "=== RUN   TestExample\n=== RUN   TestExample/child\n--- PASS: TestExample (0.00s)\n    --- PASS: TestExample/child (0.00s)\nPASS\n"
+	want := mustNormalize(t, base, []string{"duration"}, "stdout")
+	measured := strings.ReplaceAll(base, "0.00s", "0.02s")
+	if got := mustNormalize(t, measured, []string{"duration"}, "stdout"); got != want {
+		t.Fatalf("elapsed time changed comparison: %q", got)
+	}
+	for _, changed := range []string{
+		strings.Replace(base, "--- PASS:", "--- FAIL:", 1),
+		strings.ReplaceAll(base, "TestExample/child", "TestExample/other"),
+		base + "extra 0.00s\n",
+		base + "    diagnostic: took 0.02s\n",
+		strings.Replace(base, "=== RUN   TestExample/child\n", "", 1),
+	} {
+		if mustNormalize(t, changed, []string{"duration"}, "stdout") == want {
+			t.Fatalf("lost observable output: %q", changed)
+		}
+	}
+	diagnostic := base + "    diagnostic: took 0.00s\n"
+	if mustNormalize(t, diagnostic, []string{"duration"}, "stdout") == mustNormalize(t, strings.Replace(diagnostic, "took 0.00s", "took 0.02s", 1), []string{"duration"}, "stdout") {
+		t.Fatal("normalized a diagnostic duration")
+	}
+}
