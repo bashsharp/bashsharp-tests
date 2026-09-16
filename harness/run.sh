@@ -215,16 +215,7 @@ feature_of() {
   printf '%s' "$f"
 }
 
-# Action header: `// run`, `// errorcheck`, `// build` on one of the first
-# lines. The README has always claimed these are parsed. Until now they were
-# not, so an errorcheck fixture was graded BACKWARDS — it passed by silently
-# accepting invalid code.
-action_of() {
-  local file="$1" a
-  a="$(sed -n '1,10p' "$file" | grep -m1 -oE '^// *(run|errorcheck|build)' | awk '{print $2}')"
-  [ -n "$a" ] || a=run
-  printf '%s' "$a"
-}
+source "${SCRIPT_DIR}/fixture-actions.sh"
 
 record() { # record <state> <id> <feature>
   local state="$1" id="$2" feat="$3"
@@ -238,16 +229,6 @@ record() { # record <state> <id> <feature>
   esac
 }
 
-# Verify `// ERROR "regex"` annotations against captured stderr.
-check_error_annotations() { # <file> <stderr-file>
-  local file="$1" errf="$2" pat missing=0
-  while IFS= read -r pat; do
-    [ -n "$pat" ] || continue
-    grep -qE -- "$pat" "$errf" || { echo "      missing diagnostic matching: $pat"; missing=1; }
-  done < <(grep -oE '// *ERROR +"[^"]*"' "$file" | sed -E 's|// *ERROR +"(.*)"|\1|')
-  return $missing
-}
-
 run_fixture() { # <file> <label> <extra bashy args...>
   local file="$1"; shift
   local label="$1"; shift
@@ -257,9 +238,26 @@ run_fixture() { # <file> <label> <extra bashy args...>
   TOTAL=$((TOTAL+1))
   printf '[%s] %-52s ' "$label" "$id"
 
+  # These fixtures already have numeric status and byte-stream contracts.
+  # In particular, their expected rejections must not be graded as plain run.
+  case "$id" in
+    tests/lowering/go-profile/*|tests/lowering/profile-additional/*)
+      if ruby "${TEST_DIR}/tools/lowering/check-interpreted.rb" "${BASHY_BIN}" "$file"; then
+        echo "PASS"; record pass "$id" "$feat"
+      else
+        echo "FAIL (manifest observation)"; record fail "$id" "$feat"
+      fi
+      return
+      ;;
+  esac
+
   out="$(mktemp)"; err="$(mktemp)"
   rc=0
-  "${BASHY_BIN}" "$@" "$file" >"$out" 2>"$err" || rc=$?
+  if [ "$id" = tests/typescript-workspaces/opencode.bpp ]; then
+    BASHY_BIN="${BASHY_BIN}" bash "${TEST_DIR}/tools/opencode-fixture.sh" "$file" >"$out" 2>"$err" || rc=$?
+  else
+    "${BASHY_BIN}" "$@" "$file" >"$out" 2>"$err" || rc=$?
+  fi
 
   local ok=0
   case "$action" in

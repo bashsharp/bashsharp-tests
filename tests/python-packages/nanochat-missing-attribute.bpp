@@ -1,3 +1,5 @@
+# errorcheck
+# ERROR "AttributeError:.*sprint183_missing_attribute"
 import python "nanochat.execution" as nano
 
 nano.sprint183_missing_attribute()

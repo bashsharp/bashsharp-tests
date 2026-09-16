@@ -79,7 +79,7 @@ run_native bun bun 'bun:bun:ready'
 
 # Use stdin from the package directory so unchanged package self-exports and
 # extensionless internal imports resolve in their real source context.
-got="$(cd "${OPENCODE_ROOT}/packages/opencode" && BASHPP_TYPESCRIPT_MODULE="$COMPILER" BASHPP_TYPESCRIPT_RUNTIME=bun BASHPP_BUN="$BASHPP_BUN" "$BASH" --bashpp <"${fixtures}/opencode.bpp")"
+got="$(OPENCODE_ROOT="$OPENCODE_ROOT" BASHY_BIN="$BASH" BASHPP_TYPESCRIPT_MODULE="$COMPILER" BASHPP_BUN="$BASHPP_BUN" bash "$here/opencode-fixture.sh" "${fixtures}/opencode.bpp")"
 [ "$got" = '/tmp/x.json|/tmp/x.jsonc' ] || fail "OpenCode API output was $(printf %q "$got")"
 version="$(cd "$OPENCODE_ROOT" && "$BASHPP_BUN" packages/opencode/src/index.ts --version)"
 [ "$version" = local ] || fail "OpenCode CLI version was $(printf %q "$version")"
