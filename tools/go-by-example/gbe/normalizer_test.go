@@ -246,6 +246,14 @@ func TestInterleaveOrder(t *testing.T) {
 // The pinned testing row reports runtime measurements, not expected values.
 // Cancel only the result-line clock; every observable test event stays exact.
 func TestGoTestDurationNormalization(t *testing.T) {
+	native := string(fixture(t, "testing-duration/native.stdout.txt"))
+	interpreted := string(fixture(t, "testing-duration/interpreted.stdout.txt"))
+	if native == interpreted {
+		t.Fatal("retained observations must demonstrate the elapsed-time difference")
+	}
+	if mustNormalize(t, native, []string{"duration"}, "stdout") != mustNormalize(t, interpreted, []string{"duration"}, "stdout") {
+		t.Fatal("retained native and interpreted events differ after normalization")
+	}
 	base := "=== RUN   TestExample\n=== RUN   TestExample/child\n--- PASS: TestExample (0.00s)\n    --- PASS: TestExample/child (0.00s)\nPASS\n"
 	want := mustNormalize(t, base, []string{"duration"}, "stdout")
 	measured := strings.ReplaceAll(base, "0.00s", "0.02s")
