@@ -39,7 +39,11 @@ func cmdEvidenceRunner(root string) int {
 	pin := firstDataRow(filepath.Join(root, "docs/tour/pin.tsv"))
 	version, inventorySHA := pin[1], pin[7]
 	tourRoot := envOr("TOUR_ROOT", filepath.Join(shellOutput(nil, "go", "env", "GOMODCACHE"), "golang.org/x/website@"+version))
-	tc := firstDataRow(filepath.Join(root, "docs/tour/toolchain.tsv"))
+	goos, goarch := hostGoosGoarch()
+	tc := evidenceToolchainRow(filepath.Join(root, "docs/tour/toolchain.tsv"), goos, goarch)
+	if tc == nil {
+		return abortf("FATAL: no pinned Go toolchain row for %s/%s in docs/tour/toolchain.tsv", goos, goarch)
+	}
 	goBin := filepath.Join(shellOutput(map[string]string{"GOTOOLCHAIN": tc[2]}, "go", "env", "GOROOT"), "bin/go")
 
 	inventory, _ := evidenceInventory(inventoryFile)

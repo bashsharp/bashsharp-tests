@@ -307,6 +307,15 @@ func hostGoosGoarch() (string, string) {
 	return goos, goarch
 }
 
+func evidenceToolchainRow(path, goos, goarch string) []string {
+	for _, row := range tsvRowsLoose(path) {
+		if field(row, 0) == goos && field(row, 1) == goarch {
+			return row
+		}
+	}
+	return nil
+}
+
 func overlayEnv(env map[string]string) []string {
 	merged := map[string]string{}
 	for _, kv := range os.Environ() {
