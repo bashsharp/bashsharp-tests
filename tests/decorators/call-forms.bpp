@@ -1,6 +1,6 @@
 #!/usr/bin/env bashy
 // run
-# bash++ profile: decorators · phase S197 · status: planned
+# bash++ profile: decorators · phase S197 · status: supported
 #
 # The call spelling is intentionally varied before otherwise ordinary Go-style
 # declarations: positional value, keyword argument, and an empty decorator

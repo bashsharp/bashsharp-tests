@@ -1,7 +1,7 @@
 #!/usr/bin/env bashy
 // errorcheck
 // ERROR "EDECO-SIG"
-# bash++ profile: decorators · phase S197 · status: planned
+# bash++ profile: decorators · phase S197 · status: supported
 #
 # dhnt: a function whose first parameter is not the predeclared *Call is
 # simply not a decorator — EDECO-SIG when per-call resolution finds it.

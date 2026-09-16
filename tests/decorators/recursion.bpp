@@ -1,5 +1,5 @@
 #!/usr/bin/env bashy
-# bash++ profile: decorators · phase S197 · status: planned
+# bash++ profile: decorators · phase S197 · status: supported
 #
 # Reference: Python recursion through a decorated name re-enters the wrapper
 # on every level, because the recursive call resolves through the rebound

@@ -1,5 +1,5 @@
 #!/usr/bin/env bashy
-# bash++ profile: decorators · phase S197 · status: planned
+# bash++ profile: decorators · phase S197 · status: supported
 #
 # Reference: CPython test_decorators.py test_order and the language-reference
 # equivalence @f1 @f2 def f ≡ f1(f2(f)) — the decorator nearest the

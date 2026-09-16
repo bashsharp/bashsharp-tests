@@ -1,7 +1,7 @@
 #!/usr/bin/env bashy
 // errorcheck
 // ERROR "EDECO-SELF"
-# bash++ profile: decorators · phase S197 · status: planned
+# bash++ profile: decorators · phase S197 · status: supported
 #
 # dhnt: self-decoration is rejected at REGISTRATION (EDECO-SELF), by rule and
 # independent of binding order. Python contrast: `@self` on `def self` fails

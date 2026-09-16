@@ -1,5 +1,5 @@
 #!/usr/bin/env bashy
-# bash++ profile: decorators · phase S197 · status: planned
+# bash++ profile: decorators · phase S197 · status: supported
 #
 # Reference: CPython test_decorators.py test_dbcheck — a failed precondition
 # prevents the body from running. dhnt difference: the guard skips by NOT

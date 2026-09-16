@@ -21,22 +21,22 @@ tests/00_superset_posix2016/01_posix_baseline.sh	planned	posix-baseline	P0	indep
 tests/01_syntax/01_decl_assign.bpp	planned	declarations	P1	topic: ../go/test/assign.go
 tests/03_concurrency/01_chan_select.bpp	planned	concurrency	P4	topic: ../go/test/chan/select.go
 tests/06_go126_features/01_clear_builtin.bpp	planned	builtins	G127	topic: ../go/test/clear.go
-tests/decorators/call-forms.bpp	planned	decorators	S197	story: 515da1278005
-tests/decorators/declaration-layout.bpp	planned	decorators	S197	story: 515da1278005
-tests/decorators/compound-bodies.bpp	planned	decorators	S197	story: 515da1278005
-tests/decorators/stack-order.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: CPython test_decorators.py test_order
-tests/decorators/arguments.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: CPython test_decorators.py test_argforms/test_eval_order
-tests/decorators/counting.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: CPython test_decorators.py countcalls
-tests/decorators/guard-skip.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: CPython test_decorators.py test_dbcheck
-tests/decorators/recursion.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: Python naming-and-binding recursion
-tests/decorators/shell-functions.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: design §2 FUNCNAME pin
-tests/decorators/undefined-timing.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: CPython test_decorators.py test_errors
-tests/decorators/self-decoration.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: EDECO-SELF registration timing
-tests/decorators/cycle.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: EDECO-CYCLE call timing
-tests/decorators/signature.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: EDECO-SIG non-*Call first parameter
-tests/decorators/dotted-reserved.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: CPython test_decorators.py test_dotted
+tests/decorators/call-forms.bpp	supported	decorators	S197	story: 515da1278005
+tests/decorators/declaration-layout.bpp	supported	decorators	S197	story: 515da1278005
+tests/decorators/compound-bodies.bpp	supported	decorators	S197	story: 515da1278005
+tests/decorators/stack-order.bpp	supported	decorators	S197	story: bb5ee9f84a12 · topic: CPython test_decorators.py test_order
+tests/decorators/arguments.bpp	supported	decorators	S197	story: bb5ee9f84a12 · topic: CPython test_decorators.py test_argforms/test_eval_order
+tests/decorators/counting.bpp	supported	decorators	S197	story: bb5ee9f84a12 · topic: CPython test_decorators.py countcalls
+tests/decorators/guard-skip.bpp	supported	decorators	S197	story: bb5ee9f84a12 · topic: CPython test_decorators.py test_dbcheck
+tests/decorators/recursion.bpp	supported	decorators	S197	story: bb5ee9f84a12 · topic: Python naming-and-binding recursion
+tests/decorators/shell-functions.bpp	supported	decorators	S197	story: bb5ee9f84a12 · topic: design §2 FUNCNAME pin
+tests/decorators/undefined-timing.bpp	supported	decorators	S197	story: bb5ee9f84a12 · topic: CPython test_decorators.py test_errors
+tests/decorators/self-decoration.bpp	supported	decorators	S197	story: bb5ee9f84a12 · topic: EDECO-SELF registration timing
+tests/decorators/cycle.bpp	supported	decorators	S197	story: bb5ee9f84a12 · topic: EDECO-CYCLE call timing
+tests/decorators/signature.bpp	supported	decorators	S197	story: bb5ee9f84a12 · topic: EDECO-SIG non-*Call first parameter
+tests/decorators/dotted-reserved.bpp	supported	decorators	S197	story: bb5ee9f84a12 · topic: CPython test_decorators.py test_dotted
 tests/decorators/near-miss-shell.bpp	supported	decorators	S197	story: bb5ee9f84a12 · topic: umbrella F2 never-claimed shapes
-tests/decorators/rewrite.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: typed argument/result rewriting
-tests/decorators/identity.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: typed object identity
-tests/decorators/lifecycle.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: defer/panic/recover lifecycle
-tests/decorators/indirect.bpp	planned	decorators	S197	story: bb5ee9f84a12 · topic: indirect typed callable route
+tests/decorators/rewrite.bpp	supported	decorators	S197	story: bb5ee9f84a12 · topic: typed argument/result rewriting
+tests/decorators/identity.bpp	supported	decorators	S197	story: bb5ee9f84a12 · topic: typed object identity
+tests/decorators/lifecycle.bpp	supported	decorators	S197	story: bb5ee9f84a12 · topic: defer/panic/recover lifecycle
+tests/decorators/indirect.bpp	supported	decorators	S197	story: bb5ee9f84a12 · topic: indirect typed callable route
