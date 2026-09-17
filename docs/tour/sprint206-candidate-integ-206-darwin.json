@@ -1,0 +1,28 @@
+{
+ "launcher_sha256": "454c25a8cfb70a45e2bcb4fe57f64e7726164ed1ec8b7e46f3c243f4b87930a4",
+ "payload_sha256": "17f3bba113d12f5d070306bce515b51ffd5b43592a028f62a250a72a2bf24cc6",
+ "frontend_version": "gosource-v1",
+ "build_recipe": "PATH=/bin:<go1.27.1 darwin-arm64 toolchain module>/bin:/usr/bin:/opt/homebrew/bin GOTOOLCHAIN=go1.27.1 GOMAXPROCS=4 GOFLAGS=-p=4 CI=true make build",
+ "repositories": [
+  {
+   "path": "<clean-clone-root>/bashy",
+   "commit": "88f7dbf1b0ce6a1244e4e4da8757373180c309d3"
+  },
+  {
+   "path": "<clean-clone-root>/sh",
+   "commit": "a83e6a3369024aa3f2b32127906a75983df299f1"
+  },
+  {
+   "path": "<clean-clone-root>/coreutils",
+   "commit": "20205973e13371fe6349bf499327433c561bbda4"
+  },
+  {
+   "path": "<clean-clone-root>/readline",
+   "commit": "b958823bd7075ed8b9a3aedd351422356a95fe79"
+  },
+  {
+   "path": "<clean-clone-root>/filebrowser",
+   "commit": "cde1146904add2d78d9846c71597520d34b17f7d"
+  }
+ ]
+}
