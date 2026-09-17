@@ -1,4 +1,4 @@
-# release	go1.27.0
+# release	go1.27.1
 # corpus_pin	docs/go-corpus/pin.tsv
 # tranche	docs/go-oracle/tranche-001.tsv
 # generated_by	tools/go-oracle/select-aux.sh

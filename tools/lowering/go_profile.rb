@@ -393,7 +393,7 @@ end
 
 TOOLCHAIN_TSV = 'docs/tour/toolchain.tsv'.freeze
 TOOLCHAIN_COLUMNS = 7
-PINNED_GO_VERSION = 'go1.27.0'.freeze
+PINNED_GO_VERSION = 'go1.27.1'.freeze
 
 # Authenticate the Go binary against the exact pinned row in docs/tour/toolchain.tsv:
 # exact version coordinate, exact `go version` identity string, and SHA-256 of
@@ -994,7 +994,7 @@ parser = OptionParser.new do |opts|
   opts.on('--case FILTER', 'exact case id or shell glob') { |value| options[:case_filter] = value }
   opts.on('--bashy PATH', 'bashy CLI providing `transpile --bashpp`') { |value| options[:bashy] = value }
   opts.on('--engine PATH', 'bash engine providing `--bashpp` interpretation') { |value| options[:engine] = value }
-  opts.on('--go PATH', 'pinned go1.27.0 binary') { |value| options[:go] = value }
+  opts.on('--go PATH', 'pinned go1.27.1 binary') { |value| options[:go] = value }
   opts.on('--sh-module PATH', 'local mvdan.cc/sh/v3 module directory') { |value| options[:sh_module] = value }
   opts.on('--fixture-root PATH') { |value| options[:fixture_root] = value }
   opts.on('--manifest PATH') { |value| options[:manifest] = value }

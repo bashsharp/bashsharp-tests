@@ -28,4 +28,4 @@
 #                      version` is a forgeable string and is not trusted for this.
 #
 # release	semantics_path	semantics_sha256	tranche	per_action	tranche_rows	actions	unsupported_actions	aux_inventory	toolchain_pin
-go1.27.0	src/cmd/internal/testdir/testdir_test.go	54900709a1fae5f469aa7bf59b22660f6fb9eb169e84f9c0d9760f0fe38444f4	docs/go-oracle/tranche-001.tsv	5	35	run,build,errorcheck,compile,compiledir,rundir,runoutput	asmcheck,builddir,buildrun,buildrundir,errorcheckandrundir,errorcheckdir,errorcheckoutput,errorcheckwithauto,runindir,skip	docs/go-oracle/aux-inventory.tsv	docs/go-oracle/toolchain.tsv
+go1.27.1	src/cmd/internal/testdir/testdir_test.go	54900709a1fae5f469aa7bf59b22660f6fb9eb169e84f9c0d9760f0fe38444f4	docs/go-oracle/tranche-001.tsv	5	35	run,build,errorcheck,compile,compiledir,rundir,runoutput	asmcheck,builddir,buildrun,buildrundir,errorcheckandrundir,errorcheckdir,errorcheckoutput,errorcheckwithauto,runindir,skip	docs/go-oracle/aux-inventory.tsv	docs/go-oracle/toolchain.tsv

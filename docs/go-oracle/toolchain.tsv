@@ -22,7 +22,7 @@
 # This layer is platform-independent, and it is the layer a shell stub cannot
 # satisfy: a fake `go` has no GOROOT carrying the pinned upstream sources.
 # ---------------------------------------------------------------------------
-goroot_probe	VERSION	964a484ac6011bfc2770d672c3ba1c466f64258fcb0441c8147adb1ac2ee3b30
+goroot_probe	VERSION	25eb74b09036e1ad894fb63b86cb0f0ee53342df8d2e2e860da4ff5079607758
 goroot_probe	go.env	98fcab78e155e9fa0c36b18874add30724d04c2452078117c78618107ebfbc9e
 goroot_probe	src/cmd/internal/testdir/testdir_test.go	54900709a1fae5f469aa7bf59b22660f6fb9eb169e84f9c0d9760f0fe38444f4
 goroot_probe	src/runtime/proc.go	40d15ce858cf058cff92606001a29ee1689db88c121a2f0c283163a0d64a7375
@@ -55,5 +55,5 @@ goroot_probe	src/go/build/build.go	a8b066521d73f2b1c1f01d65588483e416deeab9b2139
 # download the published archive, check its sha256 against go.dev/dl, and record
 # the sha256 of go/bin/go from inside it.
 # ---------------------------------------------------------------------------
-toolchain	go1.27.0	darwin	arm64	a19a71df81715c12d9a7e81bab036c12696fec1ddbd4258b48a2131a9080b267	go1.27.0.darwin-arm64.tar.gz	90493b3bbd5e10f91d12153198bf1994fd756399b4fec93b49b0c6e2acdeeb3e	golang.org/toolchain	v0.0.1-go1.27.0.darwin-arm64	h1:QFUhEu+WNZ4lGI/0ual1EOKBq/Z/df/cL75PkCW8m1k=
-toolchain	go1.27.0	linux	amd64	1db869c560a193573a71be466a34e0d4abb7792d78165c6102cdda069276a3a8	go1.27.0.linux-amd64.tar.gz	675c26c449cbb18fc24b74650de1eabbae6e16f64326fd85a283fb3b58280685	golang.org/toolchain	v0.0.1-go1.27.0.linux-amd64	h1:fVts2HjYwzBWrJtkf1B9HRDAuCZcZLexWI6ZX6Ls/IU=
+toolchain	go1.27.1	darwin	arm64	132b69336a1f809932a8a20b0201dbbb980e86e3a323ae32e893639d83d71598	go1.27.1.darwin-arm64.tar.gz	ee215d57e0ec269c60cc9ceca68e6bda321ba9ee5afe24f4b0988703c2d87d12	golang.org/toolchain	v0.0.1-go1.27.1.darwin-arm64	h1:51Yfd9AJPm34szJ1qdVX7+kqAGDd3vI9FzVuY7UqLfA=
+toolchain	go1.27.1	linux	amd64	30969f97169d7f43fe6a085873d75613adc21e30818a8c61d95bd27275df4624	go1.27.1.linux-amd64.tar.gz	63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445	golang.org/toolchain	v0.0.1-go1.27.1.linux-amd64	h1:MeqkXdYlyiVdqJXENOTyX7xd8QjDM/mxR52RKOFBS0M=

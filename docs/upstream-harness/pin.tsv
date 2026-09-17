@@ -1,5 +1,5 @@
 # key	sha256-or-value
-release	go1.27.0
+release	go1.27.1
 upstream_path	src/cmd/internal/testdir/testdir_test.go
 upstream_sha256	54900709a1fae5f469aa7bf59b22660f6fb9eb169e84f9c0d9760f0fe38444f4
 patch_sha256	f425729a52ca9e8e80f7c85ef188f93f7a94ab75bd6094990a842710fef9a277

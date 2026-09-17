@@ -120,7 +120,7 @@ type corpusObserver struct {
 
 func main() {
 	evidence := flag.String("evidence", "", "one corpus-gate.sh evidence directory")
-	expectRoots := flag.Int("expect-roots", 3651, "expected unique corpus root count")
+	expectRoots := flag.Int("expect-roots", 3653, "expected unique corpus root count")
 	expectSkips := flag.String("expect-skips", "", "sorted expected root IDs, one per line")
 	manifest := flag.String("manifest", "", "write or verify the sorted SHA-256 read manifest")
 	flag.Parse()
@@ -558,8 +558,8 @@ func (o *corpusObserver) checkRoots() {
 	if len(ids) != o.cfg.expectRoots {
 		o.violate("unique root count is %d, want %d", len(ids), o.cfg.expectRoots)
 	}
-	if o.cfg.expectRoots == 3651 {
-		want := map[string]int{"testdir": 2726, "typechecker": 899, "package": 26}
+	if o.cfg.expectRoots == 3653 {
+		want := map[string]int{"testdir": 2728, "typechecker": 899, "package": 26}
 		for _, runner := range corpusRunners {
 			got := 0
 			for _, id := range ids {

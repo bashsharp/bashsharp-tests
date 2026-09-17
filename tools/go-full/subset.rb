@@ -11,7 +11,7 @@ require ENV.fetch('GO_FULL_CORPUS_LIB', File.expand_path('../corpus/executor.rb'
 module GoFullSubset
   SCHEMA = 'go-full-root-subset/v1'
   CLAIM_SCOPE = 'selected-roots-only; no axis or corpus verdict'
-  OFFICIAL_ROOTS = 3495
+  OFFICIAL_ROOTS = 3497
   SHA256 = /\A[0-9a-f]{64}\z/
   NAME = /\A[a-z0-9][a-z0-9._-]{0,63}\z/
   KEYS = %w[schema name claim_scope expected_count root_ids root_ids_sha256 inventory_sha256 runner_sha256 candidate_sha256].freeze

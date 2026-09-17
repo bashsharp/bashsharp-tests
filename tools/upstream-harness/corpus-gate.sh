@@ -52,14 +52,14 @@ check_pin gotest_hook "$harness/testdata/go-backend/bashpp_backend.go"
 check_pin package_matrix "$package_matrix"
 
 go_tool=${GO127_TOOL:-go}
-if test -z "${GO127_TOOL:-}"; then export GOTOOLCHAIN=go1.27.0; fi
+if test -z "${GO127_TOOL:-}"; then export GOTOOLCHAIN=go1.27.1; fi
 go_version=$($go_tool version)
 case "$go_version" in
-	'go version go1.27.0 '*) ;;
+	'go version go1.27.1 '*) ;;
 	*) printf 'FAIL Go pin: %s\n' "$go_version" >&2; exit 1 ;;
 esac
 
-# Sprint 157 freezes the linux/amd64 Go 1.27.0 executable, not merely the
+# Sprint 157 freezes the linux/amd64 Go executable (go1.27.1 since Sprint 206), not merely the
 # version string. Darwin developers may explicitly skip this one check because
 # that Linux binary cannot run on Darwin; every other platform stays closed.
 go_binary=$go_tool
@@ -322,7 +322,7 @@ for mode in native interpreted compiled; do
 			>"$dir/testdir.go-test.json" 2>"$dir/testdir.stderr" || true
 	)
 	set -- $(test_leaf_counts "$dir/testdir.go-test.json")
-	printf 'testdir %s: %s terminals, %s non-PASS (inventory 2726)\n' "$mode" "$1" "$2"
+	printf 'testdir %s: %s terminals, %s non-PASS (inventory 2728)\n' "$mode" "$1" "$2"
 	if test "$mode" = native; then native_testdir=$1
 	elif test -n "$smoke"; then :
 	elif test -n "$roots" && test "$1" != "$want_testdir"; then seam_fail=1
@@ -418,8 +418,8 @@ if test -f "$harness/partition-emit.go"; then
 	else
 		printf 'typechecker product tally: %s roots; %s native-only (zero credit; listed in %s/native-only-typechecker.tsv)\n' "$product_types" "$native_only_types" "$manifest_out"
 		printf 'product tally: %s roots / %s native-applicable / %s SKIP; %s native-only (zero credit)\n' "$product_roots" "$native_applicable" "$product_skips" "$native_only"
-		if test -z "$smoke" && test -z "$roots" && { test "$product_types" != 743 || test "$native_only_types" != 156 || test "$product_roots" != 3495 || test "$native_applicable" != 3456 || test "$product_skips" != 39 || test "$native_only" != 156; }; then
-			printf 'FAIL full-corpus product tally: want typechecker 743 and 3495 / 3456 / 39 with 156 native-only\n' >&2
+		if test -z "$smoke" && test -z "$roots" && { test "$product_types" != 743 || test "$native_only_types" != 156 || test "$product_roots" != 3497 || test "$native_applicable" != 3458 || test "$product_skips" != 39 || test "$native_only" != 156; }; then
+			printf 'FAIL full-corpus product tally: want typechecker 743 and 3497 / 3458 / 39 with 156 native-only\n' >&2
 			seam_fail=1
 		fi
 		if test -n "$roots" && { test "$product_types" != "$want_types" || test "$native_only_types" != 0; }; then

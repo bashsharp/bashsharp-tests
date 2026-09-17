@@ -308,7 +308,7 @@ func (t *tamperSuite) phaseA(gateEnv []string) {
 	repo126 := t.copyRepo("repo126")
 	recandidate(repo126, func(f []string) {
 		f[6] = "go version go1.26.0 darwin/arm64"
-		f[7] = strings.ReplaceAll(f[7], "go1.27.0", "go1.26.0")
+		f[7] = strings.ReplaceAll(f[7], "go1.27.1", "go1.26.0")
 	})
 	t.expectFail("go126_candidate_pin_rejected", "is not the reviewed toolchain",
 		skip, nil, gateWrapper(repo126), "--candidate", CANDIDATE, "--bashy", BASHY)
@@ -316,7 +316,7 @@ func (t *tamperSuite) phaseA(gateEnv []string) {
 	// A default build is permitted when reviewed, but changing the reviewed
 	// recipe without changing its authenticated manifest remains a mismatch.
 	defaultCLI := t.copyRepo("default-cli-repo")
-	recandidate(defaultCLI, func(f []string) { f[7] = "GOTOOLCHAIN=go1.27.0 make build" })
+	recandidate(defaultCLI, func(f []string) { f[7] = "GOTOOLCHAIN=go1.27.1 make build" })
 	t.expectFail("mismatched_default_cli_build_recipe", "candidate manifest build_recipe differs from the reviewed table",
 		skip, nil, gateWrapper(defaultCLI), "--candidate", CANDIDATE, "--bashy", BASHY)
 
@@ -798,7 +798,7 @@ func (t *tamperSuite) phaseB() {
 	t.expectFail("evidence_bound_to_other_launcher", "candidate launcher_sha256 is not the repository-reviewed value", nil, nil, run(PROD, d)...)
 	d = candidateEdit("other-payload", "payload_sha256", strings.Repeat("b", 64))
 	t.expectFail("evidence_bound_to_other_payload", "candidate payload_sha256 is not the repository-reviewed value", nil, nil, run(PROD, d)...)
-	d = candidateEdit("default-cli-evidence", "build_recipe", "GOTOOLCHAIN=go1.27.0 make build")
+	d = candidateEdit("default-cli-evidence", "build_recipe", "GOTOOLCHAIN=go1.27.1 make build")
 	t.expectFail("evidence_bound_to_default_cli", "candidate build_recipe is not the repository-reviewed value", nil, nil, run(PROD, d)...)
 	d = mutate("dropped-dependency", func(rows []*Object) {
 		c := first(rows).Obj("candidate")

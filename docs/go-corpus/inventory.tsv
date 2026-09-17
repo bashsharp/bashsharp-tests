@@ -1,6 +1,6 @@
-# release	go1.27.0
-# source	https://go.dev/dl/go1.27.0.src.tar.gz
-# source_sha256	7002403d7cc44529ef6d26f69a44818263395ead7c16c05a5808ae047ebeb0e5
+# release	go1.27.1
+# source	https://go.dev/dl/go1.27.1.src.tar.gz
+# source_sha256	4e408abae126d916b6164627193f2c54f0e3ca1312d693b86db45f862ab238b1
 # license	BSD-3-Clause
 # generated_by	tools/go-corpus/refresh.sh
 # path	action	bytes	sha256
@@ -135,7 +135,7 @@ test/codegen/constants.go	none	1283	50660c69957ffb4697f9dc4dbba687b81da5c319bad2
 test/codegen/copy.go	none	3288	6591ba0f1d6065f4261f74a0273a4c77ad76a4ede09fa5ae5a56818c0465eb7c
 test/codegen/deadstore.go	none	660	7e02e7ff53e66ab1adbba6d8bd1c26dd866773121d33a0d34ead3424fca1618e
 test/codegen/divmod.go	none	26203	08e7fe1ea30f32c965681ad93bf81778eee9e1562b359c992d30b99e847ae284
-test/codegen/floats.go	none	8613	da51deb3660ae59878dc9a4c8846a2821f4700f26cea62e4926d32d14ffff4e1
+test/codegen/floats.go	none	8769	2ae3f10103dbd0f3de2b063bea78d62f7693bb5109aef166d796f8628bcc7835
 test/codegen/fuse.go	none	9738	1e2fe35abf92c71db3d96e9963b2d299ce1441f11dd070f1f3a1d0f4e872790a
 test/codegen/generics.go	none	579	e7e072d5a109dc44af5a0db15e4c28b8aeba97ff1433dc78d59fa69aed2d021a
 test/codegen/ifaces.go	none	1200	15b2a2408043b480aee05c98b15b204547fd48a6d33300674a8b628d2483db9c
@@ -2552,6 +2552,8 @@ test/fixedbugs/issue8073.go	compile	318	573d15e91460fe0e413cb4473b92cbda4a2a0600
 test/fixedbugs/issue8074.go	compile	330	3c9ee04aace68c19f94e7eb0bd17e468f0fca65715c315ed6b622fab9684ea99
 test/fixedbugs/issue8076.go	compile	342	334fbfa10d068d810ff78930ced3f71ea613ba7211c389e264fb0224dbfc6993
 test/fixedbugs/issue8079.go	compile	279	97e0601f3838cc934c1b5a9a04a18ea8e0e1a77ab8d57a75ae6123b466a5a1a7
+test/fixedbugs/issue80976.go	run	545	39abb2fb28daafd203da9bbac28f65c090030462dc3d392aa06b48367bc7b979
+test/fixedbugs/issue81165.go	build	473	6d1d4da4441c2bfdc253973d40621bb4d034b99a57417a00c850c6c8f32c672f
 test/fixedbugs/issue8132.go	run	534	95f5bd82b375eb1582b4b6b2602dacbbe38e0fdb9b85f3887a514f19c34bc876
 test/fixedbugs/issue8139.go	run	800	6b3468bb02699bbac0287887eab820afe478bf83544a538232b6c09876be7002
 test/fixedbugs/issue8154.go	compile	313	1f1af1f90126e76afbb0932d237f485a8bb15587bf7e19055cea9f0463f5fdea
