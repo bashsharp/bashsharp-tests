@@ -1,217 +1,95 @@
-# bashpp-tests — Go 1.27 profile & POSIX 1003.1-2016 conformance suite for Bash++
+# bashsharp-tests — the conformance gate for Bash#
 
-This suite implements **Test-Driven Development (TDD)** for **Bash++** in `bashy`, maintaining the enumerated **Go 1.27 profile** against official Go tests (`../go/test/`), **POSIX 1003.1-2016 (IEEE Std 1003.1-2016 / VSC-PCTS2016)**, and **GNU Bash 5.3**.
+This repo decides what [Bash#](https://github.com/qiangli/bashsharp) may
+claim. It is **TDD-first and red on purpose** where the language is not
+finished: a test that fails here is a target with an owner, not a bug in the
+suite. A claim about Bash# that is not a result from this repo is not a claim
+— the numbers are kept, with their corpora, in
+[bashsharp/docs/claims.md](https://github.com/qiangli/bashsharp/blob/main/docs/claims.md).
 
-> **Headline goal:** validate `bashy`'s `bash++` extensions against the
-> **enumerated `go1.27-profile-v1`** — the Go-1.27-shaped constructs the design
-> of record actually claims — alongside the GNU Bash 5.3 gate and the POSIX
-> 1003.1-2016 baseline.
->
-> **Not** "Go 1.26 compliant/conformant", which this file used to say. Go 1.27
-> is an upstream *language coordinate*, not a promise to accept arbitrary Go
-> source: `package`, `goto` and labels are permanent shell fallback, and every
-> other construct is delivered by a named phase. The claim is the profile, and
-> the profile is enumerated in
-> `../docs/bashpp-posix-superset-syntax.md` §Committed Start Sites.
+> Renamed from `bashpp-tests` on 2026-09-18 with the language. Harness
+> internals keep their `BASHPP_*` spellings; the tests are the same tests.
 
----
+## What is measured, and by what
 
-## 2-Tier Test Scope & Coverage Matrix
-
-To maximize language fidelity while avoiding irrelevant host runtime internals, the suite adopts a 2-tier scope strategy:
-
-| Tier | Source Directory | Included Scope | Purpose & Rationale |
+| lane | corpus | tool | what PASS means |
 |---|---|---|---|
-| **Tier 1 (Mandatory)** | **`../go/test/`** | Language-spec corpus — see the denominator note below | `for`, `if`, `switch`, `range`, `defer`, `struct`, `map`, `slice`, `interface`, generics, `go f(x)`, `chan`, `select`, `clear()`, `:=`. Scope is the enumerated `go1.27-profile-v1`, not the whole language. |
-| **Tier 2 (Selective)** | **`../go/src/`** | **Exposed Utility Packages** (~150 `*_test.go` files) | Validates standard library utility packages exposed to `bash++` scripts via builtins & the Go bridge: `encoding/json`, `strings`, `bytes`, `sync`, `math`, `time`. |
-| **Excluded** | **`../go/src/`** | Internal compiler & host OS runtime (`runtime`, `syscall`, `cmd/compile`, assembly) | Internal Go host implementation details not surfaceable to shell scripts. |
+| **Classic — GNU Bash 5.3** | Bash's own test suite, every runnable fixture (86) | `tools/classic-gate.sh` (runs `bashy`'s `make test-bash` with the dialect OFF and ON) | OFF 86/86; ON 79 + 7 (the seven name a shell function `func`; listed) |
+| **Classic — POSIX** | the POSIX baseline fixtures under `tests/00_superset_posix2016/`, plus the licensed VSC shell arm and yash's POSIX suite run from the bashy repo | `tests/`, `bashy/scripts/yash-posix-suite.sh` | the dialect is inert under `--posix` |
+| **Go corpus** | the upstream Go 1.27.1 test corpus: 3,497 roots (`test/` dir roots, typechecker roots, package roots), pinned by SHA with the exact upstream runners | `tools/upstream-harness/barrier-run.sh` (≈ 100 min); `barrier-byid.py` compares two runs by root ID | the native Go oracle passes **and** both Bash# modes — interpreted (`--source=go`) and lowered-then-compiled — reproduce it; native PASS alone earns nothing |
+| **Go Tour · Go by Example** | all 291 / 255 programs, pinned upstream sources committed verbatim under `tour/` and `tests/go-by-example/` | `tools/tour/`, `tools/go-by-example/` | same dual-mode rule |
+| **Sharp tier** | keyword/default arguments, exhaustive enums, deep `readonly`, null-safety | `tools/bashsharp/acceptance.sh` over `tests/bashsharp/*/cases.tsv` | exact transcript + status, interpreted; lowering parity in `lowering.tsv`; a near-miss must behave exactly as plain bash |
+| **Decorators · contracts · agentic** | `tests/decorators/`, `tests/agentic/` (+ `bashy/test/contracts/`) | `tools/decorators/`, `tools/agentic/` | exact transcript + status; the yield status 6 is asserted, never inferred |
+| **Polyglot islands** | python · typescript · rust · c/c++ · go · bash/sh fixtures | `tools/polyglot-gate.sh`, `tools/python-package-gate.sh`, `tools/sprint184-typescript-gate.sh` | callables with typed values crossing the boundary, on the host's toolchain |
+| **Lowering** | `tests/lowering/` | `tools/lowering/` | interpreted and compiled outputs byte-identical |
 
----
+Fixture status is declared, never inferred: `tests/manifest.tsv` marks each
+adapted fixture `supported` or `planned`, and a `planned` fixture is expected
+to fail. The Go corpus inventory is a pinned, checksum-verified denominator
+(`tools/go-corpus/refresh.sh` to refresh, `tools/go-corpus/validate.sh` on
+every run); `docs/upstream-harness/` holds every barrier record.
 
-## TDD Workflow & Cycle (Red → Green → Refactor)
+## The current standing
 
-1. **🔴 Red Phase (Write 1:1 Test First):**
-   - Add 1:1 adapted test fixtures from `../go/test/` directly into `bashpp-tests/tests/`.
-   - Action headers (`// run`, `// errorcheck`, `// build`) are parsed automatically by `harness/run.sh`.
-   - Run `harness/run.sh` to confirm expected test failure for unimplemented Go features.
+From the last full barrier (go1.27.1, 2026-09-17), copied — never edited —
+from `bashsharp/docs/go-corpus-state-2026-09-17.md`:
 
-2. **🟢 Green Phase (Implement Engine Support):**
-   - Implement syntax tokens in `sh/syntax` (`LangBashPP`), type evaluation in `sh/expand` (`Object`), and goroutines/channels in `sh/interp`.
-   - Pass tests in both interpreted mode (`bashy --bashpp`) and transpiled mode (`bashy transpile -> go build`).
+- Go corpus: **2,827 PASS · 631 FAIL · 39 SKIP** of 3,497 roots (3,458 applicable).
+- Of the 631: **296 repair** (a defect with a first cause — see *Contributing*),
+  6 review, 71 blocked-design (needs a design, never excluded), 258 excluded
+  (not achievable by an interpreter; each listed with its reason).
+- Bash 5.3 OFF 86/86, ON 79 + 7; Go by Example 255/255; Tour 291/291 on the same revisions.
 
-3. **🔵 Refactor Phase:**
-   - Optimize AST evaluation, channel synchronization, and memory allocations while keeping the full test suite green.
+Whole-corpus 3,497/3,497 will not be claimed.
 
----
+## Running it
 
-## 5-Layer Testing Architecture
+```sh
+# the gate that says whether a change broke Bash 5.3 (needs a built bashy next door)
+tools/classic-gate.sh --bashy ../bashy --sh ../sh --coreutils ../coreutils --out /tmp/classic
 
-```text
-┌────────────────────────────────────────────────────────────────────────┐
-│                   Layer 1: Measured Superset Gate                       │
-│  Assert zero regressions on GNU Bash 5.3 (86/86) & POSIX 1003.1-2016  │
-│  with bashy --bashpp and bashy --posix --bashpp                       │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │
-┌───────────────────────────────────▼────────────────────────────────────┐
-│              Layer 2: Dual-Mode Execution Verification                 │
-│   Byte-identical output: Interpreted (bashy) vs Transpiled (go build) │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │
-┌───────────────────────────────────▼────────────────────────────────────┐
-│               Layer 3: Go 1.27 Profile Conformance                     │
-│   1:1 Parity with ../go/test/ (for, chan, select, defer, clear, etc.) │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │
-┌───────────────────────────────────▼────────────────────────────────────┐
-│               Layer 4: Auto-JSON OS Boundary Verification              │
-│   Native Go objects <--> JSON auto-serialization across pipes/binaries │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │
-┌───────────────────────────────────▼────────────────────────────────────┐
-│            Layer 5: Compiler Diagnostics & Negative Checks             │
-│   1:1 // errorcheck validation for unassignable/invalid Go constructs  │
-└────────────────────────────────────────────────────────────────────────┘
+# the Sharp tier, decorators, polyglot lanes
+tools/bashsharp/acceptance.sh
+tools/polyglot-gate.sh
+
+# the full Go corpus replay (≈ 100 min; a refactor is green only when its barrier equals the previous one BY ID)
+tools/upstream-harness/barrier-run.sh
+tools/upstream-harness/barrier-byid.py <previous> <this>
 ```
 
----
+The harness resolves the binary under test through `BASHPP_TOOL` (default:
+`bashsharp`'s `cmd/bashsharp`, the front door over the engine alone); the
+classic lanes measure the built `bashy` / `bash`. Everything assumes the
+flat-sibling checkout (`../bashy`, `../bashsharp`, `../sh`, `../coreutils`,
+`../yoke`).
 
-## Key References
+## Contributing
 
-- [**`TDD_PLAN.md`**](TDD_PLAN.md): Detailed TDD methodology, 1:1 test parity plan, and tiering matrix.
-- [**`PLAN.md`**](PLAN.md): Conformance architecture and dual-mode runner specification.
-- [**`harness/run.sh`**](harness/run.sh): Master test runner script.
+The 296 *repair* roots are the on-ramp: each is a Go program the upstream
+oracle passes and Bash# does not, with a first cause and an owner class in
+[go-corpus-targets.md](https://github.com/qiangli/bashsharp/blob/main/docs/go-corpus-targets.md)
+(`.tsv` beside it). Pick one, run it under `bashsharp --source=go`, compare
+with the oracle, fix it in `sh/interp` (interpreted) or `sh/lower`
+(compiled), add or un-`planned` its fixture, and re-run the lane. A fix that
+makes a root pass in one mode only is not done; a fix that regresses the
+classic gate is not accepted.
 
-## Spelling: exact Go, no substitutes
+Spelling is exact Go: `go f(x)`, `defer f(x)`, `x, err := f()`,
+`make(chan T, n)`, `select { … }`. No substitutes.
 
-Constructs are written in **exact Go**. `go f(x)`, not `go routine { … }`;
-`defer f(x)`; `x, err := f()`; `make(chan T, n)`; `select { … }`. The two-word
-and builtin-style forms an earlier draft of this suite used —
-`go routine`, `gather`, `call` — were **abolished** by the L4 addendum in
-`../docs/bashpp-posix-superset-syntax.md`, which is the design of record.
+## History
 
-The reason is now measured rather than argued: `go build ./...` **parses** in
-bash 5.3 while `go worker(a, b)` is **already a syntax error**, so the collision
-the two-word form was invented to avoid is resolved by the parens. See
-`tools/startsites/` for the derivation.
+The suite's earlier front page — the TDD plan, the 2-tier scope, the
+Sprint 98 denominator work and the first Go oracle — is preserved as
+[docs/README-history-2026-09-18.md](docs/README-history-2026-09-18.md);
+`PLAN.md` and `TDD_PLAN.md` are the original method documents.
 
+## License
 
-## The Tier-1 denominator is currently unverifiable
-
-This suite used to claim a Tier-1 corpus of **3,404 `.go` files** under
-`../go/test/`. That was an unverifiable provenance number. Sprint 98 pins the
-first bounded official corpus slice to **Go 1.27.0 source** and records a
-machine-readable `go/test/**/*.go` inventory in
-[`docs/go-corpus/inventory.tsv`](docs/go-corpus/inventory.tsv). The derived
-fail-closed denominator for that release is **3,398 `.go` files**.
-
-Recorded rather than quietly dropped, because a denominator nobody can check is
-the exact shape of a number that drifts into being quoted as fact. The honest
-workflow is now:
-
-- `tools/go-corpus/refresh.sh` is the explicit networked refresh step. It
-  downloads the pinned Go source archive, verifies the published SHA-256,
-  regenerates the inventory, and validates it against the extracted tree.
-- `tools/go-corpus/validate.sh` is the normal offline gate. It checks the
-  checked-in pin and inventory on every harness run and fails closed on a
-  missing, duplicate, malformed, or count-changing row.
-
-The inventory is provenance and a denominator, not a parity claim. Adapted
-fixtures still declare `supported` or `planned` in `tests/manifest.tsv`; no
-unimplemented upstream test is counted as passing merely because it appears in
-the official corpus inventory.
-
-Sprint 98 Story #1 also pins the official go.dev/tour source — the
-`golang.org/x/website` module at version
-`v0.0.0-20260903033311-c4a9d59f9775` (commit
-`c4a9d59f9775d994f1700d18fa37414c3c85fa7b`, acquired via
-`go install golang.org/x/website/tour@v0.0.0-20260903033311-c4a9d59f9775`).
-Lesson assets are the programs embedded from `_content/tour`. The tour
-denominator is recorded separately under `docs/tour`, `tests/tour`, and
-`tools/tour` to avoid mixing it with the Go corpus files owned by run #2.
-The executable denominator itself — the 97 `.go` programs the oracle can
-build (93 also run) — plus the upstream BSD-3-Clause LICENSE are committed
-verbatim at upstream paths under `tour/`, pinned by
-`docs/tour/corpus.tsv` and checked byte-exact against the inventory on every
-harness run by `tools/tour/validate-corpus.sh`, so the corpus no longer
-depends on a per-host module cache to exist.
-The fail-closed inventory contains **168 rows**: 106 `.go` programs (lesson
-`.play` programs, exercise solutions, and the UI-served sandbox) plus 62
-inline lesson-prose blocks from the seven `.article` files, classified
-against the upstream `content_test.go` oracle semantics. Applicability is
-classified only against the standing Sprint 98 exceptions in
-`docs/tour/standing-exceptions.tsv`, and the tour differential schema names
-pinned Go, Bash++ interpreted mode, and Bash++ compiled mode explicitly.
-`PLANNED` is intentionally invalid in this inventory.
-
-## The Go oracle now actually runs
-
-Pinning an inventory answers "what is in the corpus". It does not answer "what
-does the corpus do", and the previous slice could not: it read each file's
-`// run` / `// errorcheck` / `// compile` header and stopped there. A contract
-like that derives every number it reports from the same row it is supposed to be
-checking, so a green run and an empty run look identical from the outside.
-
-`tools/go-oracle` closes that. It executes a reviewed, bounded tranche of the
-pinned Go 1.27.0 corpus with the pinned Go 1.27.0 toolchain, following the
-semantics of upstream's own runner (`src/cmd/internal/testdir/testdir_test.go`,
-historically `test/run.go`), and writes one machine-readable record per file
-carrying the command, exit code, duration, action and artifact. Tranche 1 is 35
-files, five each across **run, build, errorcheck, compile, compiledir, rundir and
-runoutput** — the seven actions this slice commits to executing rather than
-classifying.
-
-Four things this is **not**:
-
-- It is not a Bash++ result. It is the left-hand side of the differential method
-  described in [`tests/_oracles/README.md`](tests/_oracles/README.md): the
-  trusted Go behaviour that a bash++ form will later be compared against. No
-  parity is claimed by this slice.
-- It is not the whole corpus. The tranche is 35 of 3,398 files, and the
-  denominator reported is the tranche, never the corpus.
-- **It is not upstream's runner.** Seven of upstream's seventeen actions are
-  executed. The other ten — `asmcheck`, `builddir`, `buildrun`, `buildrundir`,
-  `errorcheckandrundir`, `errorcheckdir`, `errorcheckoutput`,
-  `errorcheckwithauto`, `runindir`, `skip` — are enumerated with their reasons in
-  `docs/go-oracle/pin.tsv`, printed by the runner, and published in every result
-  summary. The seven-plus-ten split is re-derived from the pinned upstream source
-  on every run, so a new upstream action cannot slip in unclassified.
-- It is not an adapter-limitations exercise. Nothing here is marked N/A; the
-  seven actions are executed, and an unimplemented upstream action is a fatal
-  error naming the action and the reason rather than a shrug.
-
-Three things it now checks that a metadata-shaped driver cannot:
-
-- **Artifacts are asserted, not just measured.** Every compile, link and build
-  step declares what it must produce and is checked for it: existence, regular
-  file, the right kind (Go object archive / native executable / Go source), and
-  non-empty. A toolchain that exits 0 and writes a zero-byte object fails.
-- **Every consumed byte is pinned.** The corpus inventory covers `*.go`;
-  `docs/go-oracle/aux-inventory.tsv` covers the `.out` sidecars and the `.dir`
-  manifests, *including the sidecars upstream deliberately does not ship* —
-  "absent" is an assertion, because no `.out` means the output must be empty.
-- **The toolchain is identified by checksum, not by `go version`.** That string
-  is forgeable — this suite's own mutation tests forge it. The gate instead
-  requires the pinned upstream sources inside the candidate's own GOROOT and a
-  `go` binary whose SHA-256 matches the reviewed distribution digest, recorded
-  next to both its go.dev/dl archive checksum and its `sum.golang.org`-attested
-  module hash.
-
-The driver fails closed when the record count does not equal the tranche, when no
-file executed a command, and when no command was spawned at all — and every fatal
-path still writes a machine-readable summary carrying the executed and failed
-counts reached so far. See [`docs/go-oracle/README.md`](docs/go-oracle/README.md)
-for the semantics table, the selection rule and the result schema.
-
-Sprint 98 Story #5 supersedes the rejected weave 6 with **runner
-infrastructure, not parity evidence**: `tools/tour/run-baseline.sh` executes
-the pinned-Go baseline for the 93 applicable and 4 build-only rows under an
-exactly pinned Go 1.27 toolchain (full identity + binary checksum in
-`docs/tour/toolchain.tsv`) with the official `golang.org/x/tour` helper
-module pinned in `docs/tour/helpers.tsv`, bounded process-tree cleanup,
-strict-UTF-8 stream capture (invalid bytes are rejected, never replaced),
-and per-row records in `tests/tour/results.tsv` bound by
-`docs/tour/baseline-pin.tsv`. `tools/tour/validate-results.sh` re-proves
-those records offline on every harness run, and
-`tools/tour/tamper-tests.sh` proves the gates fail closed under tampering.
-The Bash++ differential modes remain declared but unexecuted.
+The harness, tools and fixtures written here are BSD-3-Clause ([LICENSE](LICENSE)).
+Upstream material keeps its own license: the Go test corpus is fetched from
+the pinned Go source archive at run time (`tools/go-corpus/refresh.sh`
+refuses an archive without its LICENSE) rather than committed; the Go Tour
+programs are committed verbatim under `tour/` with upstream's
+[LICENSE](tour/LICENSE); the Go by Example fixtures are adapted from
+gobyexample.com and attributed in `docs/go-by-example/README.md`.
