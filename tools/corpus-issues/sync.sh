@@ -81,9 +81,14 @@ This is one of the *repair* roots in the Go-corpus target catalog — a program 
 EOB
 )
   if [ "$dry" = 1 ]; then echo "would create: $title"; created=$((created+1)); continue; fi
-  url=$(gh issue create -R "$repo" --title "$title" --body "$body" --label corpus-repair --label "good first issue" --label "area:$area" 2>&1 | tail -1)
-  echo "created: $url"
-  created=$((created+1)); sleep 3
+  if ! url=$(gh issue create -R "$repo" --title "$title" --body "$body" --label corpus-repair --label "good first issue" --label "area:$area" 2>&1); then
+    case "$url" in
+      *"secondary rate limit"*) echo "sync: GitHub's content-creation limit — stopping; re-run later (idempotent). created=$created" >&2; exit 3 ;;
+      *) echo "sync: create failed for $root: $url" >&2; exit 1 ;;
+    esac
+  fi
+  echo "created: $(printf '%s' "$url" | tail -1)"
+  created=$((created+1)); sleep 6      # GitHub's content-creation secondary limit bites at ~1 issue every few seconds
 done < <(tail -n +2 "$catalog" | awk -F'\t' 'BEGIN{OFS="\x1f"}{$1=$1; print}')
 
 # roots that left the repair class: close their issues
