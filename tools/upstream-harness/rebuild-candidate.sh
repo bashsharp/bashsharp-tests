@@ -2,13 +2,16 @@
 # Sprint: #162; Story: S162.0; Story-ID: cda64bde8fea
 #
 # rebuild-candidate.sh — build one named Bash++ candidate (bashy.real over a
-# chosen sh / coreutils / bashy commit set) on a leaf or certification host,
-# WITHOUT touching the base trees. Every candidate lives in its own flat
-# sibling set so bashy's `../sh` / `../coreutils` / `../readline` /
+# chosen sh / coreutils / yoke / bashy commit set) on a leaf or certification
+# host, WITHOUT touching the base trees. Every candidate lives in its own flat
+# sibling set so bashy's `../sh` / `../coreutils` / `../yoke` / `../readline` /
 # `../filebrowser` replaces resolve inside it, and several candidates coexist.
+# (yoke is the agentic userland split out of coreutils in Sprint 208; a base
+# tree at $LEAF_BASE/base/yoke is required from that sprint on.)
 #
 #   usage: rebuild-candidate.sh <name> [--sh <ref>] [--sh-bundle <file>]
 #                                      [--coreutils <ref>] [--coreutils-bundle <file>]
+#                                      [--yoke <ref>] [--yoke-bundle <file>]
 #                                      [--bashy <ref>] [--bashy-bundle <file>]
 #
 #   env:   LEAF_BASE  root of this host's sprint tree (default /srv/sprint162);
@@ -19,21 +22,23 @@
 # (a sha, a branch, a tag); a bundle is fetched into the candidate's clone
 # first, so a worker can ship an unpushed branch as `git bundle create`.
 # Output: $LEAF_BASE/candidates/<name>/bashy/bin/bashy.real and
-# $LEAF_BASE/candidates/<name>/candidate.txt (the six shas + the binary digest).
+# $LEAF_BASE/candidates/<name>/candidate.txt (the seven shas + the binary digest).
 set -eu
 
 base=${LEAF_BASE:-/srv/sprint162}
 sdk=${LEAF_SDK:-/srv/sprint142}
 name=${1:?usage: rebuild-candidate.sh <name> [--sh <ref>] [--sh-bundle <file>] ...}
 shift
-declare -A ref=([sh]= [coreutils]= [bashy]=)
-declare -A bundle=([sh]= [coreutils]= [bashy]=)
+declare -A ref=([sh]= [coreutils]= [yoke]= [bashy]=)
+declare -A bundle=([sh]= [coreutils]= [yoke]= [bashy]=)
 while test $# -gt 0; do
 	case $1 in
 	--sh) ref[sh]=$2; shift 2 ;;
 	--sh-bundle) bundle[sh]=$2; shift 2 ;;
 	--coreutils) ref[coreutils]=$2; shift 2 ;;
 	--coreutils-bundle) bundle[coreutils]=$2; shift 2 ;;
+	--yoke) ref[yoke]=$2; shift 2 ;;
+	--yoke-bundle) bundle[yoke]=$2; shift 2 ;;
 	--bashy) ref[bashy]=$2; shift 2 ;;
 	--bashy-bundle) bundle[bashy]=$2; shift 2 ;;
 	*) printf 'rebuild-candidate: unknown argument %s\n' "$1" >&2; exit 2 ;;
@@ -43,7 +48,7 @@ case $name in */* | . | ..) printf 'rebuild-candidate: bad name %s\n' "$name" >&
 
 cand=$base/candidates/$name
 mkdir -p "$base/candidates"
-for r in bashy sh coreutils readline filebrowser; do
+for r in bashy sh coreutils yoke readline filebrowser; do
 	test -d "$base/base/$r/.git" || { printf 'rebuild-candidate: base tree missing: %s\n' "$base/base/$r" >&2; exit 1; }
 	if ! test -d "$cand/$r/.git"; then
 		git clone -q "$base/base/$r" "$cand/$r"
@@ -77,7 +82,7 @@ mkdir -p bin
 eval "$cmd"
 {
 	printf 'candidate=%s built=%s\n' "$name" "$(date -u +%FT%TZ)"
-	for r in bashy sh coreutils readline filebrowser; do
+	for r in bashy sh coreutils yoke readline filebrowser; do
 		printf '%-12s %s\n' "$r" "$(git -C "$cand/$r" rev-parse HEAD)"
 	done
 	printf 'go           %s\n' "$(sha256sum "$sdk/authenticated-sdk/bin/go" | cut -c1-64)"
