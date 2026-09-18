@@ -6,7 +6,8 @@ set -euo pipefail
 repo=${CORPUS_ISSUES_REPO:-qiangli/bashsharp-tests}
 out=${1:-$(dirname "$0")/../../docs/leaderboard.md}
 open=$(gh issue list -R "$repo" --label corpus-repair --state open --limit 1000 --json number --jq 'length')
-closed_json=$(gh issue list -R "$repo" --label corpus-repair --state closed --limit 1000 --json number,closedAt,title,assignees,url)
+# only issues closed as COMPLETED count as fixed roots; duplicates are closed "not planned"
+closed_json=$(gh issue list -R "$repo" --label corpus-repair --state closed --limit 1000 --json number,closedAt,title,assignees,url,stateReason --jq '[.[] | select(.stateReason=="COMPLETED")]')
 closed=$(printf '%s' "$closed_json" | jq 'length')
 # credit: PRs that reference the issue ("#N") and were merged; else the assignee
 credit=$(gh pr list -R "$repo" --state merged --limit 1000 --json number,author,body,title --jq '.[] | "\(.author.login)\t\(.title) \(.body)"' 2>/dev/null | awk -F'\t' '{ n=split($2, w, /[^0-9#]+/); for (i=1;i<=n;i++) if (w[i] ~ /^#[0-9]+$/) print $1 }' | sort | uniq -c | sort -rn)
