@@ -100,7 +100,8 @@ test -n "${GO_CORPUS_ROOT:-}" && test -d "$GO_CORPUS_ROOT/test" || {
 test_root="$GO_CORPUS_ROOT/test"
 
 bashpp_tool=${BASHPP_TOOL:-}
-if test -z "$bashpp_tool"; then bashpp_tool=$(command -v bashy || true); fi
+# The language's own binary (Sprint 211, cmd/bashpp) is what the corpus measures; bashy is the fallback front.
+if test -z "$bashpp_tool"; then bashpp_tool=$(command -v bashpp || command -v bashy || true); fi
 test -x "$bashpp_tool" || { printf 'FAIL pinned Bash++ tool is unavailable: %s\n' "$bashpp_tool" >&2; exit 1; }
 bashpp_version=$($bashpp_tool --version)
 test "$bashpp_version" = "$(pin_value bashpp_version)" || {

@@ -42,10 +42,14 @@ elif test -n "$harness"; then
 	git -C "$dir/bashpp-tests" rev-parse -q --verify "$harness^{commit}" >/dev/null 2>&1 || git -C "$dir/bashpp-tests" fetch -q origin
 	git -C "$dir/bashpp-tests" checkout -q --detach "$harness" || exit 1
 fi
+# The candidate is measured through the language's own binary (bashpp, Sprint
+# 211) when the rebuild produced one; bashy.real is the fallback front.
 if test -n "$cand"; then
-	tool=$base/candidates/$cand/bashy/bin/bashy.real; shrt=$base/candidates/$cand/sh
+	tool=$base/candidates/$cand/bashpp/bin/bashpp; shrt=$base/candidates/$cand/sh
+	test -x "$tool" || tool=$base/candidates/$cand/bashy/bin/bashy.real
 else
-	tool=$base/base/bashy/bin/bashy.real; shrt=$base/base/sh
+	tool=$base/base/bashpp/bin/bashpp; shrt=$base/base/sh
+	test -x "$tool" || tool=$base/base/bashy/bin/bashy.real
 fi
 test -x "$tool" || { printf 'barrier-run: candidate binary missing: %s\n' "$tool" >&2; exit 1; }
 if test -n "$cand"; then

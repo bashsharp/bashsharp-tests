@@ -39,7 +39,8 @@ real_goroot=$($go_tool env GOROOT)
 host_arch=$($go_tool env GOARCH)
 
 bashpp_tool=${BASHPP_TOOL:-}
-if test -z "$bashpp_tool"; then bashpp_tool=$(command -v bashy || true); fi
+# The language's own binary (Sprint 211, cmd/bashpp) is what the corpus measures; bashy is the fallback front.
+if test -z "$bashpp_tool"; then bashpp_tool=$(command -v bashpp || command -v bashy || true); fi
 test -x "$bashpp_tool" || { printf 'FAIL Bash++ tool is unavailable: %s\n' "$bashpp_tool" >&2; exit 1; }
 bashpp_version=$($bashpp_tool --version)
 shellrt=${BASHPP_SHELLRT_ROOT:-}

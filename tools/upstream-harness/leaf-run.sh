@@ -78,12 +78,16 @@ elif test -n "$harness"; then
 fi
 
 # Candidate: a named rebuild, or the published base.
+# The candidate is measured through the language's own binary (bashpp, Sprint
+# 211) when the rebuild produced one; bashy.real is the fallback front.
 if test -n "$cand"; then
-	tool=$base/candidates/$cand/bashy/bin/bashy.real
+	tool=$base/candidates/$cand/bashpp/bin/bashpp
 	shrt=$base/candidates/$cand/sh
+	test -x "$tool" || tool=$base/candidates/$cand/bashy/bin/bashy.real
 else
-	tool=$base/base/bashy/bin/bashy.real
+	tool=$base/base/bashpp/bin/bashpp
 	shrt=$base/base/sh
+	test -x "$tool" || tool=$base/base/bashy/bin/bashy.real
 fi
 test -x "$tool" || { printf 'leaf-run: candidate binary missing: %s (rebuild-candidate.sh)\n' "$tool" >&2; exit 1; }
 

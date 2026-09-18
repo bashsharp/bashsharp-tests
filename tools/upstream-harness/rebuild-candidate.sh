@@ -1,15 +1,18 @@
 #!/bin/bash
 # Sprint: #162; Story: S162.0; Story-ID: cda64bde8fea
 #
-# rebuild-candidate.sh — build one named Bash++ candidate (bashy.real over a
-# chosen sh / coreutils / yoke / bashy commit set) on a leaf or certification
-# host, WITHOUT touching the base trees. Every candidate lives in its own flat
-# sibling set so bashy's `../sh` / `../coreutils` / `../yoke` / `../readline` /
+# rebuild-candidate.sh — build one named Bash++ candidate (bashy.real AND the
+# language's own binary, bashpp, over a chosen sh / bashpp / coreutils / yoke
+# / bashy commit set) on a leaf or certification host, WITHOUT touching the
+# base trees. Every candidate lives in its own flat sibling set so bashy's
+# `../sh` / `../bashpp` / `../coreutils` / `../yoke` / `../readline` /
 # `../filebrowser` replaces resolve inside it, and several candidates coexist.
-# (yoke is the agentic userland split out of coreutils in Sprint 208; a base
-# tree at $LEAF_BASE/base/yoke is required from that sprint on.)
+# (yoke is the agentic userland split out of coreutils in Sprint 208; bashpp
+# is the Bash++ front door split out of bashy in Sprint 211; base trees at
+# $LEAF_BASE/base/{yoke,bashpp} are required from those sprints on.)
 #
 #   usage: rebuild-candidate.sh <name> [--sh <ref>] [--sh-bundle <file>]
+#                                      [--bashpp <ref>] [--bashpp-bundle <file>]
 #                                      [--coreutils <ref>] [--coreutils-bundle <file>]
 #                                      [--yoke <ref>] [--yoke-bundle <file>]
 #                                      [--bashy <ref>] [--bashy-bundle <file>]
@@ -21,20 +24,23 @@
 # A <ref> is any commit reachable from the base clone after `git fetch origin`
 # (a sha, a branch, a tag); a bundle is fetched into the candidate's clone
 # first, so a worker can ship an unpushed branch as `git bundle create`.
-# Output: $LEAF_BASE/candidates/<name>/bashy/bin/bashy.real and
-# $LEAF_BASE/candidates/<name>/candidate.txt (the seven shas + the binary digest).
+# Output: $LEAF_BASE/candidates/<name>/bashy/bin/bashy.real,
+# $LEAF_BASE/candidates/<name>/bashpp/bin/bashpp (what BASHPP_TOOL names) and
+# $LEAF_BASE/candidates/<name>/candidate.txt (the eight shas + both digests).
 set -eu
 
 base=${LEAF_BASE:-/srv/sprint162}
 sdk=${LEAF_SDK:-/srv/sprint142}
 name=${1:?usage: rebuild-candidate.sh <name> [--sh <ref>] [--sh-bundle <file>] ...}
 shift
-declare -A ref=([sh]= [coreutils]= [yoke]= [bashy]=)
-declare -A bundle=([sh]= [coreutils]= [yoke]= [bashy]=)
+declare -A ref=([sh]= [bashpp]= [coreutils]= [yoke]= [bashy]=)
+declare -A bundle=([sh]= [bashpp]= [coreutils]= [yoke]= [bashy]=)
 while test $# -gt 0; do
 	case $1 in
 	--sh) ref[sh]=$2; shift 2 ;;
 	--sh-bundle) bundle[sh]=$2; shift 2 ;;
+	--bashpp) ref[bashpp]=$2; shift 2 ;;
+	--bashpp-bundle) bundle[bashpp]=$2; shift 2 ;;
 	--coreutils) ref[coreutils]=$2; shift 2 ;;
 	--coreutils-bundle) bundle[coreutils]=$2; shift 2 ;;
 	--yoke) ref[yoke]=$2; shift 2 ;;
@@ -48,7 +54,7 @@ case $name in */* | . | ..) printf 'rebuild-candidate: bad name %s\n' "$name" >&
 
 cand=$base/candidates/$name
 mkdir -p "$base/candidates"
-for r in bashy sh coreutils yoke readline filebrowser; do
+for r in bashy sh bashpp coreutils yoke readline filebrowser; do
 	test -d "$base/base/$r/.git" || { printf 'rebuild-candidate: base tree missing: %s\n' "$base/base/$r" >&2; exit 1; }
 	if ! test -d "$cand/$r/.git"; then
 		git clone -q "$base/base/$r" "$cand/$r"
@@ -80,13 +86,19 @@ test -n "$cmd" || { printf 'rebuild-candidate: could not derive the bashy build 
 cmd=${cmd//\$out/bin/bashy.real}
 mkdir -p bin
 eval "$cmd"
+# The language's own binary, built from the same sibling set: the corpus
+# harness measures it (BASHPP_TOOL), bashy.real stays the classic candidate.
+mkdir -p "$cand/bashpp/bin"
+(cd "$cand/bashpp" && go build -trimpath -o bin/bashpp ./cmd/bashpp)
 {
 	printf 'candidate=%s built=%s\n' "$name" "$(date -u +%FT%TZ)"
-	for r in bashy sh coreutils yoke readline filebrowser; do
+	for r in bashy sh bashpp coreutils yoke readline filebrowser; do
 		printf '%-12s %s\n' "$r" "$(git -C "$cand/$r" rev-parse HEAD)"
 	done
 	printf 'go           %s\n' "$(sha256sum "$sdk/authenticated-sdk/bin/go" | cut -c1-64)"
 	printf 'bashy.real   %s\n' "$(sha256sum bin/bashy.real | cut -c1-64)"
+	printf 'bashpp       %s\n' "$(sha256sum "$cand/bashpp/bin/bashpp" | cut -c1-64)"
 } > "$cand/candidate.txt"
 bin/bashy.real --version
+"$cand/bashpp/bin/bashpp" --version
 cat "$cand/candidate.txt"
