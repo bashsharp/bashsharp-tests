@@ -87,6 +87,10 @@ EOB
       *) echo "sync: create failed for $root: $url" >&2; exit 1 ;;
     esac
   fi
+  case "$url" in
+    *"/issues/"[0-9]*) ;;
+    *) echo "sync: gh printed no issue URL for $root (GitHub's content-creation limit answers this way too — gh exits 0 with nothing); stopping, re-run later. created=$created" >&2; exit 3 ;;
+  esac
   echo "created: $(printf '%s' "$url" | tail -1)"
   created=$((created+1)); sleep 6      # GitHub's content-creation secondary limit bites at ~1 issue every few seconds
 done < <(tail -n +2 "$catalog" | awk -F'\t' 'BEGIN{OFS="\x1f"}{$1=$1; print}')
