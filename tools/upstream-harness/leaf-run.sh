@@ -22,7 +22,7 @@
 # per-runner selectors from it and authenticates the terminal count against it.
 # Without --candidate the published base candidate ($LEAF_BASE/base/bashy/bin/
 # bashy.real over $LEAF_BASE/base/sh) is measured. The harness defaults to the
-# base bashpp-tests clone's HEAD; --harness fetches a ref from origin,
+# base bashsharp-tests clone's HEAD; --harness fetches a ref from origin,
 # --harness-bundle an unpushed branch.
 #
 # ONE COORDINATOR PER HOST: the run holds $LEAF_BASE/leaf.lock for its whole
@@ -66,26 +66,26 @@ if test -e "$dir"; then printf 'leaf-run: %s exists — a leaf directory is fres
 mkdir -p "$dir/logs" "$dir/tmp" "$dir/evidence" "$dir/manifests" "$dir/in"
 cp "$manifest" "$dir/in/roots.tsv"
 
-# Harness: fresh clone of the base bashpp-tests, moved to the requested ref.
-git clone -q "$base/base/bashpp-tests" "$dir/bashpp-tests" || exit 1
-git -C "$dir/bashpp-tests" remote set-url origin "$(git -C "$base/base/bashpp-tests" remote get-url origin)"
+# Harness: fresh clone of the base bashsharp-tests, moved to the requested ref.
+git clone -q "$base/base/bashsharp-tests" "$dir/bashsharp-tests" || exit 1
+git -C "$dir/bashsharp-tests" remote set-url origin "$(git -C "$base/base/bashsharp-tests" remote get-url origin)"
 if test -n "$hbundle"; then
-	git -C "$dir/bashpp-tests" bundle verify "$hbundle" >/dev/null || exit 1
-	git -C "$dir/bashpp-tests" fetch -q "$hbundle" && git -C "$dir/bashpp-tests" checkout -q --detach FETCH_HEAD || exit 1
+	git -C "$dir/bashsharp-tests" bundle verify "$hbundle" >/dev/null || exit 1
+	git -C "$dir/bashsharp-tests" fetch -q "$hbundle" && git -C "$dir/bashsharp-tests" checkout -q --detach FETCH_HEAD || exit 1
 elif test -n "$harness"; then
-	git -C "$dir/bashpp-tests" rev-parse -q --verify "$harness^{commit}" >/dev/null 2>&1 || git -C "$dir/bashpp-tests" fetch -q origin
-	git -C "$dir/bashpp-tests" checkout -q --detach "$harness" || exit 1
+	git -C "$dir/bashsharp-tests" rev-parse -q --verify "$harness^{commit}" >/dev/null 2>&1 || git -C "$dir/bashsharp-tests" fetch -q origin
+	git -C "$dir/bashsharp-tests" checkout -q --detach "$harness" || exit 1
 fi
 
 # Candidate: a named rebuild, or the published base.
-# The candidate is measured through the language's own binary (bashpp, Sprint
+# The candidate is measured through the language's own binary (bashsharp, Sprint
 # 211) when the rebuild produced one; bashy.real is the fallback front.
 if test -n "$cand"; then
-	tool=$base/candidates/$cand/bashpp/bin/bashpp
+	tool=$base/candidates/$cand/bashsharp/bin/bashsharp
 	shrt=$base/candidates/$cand/sh
 	test -x "$tool" || tool=$base/candidates/$cand/bashy/bin/bashy.real
 else
-	tool=$base/base/bashpp/bin/bashpp
+	tool=$base/base/bashsharp/bin/bashsharp
 	shrt=$base/base/sh
 	test -x "$tool" || tool=$base/base/bashy/bin/bashy.real
 fi
@@ -98,7 +98,7 @@ test -x "$tool" || { printf 'leaf-run: candidate binary missing: %s (rebuild-can
 # the clone only, recorded in status.txt — and the leaf names exactly what it
 # ran. Every other pin (SDK, upstream, patches, matrices) stays as published.
 if test -n "$cand"; then
-	pinfile=$dir/bashpp-tests/tools/upstream-harness/backend-pin.tsv
+	pinfile=$dir/bashsharp-tests/tools/upstream-harness/backend-pin.tsv
 	cand_sh=$(git -C "$shrt" rev-parse HEAD)
 	cand_ver=$("$tool" --version 2>/dev/null | head -1)
 	awk -F '\t' -v OFS='\t' -v sh="$cand_sh" -v ver="$cand_ver" '
@@ -108,7 +108,7 @@ if test -n "$cand"; then
 	printf 'pin override (candidate %s): shellrt_commit=%s bashpp_version=%s\n' "$cand" "$cand_sh" "$cand_ver" >> "$dir/logs/status.txt"
 fi
 
-cd "$dir/bashpp-tests" || exit 1
+cd "$dir/bashsharp-tests" || exit 1
 export GO127_TOOL=$sdk/authenticated-sdk/bin/go
 export GO_CORPUS_ROOT=$sdk/sdk-source/go
 export BASHPP_TOOL=$tool

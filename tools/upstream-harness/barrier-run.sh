@@ -33,33 +33,33 @@ fi
 dir=$base/$name
 if test -e "$dir"; then printf 'barrier-run: %s exists — a barrier directory is fresh by rule\n' "$dir" >&2; exit 2; fi
 mkdir -p "$dir/logs" "$dir/tmp" "$dir/evidence" "$dir/manifests"
-git clone -q "$base/base/bashpp-tests" "$dir/bashpp-tests" || exit 1
-git -C "$dir/bashpp-tests" remote set-url origin "$(git -C "$base/base/bashpp-tests" remote get-url origin)"
+git clone -q "$base/base/bashsharp-tests" "$dir/bashsharp-tests" || exit 1
+git -C "$dir/bashsharp-tests" remote set-url origin "$(git -C "$base/base/bashsharp-tests" remote get-url origin)"
 if test -n "$hbundle"; then
-	git -C "$dir/bashpp-tests" bundle verify "$hbundle" >/dev/null || exit 1
-	git -C "$dir/bashpp-tests" fetch -q "$hbundle" && git -C "$dir/bashpp-tests" checkout -q --detach FETCH_HEAD || exit 1
+	git -C "$dir/bashsharp-tests" bundle verify "$hbundle" >/dev/null || exit 1
+	git -C "$dir/bashsharp-tests" fetch -q "$hbundle" && git -C "$dir/bashsharp-tests" checkout -q --detach FETCH_HEAD || exit 1
 elif test -n "$harness"; then
-	git -C "$dir/bashpp-tests" rev-parse -q --verify "$harness^{commit}" >/dev/null 2>&1 || git -C "$dir/bashpp-tests" fetch -q origin
-	git -C "$dir/bashpp-tests" checkout -q --detach "$harness" || exit 1
+	git -C "$dir/bashsharp-tests" rev-parse -q --verify "$harness^{commit}" >/dev/null 2>&1 || git -C "$dir/bashsharp-tests" fetch -q origin
+	git -C "$dir/bashsharp-tests" checkout -q --detach "$harness" || exit 1
 fi
-# The candidate is measured through the language's own binary (bashpp, Sprint
+# The candidate is measured through the language's own binary (bashsharp, Sprint
 # 211) when the rebuild produced one; bashy.real is the fallback front.
 if test -n "$cand"; then
-	tool=$base/candidates/$cand/bashpp/bin/bashpp; shrt=$base/candidates/$cand/sh
+	tool=$base/candidates/$cand/bashsharp/bin/bashsharp; shrt=$base/candidates/$cand/sh
 	test -x "$tool" || tool=$base/candidates/$cand/bashy/bin/bashy.real
 else
-	tool=$base/base/bashpp/bin/bashpp; shrt=$base/base/sh
+	tool=$base/base/bashsharp/bin/bashsharp; shrt=$base/base/sh
 	test -x "$tool" || tool=$base/base/bashy/bin/bashy.real
 fi
 test -x "$tool" || { printf 'barrier-run: candidate binary missing: %s\n' "$tool" >&2; exit 1; }
 if test -n "$cand"; then
-	pinfile=$dir/bashpp-tests/tools/upstream-harness/backend-pin.tsv
+	pinfile=$dir/bashsharp-tests/tools/upstream-harness/backend-pin.tsv
 	cand_sh=$(git -C "$shrt" rev-parse HEAD)
 	cand_ver=$("$tool" --version 2>/dev/null | head -1)
 	awk -F '\t' -v OFS='\t' -v sh="$cand_sh" -v ver="$cand_ver" '$1 == "shellrt_commit" { $2 = sh } $1 == "bashpp_version" { $2 = ver } { print }' "$pinfile" > "$pinfile.cand" && mv "$pinfile.cand" "$pinfile"
 	printf 'pin override (candidate %s): shellrt_commit=%s bashpp_version=%s\n' "$cand" "$cand_sh" "$cand_ver" >> "$dir/logs/status.txt"
 fi
-cd "$dir/bashpp-tests" || exit 1
+cd "$dir/bashsharp-tests" || exit 1
 export GO127_TOOL=$sdk/authenticated-sdk/bin/go GO_CORPUS_ROOT=$sdk/sdk-source/go
 export BASHPP_TOOL=$tool BASHPP_SHELLRT_ROOT=$shrt
 export GOMAXPROCS=2 GOFLAGS=-p=2 BASHPP_KEEP_EVIDENCE=1

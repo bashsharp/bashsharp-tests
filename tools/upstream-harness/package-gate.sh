@@ -66,8 +66,8 @@ while IFS="$tab" read -r capability pkg action want companions; do
 done < "$matrix"
 
 bashpp_tool=${BASHPP_TOOL:-}
-# The language's own binary (Sprint 211, cmd/bashpp) is what the corpus measures; bashy is the fallback front.
-if test -z "$bashpp_tool"; then bashpp_tool=$(command -v bashpp || command -v bashy || true); fi
+# The language's own binary (Sprint 211, cmd/bashsharp) is what the corpus measures; bashy is the fallback front.
+if test -z "$bashpp_tool"; then bashpp_tool=$(command -v bashsharp || command -v bashy || true); fi
 test -x "$bashpp_tool" || { printf 'FAIL pinned Bash++ tool is unavailable: %s\n' "$bashpp_tool" >&2; exit 1; }
 bashpp_version=$($bashpp_tool --version)
 test "$bashpp_version" = "$(pin_value bashpp_version)" || { printf 'FAIL Bash++ pin: expected %s, got %s\n' "$(pin_value bashpp_version)" "$bashpp_version" >&2; exit 1; }

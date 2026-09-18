@@ -1,0 +1,22 @@
+root	mode	rule	owner
+testdir:fixedbugs/bug514.go	interpreted	v10.6d cgo-root	retained
+testdir:fixedbugs/issue20298.go	compiled	v10.6a unused-import	152
+testdir:fixedbugs/issue23586.go	compiled	v10.6a unused-import	152
+testdir:fixedbugs/issue34968.go	interpreted	v10.6d cgo-root	retained
+testdir:fixedbugs/issue34968.go	compiled	v10.6d cgo-root	152
+testdir:fixedbugs/issue36705.go	interpreted	v10.6d cgo-root	retained
+testdir:fixedbugs/issue36705.go	compiled	v10.6d cgo-root	152
+testdir:fixedbugs/issue40954.go	interpreted	v10.6d cgo-root	retained
+testdir:fixedbugs/issue42032.go	interpreted	v10.6d cgo-root	retained
+testdir:fixedbugs/issue42076.go	interpreted	v10.6d cgo-root	retained
+testdir:fixedbugs/issue43164.go	compiled	v10.6a lower-diagnostic	152
+testdir:fixedbugs/issue46903.go	interpreted	v10.6d cgo-root	retained
+testdir:fixedbugs/issue47185.go	interpreted	v10.6d cgo-root	retained
+testdir:fixedbugs/issue47185.go	compiled	v10.6d cgo-root	152
+testdir:fixedbugs/issue47227.go	interpreted	v10.6d cgo-root	retained
+testdir:fixedbugs/issue47227.go	compiled	v10.6d cgo-root	152
+testdir:fixedbugs/issue51733.go	interpreted	v10.6d cgo-root	retained
+testdir:fixedbugs/issue71225.go	interpreted	v10.6d cgo-root	retained
+testdir:fixedbugs/issue71225.go	compiled	v10.6d cgo-root	152
+testdir:fixedbugs/issue71226.go	interpreted	v10.6d cgo-root	retained
+testdir:fixedbugs/issue71226.go	compiled	v10.6d cgo-root	152
