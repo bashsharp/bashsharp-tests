@@ -1,0 +1,5 @@
+pin override (candidate integ-212): shellrt_commit=a3fd0fbe931d878c337bdda3288bba3d43b4b3b1 bashpp_version=bashsharp, Bash# (GNU Bash 5.3 superset), version 0.1.0-dev (4167be8)
+barrier=barrier-d-212 host=sprint162-leaf harness=cce9612 bashpp=2d142dc619ae092f sh=a3fd0fbe candidate=integ-212 start=2026-09-18T06:59:26Z
+corpus exit=3 start=2026-09-18T06:59:26Z end=2026-09-18T08:42:13Z
+survivors: 0
+DONE barrier-d-212

@@ -1,0 +1,18 @@
+runner	PASS	FAIL	SKIP	total	native-only
+testdir	2091	600	37	2728	0
+typechecker	735	6	2	743	156
+package	0	26	0	26	0
+total	2826	632	39	3497	156
+
+product	roots	native-applicable	SKIP	native-only
+total	3497	3458	39	156
+
+owner	count
+151	252
+152	16
+153	112
+154	2
+package	26
+unclassified	35
+retained	189
+total	632
