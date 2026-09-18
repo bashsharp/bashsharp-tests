@@ -1,0 +1,28 @@
+root	mode	first_line	verdict
+package:cmd/compile	interpreted	bash++ import "cmd/compile/internal/amd64": package is not in the reviewed Go standard library	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/abt	interpreted	gosource: original callback with copied slice references is unsupported	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/amd64	interpreted	gosource: build dependency bridge: exit status 2: internal/abi.FuncPCABI0·f: relocation target internal/abi.FuncPCABI0 not defined	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/base	interpreted	gosource: original callback with copied slice references is unsupported	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/compare	interpreted	gosource: original callback with copied slice references is unsupported	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/devirtualize	interpreted	gosource: original callback with copied slice references is unsupported	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/dwarfgen	interpreted	gosource: original callback with copied slice references is unsupported	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/importer	interpreted	gosource: original callback with copied slice references is unsupported	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/inline/inlheur	interpreted	src/cmd/compile/internal/inline/inlheur/analyze_func_callsites.go:21:1: BASHPP-ECOLLECTION-KEY: unsupported map key type __gosource_import_0_2_0.Node	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/ir	interpreted	function _ redeclared in this session	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/liveness	interpreted	gosource: build dependency bridge: exit status 2: internal/abi.FuncPCABI0·f: relocation target internal/abi.FuncPCABI0 not defined	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/logopt	interpreted	gosource: original callback with copied slice references is unsupported	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/loopvar	interpreted	gosource: original callback with copied slice references is unsupported	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/noder	interpreted	BASHPP-EINTERFACE-EMBED: interface __gosource_pkg_0_ImplicitNode embeds non-interface __gosource_import_0_4_1.Node	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/rangefunc	interpreted	gosource: build dependency bridge: exit status 2: internal/abi.FuncPCABI0·f: relocation target internal/abi.FuncPCABI0 not defined	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/reflectdata	interpreted	gosource: build dependency bridge: exit status 2: internal/abi.FuncPCABI0·f: relocation target internal/abi.FuncPCABI0 not defined	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/ssa	interpreted	Bash++ gotest backend: non-Go inputs	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/ssagen	interpreted	gosource: build dependency bridge: exit status 2: internal/abi.FuncPCABI0·f: relocation target internal/abi.FuncPCABI0 not defined	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/syntax	interpreted	src/cmd/compile/internal/syntax/source.go:58:7: BASHPP-ECONST-EXPR: const initializer is not a constant expression	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/test	interpreted	gosource: original callback with copied slice references is unsupported	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/typecheck	interpreted	src/cmd/compile/internal/typecheck/universe.go:15:1: BASHPP-ECOLLECTION-LENGTH: invalid array length __gosource_import_0_16_1.OEND	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/types	interpreted	function _ redeclared in this session	missing=0;wording=0;extra=0;class=-
+package:cmd/compile/internal/types2	interpreted	src/cmd/compile/internal/types2/alias.go:24:1: BASHPP-ECOLLECTION-KEY: unsupported map key type __gosource_pkg_0_Type	missing=0;wording=0;extra=0;class=-
+package:cmd/internal/testdir	interpreted	src/cmd/internal/testdir/testdir_test.go:218:1: gosource: asynchronous or retained original function callbacks are unsupported for __gosource_import_0_0_22.OnceValue	missing=0;wording=0;extra=0;class=-
+package:go/types	interpreted	src/go/types/alias.go:27:1: BASHPP-ECOLLECTION-KEY: unsupported map key type __gosource_import_0_1_2.Expr	missing=0;wording=0;extra=0;class=-
+package:internal/types/errors	interpreted	src/internal/types/errors/codes_test.go:54:27: cannot use importer.Default() (value of interface type types.Importer) as types.Importer value in struct literal: types.Importer does not implement types.Importer (wrong type for method Import)	missing=0;wording=0;extra=0;class=-
+package:internal/types/errors	compiled	src/internal/types/errors/codes_test.go:54:27: cannot use importer.Default() (value of interface type types.Importer) as types.Importer value in struct literal: types.Importer does not implement types.Importer (wrong type for method Import)	missing=0;wording=0;extra=0;class=-

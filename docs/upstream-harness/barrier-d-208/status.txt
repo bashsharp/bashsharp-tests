@@ -1,0 +1,5 @@
+pin override (candidate integ-208): shellrt_commit=a83e6a3369024aa3f2b32127906a75983df299f1 bashpp_version=bashy, GNU Bash 5.3 compatible, version 5.3.0(1)-bashy-dev (38bd54b)
+barrier=barrier-d-208 host=sprint162-leaf harness=8efe846 bashpp=ff44c1d80f5d4a25 sh=a83e6a33 candidate=integ-208 start=2026-09-18T01:15:17Z
+corpus exit=3 start=2026-09-18T01:15:17Z end=2026-09-18T02:58:03Z
+survivors: 0
+DONE barrier-d-208

@@ -1,0 +1,5 @@
+pin override (candidate integ-208): shellrt_commit=a83e6a3369024aa3f2b32127906a75983df299f1 bashpp_version=bashy, GNU Bash 5.3 compatible, version 5.3.0(1)-bashy-dev (38bd54b)
+leaf=delta-208 host=sprint162-leaf harness=8efe846 bashpp=ff44c1d80f5d4a25 sh=a83e6a33 candidate=integ-208 manifest=/root/delta-208.tsv roots=3 start=2026-09-18T03:09:27Z
+leaf exit=3 start=2026-09-18T03:09:27Z end=2026-09-18T03:12:35Z
+survivors: 0
+DONE leaf-delta-208

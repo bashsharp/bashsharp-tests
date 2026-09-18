@@ -1,0 +1,2 @@
+root	mode	first_line	verdict
+testdir:convinline.go	interpreted	convert1: cannot use "-3/2" as float64 value for parameter v	missing=0;wording=0;extra=0;class=-

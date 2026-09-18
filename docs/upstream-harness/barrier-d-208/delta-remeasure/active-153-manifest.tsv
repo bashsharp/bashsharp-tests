@@ -1,0 +1,2 @@
+root	mode	first_line	verdict
+testdir:uintptrescapes.go	interpreted	command exceeded time limit	missing=0;wording=0;extra=0;class=-
