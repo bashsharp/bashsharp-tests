@@ -9,7 +9,7 @@
 # Needs `gh` authenticated with write access to the issues repo. Creation is
 # paced (GitHub's content-creation secondary limit); --limit bounds one run.
 set -euo pipefail
-repo=${CORPUS_ISSUES_REPO:-qiangli/bashsharp-tests}
+repo=${CORPUS_ISSUES_REPO:-bashsharp/bashsharp-tests}
 catalog=${CATALOG:-$(dirname "$0")/../../../bashsharp/docs/go-corpus-targets.tsv}
 limit=1000; dry=0
 while [ $# -gt 0 ]; do
@@ -69,7 +69,7 @@ while IFS=$'\x1f' read -r root runner action mode class family reason destinatio
 ${first_line:-"(none recorded)"}
 \`\`\`
 
-This is one of the *repair* roots in the Go-corpus target catalog — a program the upstream Go 1.27.1 oracle passes and Bash# does not, with a first cause. Whole-corpus figures and the four classes: [docs/claims.md](https://github.com/qiangli/bashsharp/blob/main/docs/claims.md) · [go-corpus-targets.md](https://github.com/qiangli/bashsharp/blob/main/docs/go-corpus-targets.md).
+This is one of the *repair* roots in the Go-corpus target catalog — a program the upstream Go 1.27.1 oracle passes and Bash# does not, with a first cause. Whole-corpus figures and the four classes: [docs/claims.md](https://github.com/bashsharp/bashsharp/blob/main/docs/claims.md) · [go-corpus-targets.md](https://github.com/bashsharp/bashsharp/blob/main/docs/go-corpus-targets.md).
 
 **Reproduce**
 1. \`tools/go-corpus/refresh.sh\` once (fetches and verifies the pinned Go 1.27.1 source; needs Go ≥ 1.27 on PATH).

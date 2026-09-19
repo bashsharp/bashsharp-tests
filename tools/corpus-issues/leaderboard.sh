@@ -3,7 +3,7 @@
 # author of the closing PR, or the issue's assignee/closer), and the standing
 # of the repair class. Read-only against GitHub; run by the weekly workflow.
 set -euo pipefail
-repo=${CORPUS_ISSUES_REPO:-qiangli/bashsharp-tests}
+repo=${CORPUS_ISSUES_REPO:-bashsharp/bashsharp-tests}
 out=${1:-$(dirname "$0")/../../docs/leaderboard.md}
 open=$(gh issue list -R "$repo" --label corpus-repair --state open --limit 1000 --json number --jq 'length')
 # only issues closed as COMPLETED count as fixed roots; duplicates are closed "not planned"

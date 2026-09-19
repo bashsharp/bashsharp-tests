@@ -1,11 +1,11 @@
 # bashsharp-tests — the conformance gate for Bash#
 
-This repo decides what [Bash#](https://github.com/qiangli/bashsharp) may
+This repo decides what [Bash#](https://github.com/bashsharp/bashsharp) may
 claim. It is **TDD-first and red on purpose** where the language is not
 finished: a test that fails here is a target with an owner, not a bug in the
 suite. A claim about Bash# that is not a result from this repo is not a claim
 — the numbers are kept, with their corpora, in
-[bashsharp/docs/claims.md](https://github.com/qiangli/bashsharp/blob/main/docs/claims.md).
+[bashsharp/docs/claims.md](https://github.com/bashsharp/bashsharp/blob/main/docs/claims.md).
 
 > Renamed from `bashpp-tests` on 2026-09-18 with the language. Harness
 > internals keep their `BASHPP_*` spellings; the tests are the same tests.
@@ -67,7 +67,7 @@ flat-sibling checkout (`../bashy`, `../bashsharp`, `../sh`, `../coreutils`,
 
 The 296 *repair* roots are the on-ramp: each is a Go program the upstream
 oracle passes and Bash# does not, with a first cause and an owner class in
-[go-corpus-targets.md](https://github.com/qiangli/bashsharp/blob/main/docs/go-corpus-targets.md)
+[go-corpus-targets.md](https://github.com/bashsharp/bashsharp/blob/main/docs/go-corpus-targets.md)
 (`.tsv` beside it). Pick one, run it under `bashsharp --source=go`, compare
 with the oracle, fix it in `sh/interp` (interpreted) or `sh/lower`
 (compiled), add or un-`planned` its fixture, and re-run the lane. A fix that

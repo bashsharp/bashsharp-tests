@@ -41,4 +41,4 @@ A PR that fixes a corpus root includes: the engine change (in `qiangli/sh`), the
 
 ## Questions
 
-Open a [Discussion](https://github.com/qiangli/bashsharp/discussions) on the language repo — the pinned FAQ answers the common ones.
+Open a [Discussion](https://github.com/bashsharp/bashsharp/discussions) on the language repo — the pinned FAQ answers the common ones.
