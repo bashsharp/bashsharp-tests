@@ -1,0 +1,5 @@
+#!/usr/bin/env -S bashy --bashsharp
+# A real script has shell statements around its typed declarations.
+echo before
+func deref(p *int) int { return *p }
+echo after

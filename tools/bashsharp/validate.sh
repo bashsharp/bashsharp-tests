@@ -36,14 +36,14 @@ declare -A required_cases=(
   [defaults]='omitted-default,explicit-override,keyword-override-interaction,missing-required,too-many,nontrailing-default,near-miss'
   [readonly]='deep-read,mutate-root,mutate-map,mutate-slice,mutate-struct,mutate-alias,mutate-subshell,mutate-imported,near-miss'
   [enums]='exhaustive,default-arm,nested-switch,invalid-member,duplicate-member,non-exhaustive,invalid-value,near-miss,forced-command,forced-quote'
-  [null-safety]='flow-narrow,false-positive-guards,reassign-after-narrow,unsafe-deref,unsafe-index,unsafe-call'
+  [null-safety]='flow-narrow,false-positive-guards,reassign-after-narrow,unsafe-deref,mixed-real-file,unsafe-index,unsafe-call'
 )
 declare -A required_lowering=(
   [kwargs]='bind-reordered,ordinary-positional-interaction,unknown-name,duplicate-name,duplicate-binding,missing-required'
   [defaults]='omitted-default,explicit-override,keyword-override-interaction,missing-required,too-many,nontrailing-default'
   [readonly]='deep-read,mutate-root,mutate-map,mutate-slice,mutate-struct,mutate-alias,mutate-subshell,mutate-imported'
   [enums]='exhaustive,default-arm,nested-switch,invalid-member,duplicate-member,non-exhaustive,invalid-value'
-  [null-safety]='flow-narrow,false-positive-guards,reassign-after-narrow,unsafe-deref,unsafe-index,unsafe-call'
+  [null-safety]='flow-narrow,false-positive-guards,reassign-after-narrow,unsafe-deref,mixed-real-file,unsafe-index,unsafe-call'
 )
 
 validate_expectation_file() {
@@ -176,4 +176,4 @@ while IFS= read -r filepath; do
   [ -n "${refs[$rel]+x}" ] || fail "unreferenced corpus file: ${rel}"
 done < <(find "${FIXTURE_ROOT}" -type f \( -name '*.bpp' -o -name '*.out' -o -name '*.err' -o -name '*.tsv' \) | sort)
 
-echo "Bash# matrix schema OK — 5 approved features, 39 interpreted cases, 33 lowering cases"
+echo "Bash# matrix schema OK — 5 approved features, 40 interpreted cases, 34 lowering cases"

@@ -90,6 +90,6 @@ while IFS=$'\t' read -r id feature class case_ledger lowering; do
   done < "${FIXTURE_ROOT}/${case_ledger}"
 done < "${MATRIX}"
 
-[ "${cases}" -eq 39 ] || fail "executed ${cases} cases, expected 39"
+[ "${cases}" -eq 40 ] || fail "executed ${cases} cases, expected 40"
 [ "${executions}" -ge $((cases * 3)) ] || fail "execution count ${executions} cannot prove the ${cases}-case contract"
 echo "Bash# Sprint 114 interpreted gate complete — ${cases} cases, ${executions} executions"

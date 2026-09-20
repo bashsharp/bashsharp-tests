@@ -75,5 +75,5 @@ while IFS=$'\t' read -r id feature class case_ledger lowering_ledger; do
   done < "${FIXTURE_ROOT}/${lowering_ledger}"
 done < "${MATRIX}"
 
-[ "${cases}" -eq 33 ] || fail "executed ${cases} lowering cases, expected 33"
+[ "${cases}" -eq 34 ] || fail "executed ${cases} lowering cases, expected 34"
 echo "Bash# Sprint 117 lowering gate complete — ${cases} cases"
