@@ -258,6 +258,13 @@ bash-fence-prefix	S193	fence	~~~bash
 bash-fence-alias-prefix	S193	fence	~~~bash as island
 sh-fence-prefix	S193	fence	~~~sh
 sh-fence-alias-prefix	S193	fence	~~~sh as island
+# Sprint 234 (B30): text fences and the runner override. The opener stays the
+# one Class E fence row; the runner word is a plain command word to stock bash.
+text-fence-alias-prefix	S234	fence	~~~tf as iac
+text-fence-runner-prefix	S234	fence	~~~tf as iac !my-tofu
+text-fence-runner-short-prefix	S234	fence	~~~tf as !tofu
+text-fence-runner-noalias-prefix	S234	fence	~~~dockerfile !img-runner
+text-fence-dashed-type-prefix	S234	fence	~~~my-config as cfg !my-runner
 # Sprint 197: decorator admission and attachment boundaries.  These are all
 # parser commit candidates; classifier output, rather than this file, records
 # their compatibility class.
