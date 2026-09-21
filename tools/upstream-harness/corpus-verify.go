@@ -185,8 +185,16 @@ func (o *corpusObserver) readLane(mode string) {
 		return
 	}
 	o.readTestdirRecords(mode, filepath.Join(dir, "testdir.events.jsonl"))
-	o.readTypesRecords(mode, filepath.Join(dir, "types2.events.jsonl"), "cmd/compile/internal/types2")
-	o.readTypesRecords(mode, filepath.Join(dir, "types.events.jsonl"), "go/types")
+	for _, pkg := range []struct {
+		stream, name string
+	}{
+		{"types2.events.jsonl", "cmd/compile/internal/types2"},
+		{"types.events.jsonl", "go/types"},
+	} {
+		if o.hasExecutedTypeRoot(mode, pkg.name) {
+			o.readTypesRecords(mode, filepath.Join(dir, pkg.stream), pkg.name)
+		}
+	}
 	packagesDir := filepath.Join(dir, "packages")
 	entries, err := os.ReadDir(packagesDir)
 	if err != nil {
@@ -204,6 +212,16 @@ func (o *corpusObserver) readLane(mode string) {
 	if seen == 0 {
 		o.violate("%s package event directory has no *.events.jsonl streams", mode)
 	}
+}
+
+func (o *corpusObserver) hasExecutedTypeRoot(mode, pkg string) bool {
+	prefix := "typechecker:" + pkg + "/"
+	for id, modes := range o.states {
+		if strings.HasPrefix(id, prefix) && modes[mode] != "" && modes[mode] != "SKIP" {
+			return true
+		}
+	}
+	return false
 }
 
 func (o *corpusObserver) readTerminalStream(mode, runner, name, typePackage string) {

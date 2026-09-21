@@ -104,6 +104,33 @@ func TestCorpusVerifyAcceptsNonLeafTypecheckerRecords(t *testing.T) {
 	}
 }
 
+func TestCorpusVerifyAcceptsMissingUnselectedTypeStream(t *testing.T) {
+	f := newCorpusFixture(t)
+	for _, mode := range corpusModes[1:] {
+		if err := os.Remove(filepath.Join(f.evidence, "evidence-"+mode, "types.events.jsonl")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	code, _, stderr := f.verify(3)
+	if code != 0 {
+		t.Fatalf("verify = %d, stderr:\n%s", code, stderr)
+	}
+}
+
+func TestCorpusVerifyRejectsMissingRequiredTypeStream(t *testing.T) {
+	f := newCorpusFixture(t)
+	if err := os.Remove(filepath.Join(f.evidence, "evidence-interpreted", "types2.events.jsonl")); err != nil {
+		t.Fatal(err)
+	}
+	code, _, stderr := f.verify(3)
+	if code != 1 {
+		t.Fatalf("verify = %d, want 1; stderr:\n%s", code, stderr)
+	}
+	if want := "read evidence-interpreted/types2.events.jsonl"; !strings.Contains(stderr, want) {
+		t.Fatalf("stderr lacks %q:\n%s", want, stderr)
+	}
+}
+
 func TestCorpusVerifyDefectFixtures(t *testing.T) {
 	tests := []struct {
 		name string
