@@ -52,11 +52,12 @@ func die(format string, args ...any) {
 
 // baseEnv: GOROOT names the pinned SDK and is supplied IDENTICALLY to all
 // three modes. It is toolchain configuration, not a source-access grant.
-func baseEnv(home, tmp, gomodcache, gocache, goproxy, goroot string) map[string]string {
+func baseEnv(home, tmp, gomodcache, gocache, goproxy, goroot, binCache string) map[string]string {
 	return map[string]string{
 		"HOME": home, "TMPDIR": tmp, "LC_ALL": "C",
 		"GOMAXPROCS": "2", "GOROOT": goroot, "GOTOOLCHAIN": "local", "GOFLAGS": "-mod=mod", "GOPROXY": goproxy,
 		"GOMODCACHE": gomodcache, "GOCACHE": gocache, "GOPATH": filepath.Join(home, "go"),
+		"BASHY_BIN_CACHE": binCache,
 		"BASHY_HINTS": "off", "BASHY_AGENTIC": "",
 	}
 }
@@ -401,7 +402,12 @@ func cmdExecutor(root string) int {
 	if err := materialize(provisionDir, spec); err != nil {
 		die("%v", err)
 	}
-	provisionEnv := withPath(baseEnv(provisionHome, filepath.Join(work, "provision-tmp"), gomodcache, gocache, "https://proxy.golang.org,direct", goroot), toolchainPath)
+	binCache := filepath.Join(work, "managed-tools")
+	managedGo, err := provisionManagedGo(binCache, goroot, tc[2], tc[4])
+	if err != nil {
+		die("cannot provision authenticated runtime SDK: %v", err)
+	}
+	provisionEnv := withPath(baseEnv(provisionHome, filepath.Join(work, "provision-tmp"), gomodcache, gocache, "https://proxy.golang.org,direct", goroot, binCache), toolchainPath)
 	provisionTimeout := timeout
 	if provisionTimeout < 300 {
 		provisionTimeout = 300
@@ -458,6 +464,8 @@ func cmdExecutor(root string) int {
 			"sha256": shaFile(filepath.Join(root, "docs/tour/corpus.tsv"))},
 		"go": map[string]any{"path": goBin, "identity": goVersion, "sha256": goSHA, "pinned_identity": tc[3], "pinned_sha256": tc[4],
 			"goroot": goroot},
+		"runtime_sdk": map[string]any{"cache": binCache, "managed_go": managedGo, "identity": goVersion, "sha256": goSHA,
+			"binding": "BASHY_BIN_CACHE/go/<version>/go -> authenticated GOROOT"},
 		"helper_module":      helperProvision,
 		"candidate":          candidate,
 		"runtime_dependency": runtimeDep,
@@ -474,7 +482,7 @@ func cmdExecutor(root string) int {
 			"version": normalizerVersion},
 		"environment": map[string]any{"toolchain_path": toolchainPath, "body_path": "", "lc_all": "C", "gomaxprocs": int64(2),
 			"goproxy_during_run": "off", "gomodcache": gomodcache, "gocache": gocache,
-			"goroot_shared_by_all_modes": goroot,
+			"goroot_shared_by_all_modes": goroot, "bashy_bin_cache_shared_by_all_modes": binCache,
 			"input_absence_scope":        inputAbsenceScope,
 			"os_sandbox":                 false,
 			"fresh_state":                "module tree per mode; HOME, TMPDIR, artifact and runtime directories per (row, mode)"},
@@ -545,7 +553,7 @@ func cmdExecutor(root string) int {
 				if toolchainStage {
 					pathEnv = toolchainPath
 				}
-				env := withPath(baseEnv(home, tmp, gomodcache, gocache, "off", goroot), pathEnv)
+				env := withPath(baseEnv(home, tmp, gomodcache, gocache, "off", goroot, binCache), pathEnv)
 				inputs := map[string]any{}
 				for _, name := range consumedArtifacts(stageSpec) {
 					inputPath := subs[map[string]string{"go": "OUT_GO", "bin": "BIN"}[name]]
@@ -600,7 +608,7 @@ func cmdExecutor(root string) int {
 				continue
 			}
 			oracleBinary = artifactRecord(binary)
-			bodyEnv := withPath(baseEnv(home, tmp, gomodcache, gocache, "off", goroot), "")
+			bodyEnv := withPath(baseEnv(home, tmp, gomodcache, gocache, "off", goroot, binCache), "")
 			for i := 0; i < oracleRepeats; i++ {
 				repeatDir := filepath.Join(state, fmt.Sprintf("oracle-%d", i))
 				os.MkdirAll(repeatDir, 0o755)

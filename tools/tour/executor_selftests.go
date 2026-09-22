@@ -1045,6 +1045,12 @@ func cmdExecutorSelftests(root string) int {
 			asMap(records[0]["go"])["identity"] = "go version go1.26.0 darwin/arm64"
 			return records
 		}},
+		{"gate: managed runtime SDK metadata must bind the authenticated toolchain", "runtime_sdk:binding", func(records []map[string]any) []map[string]any {
+			manifest := records[0]
+			manifest["runtime_sdk"] = map[string]any{"cache": "/managed", "managed_go": "/wrong/go", "identity": dig(manifest, "go", "identity"), "sha256": dig(manifest, "go", "sha256")}
+			asMap(manifest["environment"])["bashy_bin_cache_shared_by_all_modes"] = "/managed"
+			return records
+		}},
 		// ---- semantic comparator forgery
 		{"gate: a FORGED semantic verdict over wrong output is rejected", "semantic_forged:", func(records []map[string]any) []map[string]any {
 			restate(volatileObservation(records, "interpreted"), []byte("totally different\n"))

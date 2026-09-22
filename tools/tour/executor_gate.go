@@ -266,6 +266,19 @@ func cmdExecutorGate(root string) int {
 	if !evidenceToolchainDigestMatches(tc, dig(manifest, "go", "sha256")) {
 		g.bad("toolchain:sha256")
 	}
+	// Older retained ledgers predate managed runtime metadata. When present,
+	// bind it to the same authenticated SDK instead of weakening their receipt.
+	if runtimeSDK, ok := manifest["runtime_sdk"].(map[string]any); ok {
+		if runtimeSDK["identity"] != recordedGoIdentity || !jsonEqual(runtimeSDK["sha256"], dig(manifest, "go", "sha256")) {
+			g.bad("runtime_sdk:authentication")
+		}
+		cache := toS(runtimeSDK["cache"])
+		managedGo := toS(runtimeSDK["managed_go"])
+		if cache == "" || managedGo != filepath.Join(cache, "go", strings.TrimPrefix(field(tc, 2), "go"), "go", "bin", "go") ||
+			toS(dig(manifest, "environment", "bashy_bin_cache_shared_by_all_modes")) != cache {
+			g.bad("runtime_sdk:binding")
+		}
+	}
 
 	// --- 4. helper module provisioning
 	helper := tsvRows(filepath.Join(refs, "docs/tour/helpers.tsv"))[0]
