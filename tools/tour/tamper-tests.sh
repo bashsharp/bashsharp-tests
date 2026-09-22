@@ -39,7 +39,9 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 RUNNER="${ROOT}/tools/tour/run-baseline.sh"
 VALIDATOR="${ROOT}/tools/tour/validate-results.sh"
 GOMODCACHE_DIR="$(go env GOMODCACHE)"
-REAL_SRC="${GOMODCACHE_DIR}/golang.org/x/website@$(awk -F '\t' '$1 !~ /^#/ && NF { print $2; exit }' "${ROOT}/docs/tour/pin.tsv")"
+# Reuse the same pinned materialization override as run-baseline.sh. The
+# miniature probes still authenticate their own source bytes, modes and pins.
+REAL_SRC="${TOUR_ROOT:-${GOMODCACHE_DIR}/golang.org/x/website@$(awk -F '\t' '$1 !~ /^#/ && NF { print $2; exit }' "${ROOT}/docs/tour/pin.tsv")}"
 VERSION="$(awk -F '\t' '$1 !~ /^#/ && NF { print $2; exit }' "${ROOT}/docs/tour/pin.tsv")"
 COMMIT="$(awk -F '\t' '$1 !~ /^#/ && NF { print $3; exit }' "${ROOT}/docs/tour/pin.tsv")"
 
@@ -50,12 +52,24 @@ COMMIT="$(awk -F '\t' '$1 !~ /^#/ && NF { print $3; exit }' "${ROOT}/docs/tour/p
 WORK_BASE="${ROOT}/.cache/tour/tamper"
 mkdir -p "${WORK_BASE}"
 WORK="$(mktemp -d "${WORK_BASE}.XXXXXX")"
-trap 'rm -rf "${WORK}"' EXIT
+cleanup() {
+  local rc=$?
+  if [ "${rc}" -ne 0 ] || [ "${TOUR_KEEP_TAMPER:-0}" = "1" ]; then
+    printf 'tamper diagnostics retained: %s (exit %s)\n' "${WORK}" "${rc}" >&2
+  else
+    rm -rf "${WORK}"
+  fi
+}
+trap cleanup EXIT
 LOG="${WORK}/probe.log"
 
 pass=0 fail=0
 ok()   { pass=$((pass + 1)); printf 'PASS %s\n' "$1"; }
-bad()  { fail=$((fail + 1)); printf 'FAIL %s\n' "$1" >&2; }
+bad()  {
+  fail=$((fail + 1))
+  printf 'FAIL %s\n' "$1" >&2
+  [ ! -f "${LOG}" ] || cp "${LOG}" "${WORK}/failure-${fail}.log"
+}
 
 # expect_fail <label> <expected-marker> <cmd...> : command must exit nonzero
 # AND print the marker (a mutation that fails for the WRONG reason, or is
@@ -200,6 +214,16 @@ expect_ok "control run"        run_mini "${RESULTS}" "${BPIN}"
 expect_ok "control validation" val_mini "${RESULTS}" "${BPIN}"
 cp "${RESULTS}" "${WORK}/results.good.tsv"
 cp "${BPIN}"    "${WORK}/bpin.good.tsv"
+
+# A custom result and its baseline pin form one observation; neither override
+# may silently borrow the platform default for the other half.
+expect_fail "results override without matching pin" \
+  "overrides must be supplied together" \
+  env -u TOUR_BASELINE_PIN TOUR_RESULTS="${RESULTS}" "${VALIDATOR}"
+expect_fail "pin override without matching results" \
+  "overrides must be supplied together" \
+  env -u TOUR_RESULTS TOUR_BASELINE_PIN="${BPIN}" "${VALIDATOR}"
+
 
 echo "== probe family 1: source hashes =="
 # Same byte count, different bytes: only the sha256 can catch this.
@@ -367,6 +391,7 @@ else
     bad "bounded run: took ${elapsed}s — the bound did not hold"
   elif ! grep -qF "run FAILED" "${LOG}"; then
     bad "bounded run: exit ${rc} but no failed-row diagnosis"
+    sed -n '1,40p' "${LOG}" | sed 's/^/    /' >&2
   else
     ok "bounded process-tree kill + cleanup (${elapsed}s, exit ${rc})"
   fi
