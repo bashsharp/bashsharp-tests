@@ -750,7 +750,7 @@ func cmdExecutorSelftests(root string) int {
 		for _, c := range components {
 			names = append(names, asString(c["component"]))
 		}
-		return expect(equalStrings(sortedCopy(names), []string{"bashy", "coreutils", "filebrowser", "readline", "sh"}), inspect(names))
+		return expect(equalStrings(sortedCopy(names), []string{"bashsharp", "bashy", "coreutils", "filebrowser", "readline", "sh", "yoke"}), inspect(names))
 	})
 	suite.check("candidate: a manifest-authenticated Makefile build is ACCEPTED (no release tag required)", func() any {
 		reasons := candidateFailures(candidateFixture())
