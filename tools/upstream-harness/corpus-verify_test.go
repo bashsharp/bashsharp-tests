@@ -145,6 +145,48 @@ func TestCorpusVerifyRejectsMissingRequiredTypeStream(t *testing.T) {
 	}
 }
 
+func TestCorpusVerifyAcceptsNoPackageStreamsWithoutPackageRoots(t *testing.T) {
+	f := newCorpusFixture(t)
+	for _, mode := range corpusModes {
+		f.writeGo(mode, "package.go-test.json")
+		if mode != "native" {
+			if err := os.Remove(filepath.Join(f.evidence, "evidence-"+mode, "packages", "example_p.events.jsonl")); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	code, _, stderr := f.verify(2)
+	if code != 0 {
+		t.Fatalf("verify = %d, stderr:\n%s", code, stderr)
+	}
+}
+
+func TestCorpusVerifyRejectsMissingRequiredPackageStream(t *testing.T) {
+	f := newCorpusFixture(t)
+	if err := os.Remove(filepath.Join(f.evidence, "evidence-interpreted", "packages", "example_p.events.jsonl")); err != nil {
+		t.Fatal(err)
+	}
+	code, _, stderr := f.verify(3)
+	if code != 1 {
+		t.Fatalf("verify = %d, want 1; stderr:\n%s", code, stderr)
+	}
+	if want := "interpreted package event directory has no *.events.jsonl streams"; !strings.Contains(stderr, want) {
+		t.Fatalf("stderr lacks %q:\n%s", want, stderr)
+	}
+}
+
+func TestCorpusVerifyRejectsOrphanPackageStreamWithoutPackageRoots(t *testing.T) {
+	f := newCorpusFixture(t)
+	f.writeGo("interpreted", "package.go-test.json")
+	code, _, stderr := f.verify(3)
+	if code != 1 {
+		t.Fatalf("verify = %d, want 1; stderr:\n%s", code, stderr)
+	}
+	if want := "interpreted package plan package:example/p has no package terminal"; !strings.Contains(stderr, want) {
+		t.Fatalf("stderr lacks %q:\n%s", want, stderr)
+	}
+}
+
 func TestCorpusVerifyDefectFixtures(t *testing.T) {
 	tests := []struct {
 		name string

@@ -202,6 +202,9 @@ func (o *corpusObserver) readLane(mode string) {
 	packagesDir := filepath.Join(dir, "packages")
 	entries, err := os.ReadDir(packagesDir)
 	if err != nil {
+		if os.IsNotExist(err) && !o.hasExecutedPackageRoot(mode) {
+			return
+		}
 		o.violate("%s package event directory: %v", mode, err)
 		return
 	}
@@ -213,9 +216,18 @@ func (o *corpusObserver) readLane(mode string) {
 		seen++
 		o.readPackageRecords(mode, filepath.Join(packagesDir, entry.Name()))
 	}
-	if seen == 0 {
+	if seen == 0 && o.hasExecutedPackageRoot(mode) {
 		o.violate("%s package event directory has no *.events.jsonl streams", mode)
 	}
+}
+
+func (o *corpusObserver) hasExecutedPackageRoot(mode string) bool {
+	for id, modes := range o.states {
+		if strings.HasPrefix(id, "package:") && modes[mode] != "" && modes[mode] != "SKIP" {
+			return true
+		}
+	}
+	return false
 }
 
 func (o *corpusObserver) hasExecutedTypeRoot(mode, pkg string) bool {
@@ -602,7 +614,7 @@ func (o *corpusObserver) checkRoots() {
 		}
 		if strings.HasPrefix(id, "package:") {
 			for _, mode := range corpusModes[1:] {
-				if o.states[id][mode] != "" && o.states[id]["@package-plan:"+mode] == "" {
+				if o.states[id][mode] != "" && o.states[id][mode] != "SKIP" && o.states[id]["@package-plan:"+mode] == "" {
 					o.nativeExec++
 					o.violate("%s %s has a terminal but no package backend plan", mode, id)
 				}
