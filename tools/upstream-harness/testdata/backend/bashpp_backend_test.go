@@ -151,9 +151,14 @@ func (t test) backendEventProgram(mode, action, phase, disposition string, compi
 type companionFile struct {
 	Path   string `json:"path"`
 	SHA256 string `json:"sha256"`
+	Role   string `json:"role,omitempty"`
 }
 
 func companionProof(paths []string) ([]companionFile, error) {
+	return companionProofRole(paths, "")
+}
+
+func companionProofRole(paths []string, role string) ([]companionFile, error) {
 	proofs := make([]companionFile, 0, len(paths))
 	for _, path := range paths {
 		data, err := os.ReadFile(path)
@@ -161,7 +166,7 @@ func companionProof(paths []string) ([]companionFile, error) {
 			return nil, err
 		}
 		digest := sha256.Sum256(data)
-		proofs = append(proofs, companionFile{Path: path, SHA256: hex.EncodeToString(digest[:])})
+		proofs = append(proofs, companionFile{Path: path, SHA256: hex.EncodeToString(digest[:]), Role: role})
 	}
 	return proofs, nil
 }
@@ -616,32 +621,74 @@ func (t test) backendAssemble(step *planStep, mode, action, phase string, compil
 
 // goListPackage is the subset of `go list -json` the seam reads.
 type goListPackage struct {
-	ImportPath string
-	Name       string
-	Dir        string
-	GoFiles    []string
-	SFiles     []string
-	CgoFiles   []string
-	Standard   bool
-	Module     *struct {
+	ImportPath     string
+	Name           string
+	Dir            string
+	GoFiles        []string
+	SFiles         []string
+	CgoFiles       []string
+	IgnoredGoFiles []string
+	Standard       bool
+	Module         *struct {
 		Path string
 		Main bool
 	}
+	Error *struct {
+		Err string
+	}
+}
+
+func goEnvCGOEnabled(goTool, dir string, env []string) (bool, error) {
+	cmd := exec.Command(goTool, "env", "CGO_ENABLED")
+	cmd.Dir, cmd.Env = dir, env
+	out, err := cmd.Output()
+	if err != nil {
+		return false, err
+	}
+	return strings.TrimSpace(string(out)) == "1", nil
+}
+
+func importsC(path string) bool {
+	f, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ImportsOnly|parser.ParseComments)
+	if err != nil {
+		return false
+	}
+	for _, spec := range f.Imports {
+		if strings.Trim(spec.Path.Value, `"`) == "C" {
+			return true
+		}
+	}
+	return false
+}
+
+func ignoredCgoFiles(pkg goListPackage) []string {
+	var files []string
+	for _, name := range pkg.IgnoredGoFiles {
+		if importsC(filepath.Join(pkg.Dir, name)) {
+			files = append(files, name)
+		}
+	}
+	return files
 }
 
 // resolveModuleProgram asks the pinned go command what "." is in dir: the main
 // package's Go files (absolute) and every in-module dependency as an ordered
 // --go-package entry (go list -deps emits dependencies before dependents).
-// Assembly sources selected by go list are authenticated companions of their
-// same package. Cgo sources still have no direct pure-Go source meaning.
+// Assembly and cgo sources selected by go list are authenticated companions of
+// their same package. Cgo sources are accepted only when the selected Go
+// environment has CGO_ENABLED=1; otherwise they remain an explicit refusal.
 func resolveModuleProgram(goTool, dir string, env []string) (files, mapArgs []string, record map[string]any, err error) {
 	if goTool == "" {
 		return nil, nil, nil, fmt.Errorf("resolving a module program requires BASHPP_TESTDIR_GO")
 	}
-	cmd := exec.Command(goTool, "list", "-json", "-deps", ".")
+	cgoEnabled, envErr := goEnvCGOEnabled(goTool, dir, env)
+	if envErr != nil {
+		return nil, nil, nil, fmt.Errorf("go env CGO_ENABLED failed in %s: %v", dir, envErr)
+	}
+	cmd := exec.Command(goTool, "list", "-json", "-deps", "-e", ".")
 	cmd.Dir, cmd.Env = dir, env
 	out, err := cmd.Output()
-	record = map[string]any{"go_list": append([]string{goTool}, cmd.Args[1:]...), "dir": dir}
+	record = map[string]any{"go_list": append([]string{goTool}, cmd.Args[1:]...), "dir": dir, "cgo_enabled": cgoEnabled}
 	if err != nil {
 		return nil, nil, record, fmt.Errorf("go list -json -deps . failed in %s: %v", dir, err)
 	}
@@ -656,11 +703,20 @@ func resolveModuleProgram(goTool, dir string, env []string) (files, mapArgs []st
 		if pkg.Standard || pkg.Module == nil || !pkg.Module.Main {
 			continue
 		}
-		if len(pkg.CgoFiles) != 0 {
-			return nil, nil, record, fmt.Errorf("module package %s has non-Go inputs %v", pkg.ImportPath, pkg.CgoFiles)
+		if !cgoEnabled {
+			if cgoFiles := ignoredCgoFiles(pkg); len(cgoFiles) != 0 {
+				return nil, nil, record, fmt.Errorf("module package %s has cgo inputs %v with CGO_ENABLED=0", pkg.ImportPath, cgoFiles)
+			}
 		}
-		abs := absPackageFiles(pkg.Dir, pkg.GoFiles)
+		if len(pkg.CgoFiles) != 0 && !cgoEnabled {
+			return nil, nil, record, fmt.Errorf("module package %s has cgo inputs %v with CGO_ENABLED=0", pkg.ImportPath, pkg.CgoFiles)
+		}
+		if pkg.Error != nil {
+			return nil, nil, record, fmt.Errorf("go list package %s: %s", pkg.ImportPath, pkg.Error.Err)
+		}
+		abs := absPackageFiles(pkg.Dir, append(append([]string(nil), pkg.GoFiles...), pkg.CgoFiles...))
 		companionPaths := absPackageFiles(pkg.Dir, pkg.SFiles)
+		cgoPaths := absPackageFiles(pkg.Dir, pkg.CgoFiles)
 		for _, path := range companionPaths {
 			rel, relErr := filepath.Rel(pkg.Dir, path)
 			if relErr != nil || rel == "." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || rel == ".." || filepath.IsAbs(rel) {
@@ -671,6 +727,12 @@ func resolveModuleProgram(goTool, dir string, env []string) (files, mapArgs []st
 		if proofErr != nil {
 			return nil, nil, record, fmt.Errorf("module package %s assembly companion proof failed: %v", pkg.ImportPath, proofErr)
 		}
+		cgoProofs, proofErr := companionProofRole(cgoPaths, "cgo")
+		if proofErr != nil {
+			return nil, nil, record, fmt.Errorf("module package %s cgo companion proof failed: %v", pkg.ImportPath, proofErr)
+		}
+		companionProofs = append(companionProofs, cgoProofs...)
+		companionPaths = append(companionPaths, cgoPaths...)
 		unit := map[string]any{"path": pkg.ImportPath, "files": abs, "dir": pkg.Dir}
 		if len(companionProofs) != 0 {
 			unit["companions"] = companionPaths
@@ -715,12 +777,22 @@ func nativeModuleCommands(dir, tool, shellrt string, record map[string]any, main
 	if companions, _ := record["companions"].([]string); len(companions) != 0 {
 		units[len(units)-1]["companions"] = companions
 	}
+	if proofs, _ := record["companion_proof"].([]companionFile); len(proofs) != 0 {
+		units[len(units)-1]["companion_proof"] = proofs
+	}
 	var deps []string
 	seen := map[string]bool{}
 	for _, unit := range units {
 		path, _ := unit["path"].(string)
 		files, _ := unit["files"].([]string)
 		companions, _ := unit["companions"].([]string)
+		proofs, _ := unit["companion_proof"].([]companionFile)
+		cgoCompanions := map[string]bool{}
+		for _, proof := range proofs {
+			if proof.Role == "cgo" {
+				cgoCompanions[proof.Path] = true
+			}
+		}
 		rel := strings.TrimPrefix(path, module)
 		if path != module && !strings.HasPrefix(path, module+"/") || strings.Contains(rel, "\\") || strings.Contains(rel, "//") || strings.Contains(rel, "/../") || strings.HasSuffix(rel, "/..") || rel != "" && filepath.Clean(strings.TrimPrefix(rel, "/")) != strings.TrimPrefix(rel, "/") || seen[path] || len(files) == 0 {
 			return nil, nil, nil, "", fmt.Errorf("invalid module unit %q", path)
@@ -731,6 +803,9 @@ func nativeModuleCommands(dir, tool, shellrt string, record map[string]any, main
 			return nil, nil, nil, "", err
 		}
 		for _, companion := range companions {
+			if cgoCompanions[companion] {
+				continue
+			}
 			relCompanion, err := filepath.Rel(filepath.Dir(files[0]), companion)
 			if err != nil || relCompanion == "." || strings.HasPrefix(relCompanion, ".."+string(filepath.Separator)) || relCompanion == ".." || filepath.IsAbs(relCompanion) {
 				return nil, nil, nil, "", fmt.Errorf("assembly companion %q is not inside package unit %q", companion, path)
@@ -1505,6 +1580,94 @@ func TestResolveModuleProgramAcceptsAuthenticatedAssemblyCompanion(t *testing.T)
 	if _, err := os.Stat(filepath.Join(mainDir, "bashpp_asmdecls.go")); !os.IsNotExist(err) {
 		t.Fatalf("compiled unit generated duplicate bodyless declaration stub: %v", err)
 	}
+}
+
+// Sprint: #249; Story: #715; Story-ID: 90f96d4f4dae
+func TestResolveModuleProgramAcceptsAuthenticatedCgoPackageWhenEnabled(t *testing.T) {
+	goTool := os.Getenv("BASHPP_TESTDIR_GO")
+	if goTool == "" {
+		var err error
+		goTool, err = exec.LookPath("go")
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	dir := cgoModuleFixture(t)
+	files, mapArgs, record, err := resolveModuleProgram(goTool, dir, append(os.Environ(), "CGO_ENABLED=1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	main := filepath.Join(dir, "main.go")
+	cgoFile := filepath.Join(dir, "bad", "bad.go")
+	if !reflect.DeepEqual(files, []string{main}) {
+		t.Fatalf("main files = %v, want %s", files, main)
+	}
+	wantMap := "example.test/cgorun/bad=" + cgoFile
+	if strings.Join(mapArgs, " ") != "--go-import-path example.test/cgorun --go-package "+wantMap {
+		t.Fatalf("map args = %v", mapArgs)
+	}
+	packages, _ := record["packages"].([]map[string]any)
+	if len(packages) != 1 {
+		t.Fatalf("packages = %#v", packages)
+	}
+	gotFiles, _ := packages[0]["files"].([]string)
+	gotCompanions, _ := packages[0]["companions"].([]string)
+	gotProof, _ := packages[0]["companion_proof"].([]companionFile)
+	if !reflect.DeepEqual(gotFiles, []string{cgoFile}) || !reflect.DeepEqual(gotCompanions, []string{cgoFile}) || !validCompanionRecords(gotProof, []string{cgoFile}) || gotProof[0].Role != "cgo" {
+		t.Fatalf("cgo package evidence files=%#v companions=%#v proof=%#v", gotFiles, gotCompanions, gotProof)
+	}
+	moduleDir := t.TempDir()
+	commands, _, _, _, err := nativeModuleCommands(moduleDir, "bashy", "/runtime", record, files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(commands[0], " "); !strings.Contains(got, "--go-native-unit --go-import-path example.test/cgorun/bad --go-file "+cgoFile) {
+		t.Fatalf("cgo unit command = %v", commands[0])
+	}
+	if _, err := os.Stat(filepath.Join(moduleDir, "bad", "bad.go")); !os.IsNotExist(err) {
+		t.Fatalf("cgo source was copied beside generated unit: %v", err)
+	}
+}
+
+// Sprint: #249; Story: #715; Story-ID: 90f96d4f4dae
+func TestResolveModuleProgramRefusesCgoPackageWhenDisabled(t *testing.T) {
+	goTool := os.Getenv("BASHPP_TESTDIR_GO")
+	if goTool == "" {
+		var err error
+		goTool, err = exec.LookPath("go")
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, _, _, err := resolveModuleProgram(goTool, cgoModuleFixture(t), append(os.Environ(), "CGO_ENABLED=0"))
+	if err == nil || !strings.Contains(err.Error(), "CGO_ENABLED=0") || !strings.Contains(err.Error(), "bad.go") {
+		t.Fatalf("resolveModuleProgram error = %v, want cgo disabled refusal", err)
+	}
+}
+
+// Sprint: #249; Story: #715; Story-ID: 90f96d4f4dae
+func TestCgoNativeUnitTranspileBlockedUntilFrontendFakeImportC(t *testing.T) {
+	t.Skip("blocker: sh D2 exposes cgo support through gosource.Options.FakeImportC, but bashsharp --source=go --go-native-unit has no authenticated flag/path to enable it; leaf b5-r1 fails before output with `could not import C (package \"C\" not found in go list output)`")
+}
+
+func cgoModuleFixture(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, "bad"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example.test/cgorun\n\ngo 1.20\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	main := []byte("package main\n\nimport \"example.test/cgorun/bad\"\n\nfunc main() { bad.Alloc() }\n")
+	if err := os.WriteFile(filepath.Join(dir, "main.go"), main, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	bad := []byte("package bad\n\n// #include <stdlib.h>\nimport \"C\"\n\nfunc Alloc() { C.malloc(1) }\n")
+	if err := os.WriteFile(filepath.Join(dir, "bad", "bad.go"), bad, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return dir
 }
 
 func validCompanionRecords(got []companionFile, paths []string) bool {

@@ -66,6 +66,27 @@ func TestVerifierRequiresRunInDirCompanionEvidence(t *testing.T) {
 	}
 }
 
+// Sprint: #249; Story: #715; Story-ID: 90f96d4f4dae
+func TestVerifierRequiresRunInDirCgoEvidenceRole(t *testing.T) {
+	phase, backend, result := runInDirEvidence("compiled")
+	cgoFile := backend.PackageMap.Dir + "/bad/bad.go"
+	backend.PackageMap.Packages = []mappedPackage{{
+		Path:           "example.test/asmrun/bad",
+		Dir:            backend.PackageMap.Dir + "/bad",
+		Files:          []string{cgoFile},
+		Companions:     []string{cgoFile},
+		CompanionProof: []companionFile{{Path: cgoFile, SHA256: strings.Repeat("b", 64), Role: "cgo"}},
+	}}
+	status, err := verifyRunInDirEvidence(t, "compiled", "pass", phase, backend, result)
+	if err != nil || status != "RUNINDIR-PASS" {
+		t.Fatalf("verifyRow = %q, %v", status, err)
+	}
+	backend.PackageMap.Packages[0].CompanionProof[0].Role = ""
+	if _, err := verifyRunInDirEvidence(t, "compiled", "pass", phase, backend, result); err == nil || !strings.Contains(err.Error(), "role cgo") {
+		t.Fatalf("verifyRow missing cgo role error = %v", err)
+	}
+}
+
 func runInDirEvidence(mode string) (eventRecord, eventRecord, eventRecord) {
 	cwd := "/tmp/upstream/asmrun.dir"
 	native := []string{"go", "run", "."}

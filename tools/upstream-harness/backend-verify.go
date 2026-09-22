@@ -132,6 +132,7 @@ type packageMap struct {
 type companionFile struct {
 	Path   string `json:"path"`
 	SHA256 string `json:"sha256"`
+	Role   string `json:"role,omitempty"`
 }
 
 type fileProof struct {
@@ -1364,9 +1365,21 @@ func verifyCompanionSet(dir string, companions []string, proofs []companionFile)
 	if !validCompanionProofs(companions, proofs) {
 		return fmt.Errorf("companion row lacks companion path and hash evidence")
 	}
-	for _, companion := range companions {
-		if dir == "" || !strings.HasSuffix(companion, ".s") || filepath.Dir(companion) != dir {
-			return fmt.Errorf("assembly companion %q is not a .s file in package directory %q", companion, dir)
+	for i, companion := range companions {
+		proof := proofs[i]
+		switch {
+		case dir == "" || filepath.Dir(companion) != dir:
+			return fmt.Errorf("companion %q is not in package directory %q", companion, dir)
+		case strings.HasSuffix(companion, ".s"):
+			if proof.Role == "cgo" {
+				return fmt.Errorf("assembly companion %q is mislabeled as cgo", companion)
+			}
+		case strings.HasSuffix(companion, ".go"):
+			if proof.Role != "cgo" {
+				return fmt.Errorf("cgo companion %q lacks role cgo evidence", companion)
+			}
+		default:
+			return fmt.Errorf("companion %q is neither a .s assembly file nor a .go cgo file in package directory %q", companion, dir)
 		}
 	}
 	return nil

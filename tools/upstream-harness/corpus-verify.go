@@ -108,6 +108,7 @@ type corpusPackageMap struct {
 type companionFile struct {
 	Path   string `json:"path"`
 	SHA256 string `json:"sha256"`
+	Role   string `json:"role,omitempty"`
 }
 
 type corpusManifestEntry struct {
@@ -494,8 +495,19 @@ func (o *corpusObserver) checkCompanionEvidence(name string, line int, mode, id 
 				break
 			}
 		}
-		if m.Dir == "" || filepath.Dir(companion) != m.Dir || !strings.HasSuffix(companion, ".s") {
-			o.violate("%s:%d: %s %s companion %q is not a selected .s file in %q", o.rel(name), line, mode, id, companion, m.Dir)
+		switch {
+		case m.Dir == "" || filepath.Dir(companion) != m.Dir:
+			o.violate("%s:%d: %s %s companion %q is not in selected package directory %q", o.rel(name), line, mode, id, companion, m.Dir)
+		case strings.HasSuffix(companion, ".s"):
+			if proof.Role == "cgo" {
+				o.violate("%s:%d: %s %s assembly companion %q is mislabeled as cgo", o.rel(name), line, mode, id, companion)
+			}
+		case strings.HasSuffix(companion, ".go"):
+			if proof.Role != "cgo" {
+				o.violate("%s:%d: %s %s cgo companion %q lacks role cgo evidence", o.rel(name), line, mode, id, companion)
+			}
+		default:
+			o.violate("%s:%d: %s %s companion %q is neither a selected .s nor cgo .go file in %q", o.rel(name), line, mode, id, companion, m.Dir)
 		}
 	}
 }
