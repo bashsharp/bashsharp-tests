@@ -310,7 +310,11 @@ func cmdExecutor(root string) int {
 	}
 
 	pin := tsvRows(filepath.Join(root, "docs/tour/pin.tsv"))[0]
-	tc := tsvRows(filepath.Join(root, "docs/tour/toolchain.tsv"))[0]
+	goos, goarch := hostGoosGoarch()
+	tc := evidenceToolchainRow(filepath.Join(root, "docs/tour/toolchain.tsv"), goos, goarch)
+	if tc == nil {
+		die("no pinned Go toolchain row for %s/%s in docs/tour/toolchain.tsv", goos, goarch)
+	}
 	helper := tsvRows(filepath.Join(root, "docs/tour/helpers.tsv"))[0]
 	corpus := tsvRows(filepath.Join(root, "docs/tour/corpus.tsv"))[0]
 
