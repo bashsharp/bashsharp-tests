@@ -41,7 +41,8 @@
 #   replace github.com/ergochat/readline       => ../readline
 #   replace github.com/filebrowser/filebrowser/v2 => ../filebrowser
 #
-# All four are listed below and all four must be bound. `filebrowser` is easy to
+# The language front door and agentic userland were later split into
+# bashsharp and yoke; all six replaced repositories below must be bound. `filebrowser` is easy to
 # miss because it enters `require` as an indirect dependency and is replaced
 # anyway; an unbound replaced dependency is unauthenticated product code, so the
 # gate additionally rejects any manifest repository that is NOT declared here.
@@ -55,3 +56,5 @@ sh	dependency	mvdan.cc/sh/v3	replace mvdan.cc/sh/v3 => ../sh
 coreutils	dependency	github.com/qiangli/coreutils	replace github.com/qiangli/coreutils => ../coreutils	
 readline	dependency	github.com/ergochat/readline	replace github.com/ergochat/readline => ../readline	
 filebrowser	dependency	github.com/filebrowser/filebrowser/v2	replace github.com/filebrowser/filebrowser/v2 => ../filebrowser	
+bashsharp	dependency	github.com/bashsharp/bashsharp	replace github.com/bashsharp/bashsharp => ../bashsharp	
+yoke	dependency	github.com/qiangli/yoke	replace github.com/qiangli/yoke => ../yoke	
