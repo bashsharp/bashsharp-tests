@@ -81,8 +81,11 @@ file_sha() { shasum -a 256 "$1" | awk '{print $1}'; }
 file_bytes() { wc -c < "$1" | tr -d ' '; }
 file_mode() { # portable octal permission bits, e.g. 444
   local m
-  m="$(stat -f %Lp "$1" 2>/dev/null || stat -c %a "$1" 2>/dev/null)" \
-    || die "cannot stat mode of $1"
+  case "${PLATFORM_GOOS}" in
+    darwin) m="$(stat -f %Lp "$1" 2>/dev/null)" || die "cannot stat mode of $1" ;;
+    linux)  m="$(stat -c %a "$1" 2>/dev/null)" || die "cannot stat mode of $1" ;;
+    *) die "unsupported stat platform ${PLATFORM_GOOS}" ;;
+  esac
   printf '%s\n' "${m#0}"
 }
 
