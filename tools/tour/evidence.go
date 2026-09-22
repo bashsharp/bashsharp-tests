@@ -333,7 +333,11 @@ func evidenceToolchainIdentityRow(path, identity string) []string {
 	default:
 		return nil
 	}
-	return evidenceToolchainRow(path, goos, goarch)
+	row := evidenceToolchainRow(path, goos, goarch)
+	if row == nil || field(row, 3) != identity {
+		return nil
+	}
+	return row
 }
 
 func evidenceToolchainDigestMatches(row []string, digest any) bool {
