@@ -405,8 +405,21 @@ func validateEvidenceMain(args []string) {
 	// are admissible only as part of the block EVERY mode receives; a chain that
 	// granted them to the interpreter alone would be a tooling exemption, and is
 	// refused.
-	if !deepEqual(recipe.Get("common_runtime_go_env"), []string{"GOROOT", "GOMODCACHE", "GOCACHE"}) {
+	if !deepEqual(recipe.Get("common_runtime_go_env"), []string{"GOROOT", "GOMODCACHE", "GOCACHE", "BASHY_BIN_CACHE"}) {
 		die("evidence does not record the common runtime Go environment")
+	}
+	managed := recipe.Obj("runtime_managed_tool_cache")
+	wantManaged := Obj(
+		"environment", "BASHY_BIN_CACHE",
+		"root", "${WORK}/managed-tools",
+		"fast_path", "go/"+strings.TrimPrefix(toolpin[2], "go")+"/go/bin/go",
+		"target", "${GOROOT}/bin/go",
+		"version", toolpin[2],
+		"go_sha256", toolpin[4],
+		"network", "disabled; exact authenticated SDK provisioned before execution",
+	)
+	if managed == nil || !deepEqual(managed, wantManaged) {
+		die("evidence does not bind the authenticated runtime managed-tool cache")
 	}
 	if !deepEqual(recipe.Get("effect_normalizations"), effectNormalizations) {
 		die("evidence licenses an unreviewed effect normalization: " + Generate(recipe.Get("effect_normalizations")))
