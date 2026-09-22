@@ -9,3 +9,4 @@
 {"op":"validate","slug":"authenticate-volatile-execution-evidence-without-erasing-it","tool":"codex:gpt-5.6-sol-r","host":"dragon","episode":"weave-issue-18","at":"2026-09-03T14:03:15.491454Z"}
 {"op":"validate","slug":"fail-closed-differential-gates-distinguish-attempts-from-executi","tool":"codex:gpt-5.6-sol-s","host":"dragon","episode":"weave-issue-19","at":"2026-09-03T14:09:11.236858Z"}
 {"op":"validate","slug":"authenticate-volatile-execution-evidence-without-erasing-it","tool":"claude-sonnet5","host":"dragon","episode":"weave-issue-22","at":"2026-09-03T14:55:10Z","note":"corrected: self-consistency alone is insufficient; added replay authentication"}
+{"op":"add","slug":"do-not-synthesize-asm-bodyless-declarations-in-compiled-module-u","id":"01a0caaa-f5e6-7d3e-bb2a-1690ca74f905","tool":"codex-gpt-5.5-n","host":"dragon","episode":"weave-issue-14","at":"2026-09-22T19:49:56.839516Z"}
