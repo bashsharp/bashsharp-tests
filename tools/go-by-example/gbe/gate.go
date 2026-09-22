@@ -924,8 +924,11 @@ func stageRoot(dir string, row []string, adapters []string) string {
 type toolchainContext struct {
 	goroot     string
 	goBinary   string
+	goVersion  string
+	goSHA256   string
 	gomodcache string
 	runGocache string
+	binCache   string
 	shModule   string
 }
 
@@ -976,7 +979,8 @@ func runEnv(tc *toolchainContext, root string, behaviors []string) map[string]st
 		"HOME": root + "/home", "TMPDIR": root + "/tmp", "PWD": root,
 		"BAR":    "",
 		"GOROOT": tc.goroot, "GOMODCACHE": tc.gomodcache, "GOCACHE": tc.runGocache,
-		"GOTOOLCHAIN": "local", "GOPROXY": "off", "GOSUMDB": "off",
+		"BASHY_BIN_CACHE": tc.binCache,
+		"GOTOOLCHAIN":     "local", "GOPROXY": "off", "GOSUMDB": "off",
 		"BASHY_HINTS": "off", "OTEL_TRACES_EXPORTER": "none",
 	}
 }
@@ -1279,7 +1283,16 @@ func gateMain(args []string) {
 			"multi_file_input", "--go-file",
 			"multi_file_program_arguments", "-- separator before program argv",
 			"declared_env_divergence", declaredEnvDivergence,
-			"common_runtime_go_env", []string{"GOROOT", "GOMODCACHE", "GOCACHE"},
+			"common_runtime_go_env", []string{"GOROOT", "GOMODCACHE", "GOCACHE", "BASHY_BIN_CACHE"},
+			"runtime_managed_tool_cache", Obj(
+				"environment", "BASHY_BIN_CACHE",
+				"root", "${WORK}/managed-tools",
+				"fast_path", "go/"+strings.TrimPrefix(tc.goVersion, "go")+"/go/bin/go",
+				"target", "${GOROOT}/bin/go",
+				"version", tc.goVersion,
+				"go_sha256", tc.goSHA256,
+				"network", "disabled; exact authenticated SDK provisioned before execution",
+			),
 			"effect_normalizations", effectNormalizations,
 			"process_primitives", "tools/go-by-example/gbe/corpus.go Corpus.capture/success?/snapshot/file_record/authenticate_candidate (absorbed from tools/corpus/executor.rb)",
 			"corpus_executor_sha256", sha(gbeDir+"/corpus.go"),
@@ -1306,6 +1319,10 @@ func gateMain(args []string) {
 		fatal("refusing to overwrite retained work: " + base)
 	}
 	os.MkdirAll(base, 0o755)
+	tc.binCache = base + "/managed-tools"
+	if _, err := provisionManagedToolCache(tc.binCache, tc); err != nil {
+		fatal("cannot provision authenticated runtime SDK: " + err.Error())
+	}
 
 	gocache := base + "/gocache"
 	gomodcache := tc.gomodcache
@@ -1380,7 +1397,10 @@ func gateMain(args []string) {
 		binaries := map[string]string{}
 		// The pinned corpus directory and work/bin are read by every mode; each
 		// staging tree below is handed to exactly one mode and is scoped to it.
-		bindings := []*InputBinding{newInputBinding(filepath.Dir(ROOT+"/"+path), false, "shared")}
+		bindings := []*InputBinding{
+			newInputBinding(filepath.Dir(ROOT+"/"+path), false, "shared"),
+			newInputBinding(tc.binCache, false, "shared"),
+		}
 
 		// -- oracle: build the pinned bytes natively, then run the binary.
 		oracleSrc := work + "/src/oracle"
@@ -1833,7 +1853,10 @@ func resolveToolchain(toolpin *Toolchain) *toolchainContext {
 	if gomodcache == "" || !isDir(gomodcache) {
 		fatal("cannot resolve the SDK module cache")
 	}
-	return &toolchainContext{goroot: goroot, goBinary: goBinary, gomodcache: gomodcache}
+	return &toolchainContext{
+		goroot: goroot, goBinary: goBinary, goVersion: toolpin.Version,
+		goSHA256: toolpin.GoSHA256, gomodcache: gomodcache,
+	}
 }
 
 func envWithout(key string) []string {

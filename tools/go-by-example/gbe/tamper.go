@@ -758,6 +758,11 @@ func (t *tamperSuite) phaseB() {
 	t.expectFail("declared_env_divergence", "evidence declares an environment divergence between modes", nil, nil, run(PROD, d)...)
 	d = recipeEdit("hidden-env-grant", "common_runtime_go_env", []any{})
 	t.expectFail("hidden_runtime_env_grant", "does not record the common runtime Go environment", nil, nil, run(PROD, d)...)
+	d = mutate("managed-tool-cache", func(rows []*Object) {
+		first(rows).Obj("recipe").Obj("runtime_managed_tool_cache").Set("go_sha256", strings.Repeat("0", 64))
+		rebind(rows)
+	})
+	t.expectFail("managed_tool_cache", "does not bind the authenticated runtime managed-tool cache", nil, nil, run(PROD, d)...)
 	d = recipeEdit("operand-recipe", "multi_file_input", "operand")
 	t.expectFail("operand_multifile_recipe", "does not record the --go-file multi-file input contract", nil, nil, run(PROD, d)...)
 	// ... and where it is actually observable: the recorded argv of the

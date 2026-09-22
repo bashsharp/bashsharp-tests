@@ -163,7 +163,16 @@ toolchain.
 
 The gate now supplies one `GOCACHE` outside every execution root, identically to
 all three modes, so the effect channel measures the program instead of the
-toolchain. What it does **not** do is suppress the telemetry, and the residue is
+toolchain. It also constructs one isolated `BASHY_BIN_CACHE` outside every
+execution root before any program runs. Its sole Go entry is the yoke/binmgr
+fast path `go/1.27.1/go/bin/go`, reached through a symlink to the already
+authenticated pinned GOROOT. The gate rechecks the target, `VERSION`, and
+`bin/go` digest; there is no network download, native fallback, or host-global
+tool cache. The cache environment and exact capability are recorded in evidence
+and supplied identically to all three modes. Program writes under `HOME`,
+`TMPDIR`, or the execution root remain fully compared.
+
+What the gate does **not** do is suppress the telemetry, and the residue is
 therefore still recorded and still fails the comparison:
 
 ```

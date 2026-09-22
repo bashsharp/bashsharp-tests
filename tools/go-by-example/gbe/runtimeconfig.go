@@ -6,6 +6,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -13,6 +14,44 @@ import (
 )
 
 var reTelemetryMode = regexp.MustCompile(`\Aoff(?: \d{4}-\d{2}-\d{2})?\z`)
+
+// provisionManagedToolCache constructs yoke/binmgr's already-installed Go
+// fast path. The cache is gate-owned and outside every program root. It points
+// at the SDK authenticated by resolveToolchain; no downloader or host fallback
+// participates in runtime execution.
+func provisionManagedToolCache(cache string, tc *toolchainContext) (string, error) {
+	version := strings.TrimPrefix(tc.goVersion, "go")
+	if version == "" || version == tc.goVersion {
+		return "", fmt.Errorf("invalid pinned Go version %q", tc.goVersion)
+	}
+	if got := sha(tc.goBinary); got != tc.goSHA256 {
+		return "", fmt.Errorf("authenticated Go binary checksum changed: got %s", got)
+	}
+	versionBytes, err := os.ReadFile(filepath.Join(tc.goroot, "VERSION"))
+	if err != nil || len(rubyLinesChomp(string(versionBytes))) == 0 || strings.TrimSpace(rubyLinesChomp(string(versionBytes))[0]) != tc.goVersion {
+		return "", fmt.Errorf("authenticated GOROOT version changed")
+	}
+	link := filepath.Join(cache, "go", version, "go")
+	if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
+		return "", err
+	}
+	if err := os.Symlink(tc.goroot, link); err != nil {
+		return "", err
+	}
+	resolved, err := filepath.EvalSymlinks(link)
+	if err != nil {
+		return "", err
+	}
+	wantRoot, err := filepath.EvalSymlinks(tc.goroot)
+	if err != nil || resolved != wantRoot {
+		return "", fmt.Errorf("managed Go SDK target mismatch")
+	}
+	fastGo := filepath.Join(link, "bin", "go")
+	if got := sha(fastGo); got != tc.goSHA256 {
+		return "", fmt.Errorf("managed Go binary checksum mismatch: got %s", got)
+	}
+	return fastGo, nil
+}
 
 // configureRuntime is GoByExampleRuntimeConfig.configure: `go telemetry off`
 // then `go env -json GOTELEMETRY GOTELEMETRYDIR`, both captured, then the mode
