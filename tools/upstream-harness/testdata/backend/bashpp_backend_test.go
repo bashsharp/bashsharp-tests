@@ -1645,11 +1645,6 @@ func TestResolveModuleProgramRefusesCgoPackageWhenDisabled(t *testing.T) {
 	}
 }
 
-// Sprint: #249; Story: #715; Story-ID: 90f96d4f4dae
-func TestCgoNativeUnitTranspileBlockedUntilFrontendFakeImportC(t *testing.T) {
-	t.Skip("blocker: sh D2 exposes cgo support through gosource.Options.FakeImportC, but bashsharp --source=go --go-native-unit has no authenticated flag/path to enable it; leaf b5-r1 fails before output with `could not import C (package \"C\" not found in go list output)`")
-}
-
 func cgoModuleFixture(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
