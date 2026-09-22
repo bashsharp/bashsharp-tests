@@ -1,0 +1,9 @@
+key	value
+schema	bashpp-tests/s249-artifact-decision/v1
+decision	S249-C2
+sh_commit	08743660f6e03a1de75072ff1f111f27da6b4be4
+contract_doc	docs/bashpp-compiler-artifact-contracts.md
+conformance_test	TestS249CompilerArtifactReplacementConformance
+conformance_modes	go,interpreted,compiled
+leaf	S249-cand1-r2
+tested_source_execution	never-native

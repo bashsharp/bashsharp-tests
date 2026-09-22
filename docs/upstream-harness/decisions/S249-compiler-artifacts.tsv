@@ -1,0 +1,11 @@
+root	mode	leaf_status	decision	replacement_subtest	ground
+testdir:closure3.go	interpreted	FAIL	S249-C2	closure-capture-and-call	gc -m inliner decisions and diagnostic positions are compiler artifacts, not Bash# source observables (sh@08743660 contract table)
+testdir:closure3.go	compiled	FAIL	S249-C2	closure-capture-and-call	gc -m inliner decisions and diagnostic positions are compiler artifacts, not Bash# source observables (sh@08743660 contract table)
+testdir:codegen/switch.go	interpreted	FAIL	S249-C2	switch-selection-and-fallthrough	target-specific assembly opcode patterns are compiler artifacts, not Bash# source observables (sh@08743660 contract table)
+testdir:codegen/switch.go	compiled	FAIL	S249-C2	switch-selection-and-fallthrough	target-specific assembly opcode patterns are compiler artifacts, not Bash# source observables (sh@08743660 contract table)
+testdir:live_regabi.go	interpreted	FAIL	S249-C2	select-tuple-receive-dereference	register-ABI liveness and -live diagnostics are compiler artifacts, not Bash# source observables (sh@08743660 contract table)
+testdir:live_regabi.go	compiled	FAIL	S249-C2	select-tuple-receive-dereference	register-ABI liveness and -live diagnostics are compiler artifacts, not Bash# source observables (sh@08743660 contract table)
+testdir:nilptr3.go	interpreted	FAIL	S249-C2	nil-pointer-panic-is-observable	-d=nil generated/removed nil-check diagnostics are compiler artifacts, not Bash# source observables (sh@08743660 contract table)
+testdir:nilptr3.go	compiled	FAIL	S249-C2	nil-pointer-panic-is-observable	-d=nil generated/removed nil-check diagnostics are compiler artifacts, not Bash# source observables (sh@08743660 contract table)
+testdir:prove.go	interpreted	FAIL	S249-C2	bounds-guard-controls-indexing	-d=ssa/prove/debug=1 proof-pass diagnostics are compiler artifacts, not Bash# source observables (sh@08743660 contract table)
+testdir:prove.go	compiled	FAIL	S249-C2	bounds-guard-controls-indexing	-d=ssa/prove/debug=1 proof-pass diagnostics are compiler artifacts, not Bash# source observables (sh@08743660 contract table)

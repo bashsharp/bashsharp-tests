@@ -18,6 +18,7 @@ umbrella; the card threads carry the recording notes.
 | D5-gc-only.tsv | 29 | gc-only checks go/types cannot express (162 D5; `notinheap2` joined at C) |
 | D7-unsafe-pointer.tsv | 26 | `unsafe.Pointer` memory reinterpretation + GC/finalizer observation (162 D7) |
 | D9-finalizer-makefunc.tsv | 29 | SetFinalizer+GC 15 · MakeFunc 6 · AllocsPerRun 3 · retained ValueOf 5 (165 D9) |
+| S249-compiler-artifacts.tsv | 5 | gc compiler-artifact assertions Bash# does not implement (249 C2, sh@08743660 `docs/bashpp-compiler-artifact-contracts.md`); both requested modes per root, leaf verdicts stay FAIL; replacement contracts pinned by `TestS249CompilerArtifactReplacementConformance` via `S249-evidence-pin.tsv`, authenticated by `tools/upstream-harness/artifact-decision-verify.go` |
 
 Blocking roots by ID: 142 = 143 − 4 (regressions → D10a) + 3 (divmod, heapsampling, rangegen-interpreted → D2 by D10b/c). `rangegen.go` appears in D2
 (interpreted) and D10 (compiled) — two modes, one root.
