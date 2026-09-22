@@ -202,6 +202,10 @@ cp "${TOUR_ROOT}/LICENSE" "${SRC_DIR}/LICENSE"
 # files — no pipes exist anywhere in this runner, so nothing can block on a
 # dead reader or leak an open pipe.
 bounded_run() { # bounded_run <timeout_s> <grace_s> <cmd...>
+  # Bash disables job control in a ( ... ) subshell even when its parent
+  # enabled it. Helper downloads/builds use such subshells: re-enable monitor
+  # mode here so $! is the child's own PGID, never the surrounding helper's.
+  set -m
   local limit_t=$(( $1 * 10 )) grace_t=$(( $2 * 10 )); shift 2
   "$@" </dev/null &
   local pid=$! t=0 rc=0 g
