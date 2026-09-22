@@ -1291,7 +1291,7 @@ func gateMain(args []string) {
 				"target", "${GOROOT}/bin/go",
 				"version", tc.goVersion,
 				"go_sha256", tc.goSHA256,
-				"network", "disabled; exact authenticated SDK provisioned before execution",
+				"network", "not used for SDK provisioning; authenticated cache prepared before execution",
 			),
 			"effect_normalizations", effectNormalizations,
 			"process_primitives", "tools/go-by-example/gbe/corpus.go Corpus.capture/success?/snapshot/file_record/authenticate_candidate (absorbed from tools/corpus/executor.rb)",

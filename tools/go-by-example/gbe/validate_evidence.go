@@ -405,9 +405,6 @@ func validateEvidenceMain(args []string) {
 	// are admissible only as part of the block EVERY mode receives; a chain that
 	// granted them to the interpreter alone would be a tooling exemption, and is
 	// refused.
-	if !deepEqual(recipe.Get("common_runtime_go_env"), []string{"GOROOT", "GOMODCACHE", "GOCACHE", "BASHY_BIN_CACHE"}) {
-		die("evidence does not record the common runtime Go environment")
-	}
 	managed := recipe.Obj("runtime_managed_tool_cache")
 	wantManaged := Obj(
 		"environment", "BASHY_BIN_CACHE",
@@ -416,9 +413,15 @@ func validateEvidenceMain(args []string) {
 		"target", "${GOROOT}/bin/go",
 		"version", toolpin[2],
 		"go_sha256", toolpin[4],
-		"network", "disabled; exact authenticated SDK provisioned before execution",
+		"network", "not used for SDK provisioning; authenticated cache prepared before execution",
 	)
-	if managed == nil || !deepEqual(managed, wantManaged) {
+	legacyRuntimeEnv := recipe.Get("runtime_managed_tool_cache") == nil &&
+		deepEqual(recipe.Get("common_runtime_go_env"), []string{"GOROOT", "GOMODCACHE", "GOCACHE"})
+	managedRuntimeEnv := deepEqual(recipe.Get("common_runtime_go_env"), []string{"GOROOT", "GOMODCACHE", "GOCACHE", "BASHY_BIN_CACHE"}) &&
+		managed != nil && deepEqual(managed, wantManaged)
+	// Existing schema-8 receipts predate managed-cache provisioning. Preserve
+	// their exact three-variable contract; any cache grant needs the new binding.
+	if !legacyRuntimeEnv && !managedRuntimeEnv {
 		die("evidence does not bind the authenticated runtime managed-tool cache")
 	}
 	if !deepEqual(recipe.Get("effect_normalizations"), effectNormalizations) {
