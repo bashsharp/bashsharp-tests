@@ -15,8 +15,11 @@ package testdir_test
 import (
 	"encoding/json"
 	"fmt"
+	"go/parser"
+	"go/token"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -150,6 +153,57 @@ func rememberDirectoryPackage(key string, current packageGroup) []packageGroup {
 	}
 	backendPackages.Store(key, append(append([]packageGroup(nil), earlier...), packageGroup{path: current.path, files: append([]string(nil), current.files...)}))
 	return earlier
+}
+
+// directoryImportClosure selects only imported source-map entries. Native
+// importcfg may name an object whose compilation failed: it is loaded only if
+// imported. Passing every attempted source package to an eager checker would
+// incorrectly re-check an unrelated rejected package in a later phase.
+// Parsing only import headers never changes the diagnostic checker's verdict;
+// if a header cannot be read, retain the full map so the checker owns the error.
+func directoryImportClosure(base string, files []string, available []packageGroup) []packageGroup {
+	byPath := make(map[string]packageGroup, len(available))
+	for _, group := range available {
+		byPath[group.path] = group
+	}
+	reached := map[string]bool{}
+	var visit func([]string) bool
+	visit = func(files []string) bool {
+		for _, name := range files {
+			f, err := parser.ParseFile(token.NewFileSet(), name, nil, parser.ImportsOnly)
+			if err != nil {
+				return false
+			}
+			for _, spec := range f.Imports {
+				imported, err := strconv.Unquote(spec.Path.Value)
+				if err != nil {
+					return false
+				}
+				if strings.HasPrefix(imported, "./") || strings.HasPrefix(imported, "../") {
+					imported = path.Join(base, imported)
+				}
+				group, exists := byPath[imported]
+				if !exists || reached[imported] {
+					continue
+				}
+				reached[imported] = true
+				if !visit(group.files) {
+					return false
+				}
+			}
+		}
+		return true
+	}
+	if !visit(files) {
+		return available
+	}
+	var selected []packageGroup
+	for _, group := range available {
+		if reached[group.path] {
+			selected = append(selected, group)
+		}
+	}
+	return selected
 }
 
 // backendProgram is what the phases of one upstream test have handed the
@@ -850,7 +904,8 @@ func (t test) backendPlan(step *planStep, action, phase string, pkg *packageIden
 	}
 	if directory {
 		key := t.eventName()
-		earlier := rememberDirectoryPackage(key, packageGroup{path: pkg.Path, files: compileInputs})
+		available := rememberDirectoryPackage(key, packageGroup{path: pkg.Path, files: compileInputs})
+		earlier := directoryImportClosure(pkg.Base, compileInputs, available)
 		mapArgs = []string{"--go-import-base", pkg.Base, "--go-import-path", pkg.Path}
 		for _, group := range earlier {
 			mapArgs = append(mapArgs, "--go-package", group.path+"="+strings.Join(group.files, ","))
@@ -859,16 +914,20 @@ func (t test) backendPlan(step *planStep, action, phase string, pkg *packageIden
 		for _, group := range earlier {
 			packages = append(packages, map[string]any{"path": group.path, "files": nonNil(group.files)})
 		}
-		packageMap = map[string]any{"base": pkg.Base, "path": pkg.Path, "packages": packages}
+		availableMap := make([]map[string]any, 0, len(available))
+		for _, group := range available {
+			availableMap = append(availableMap, map[string]any{"path": group.path, "files": nonNil(group.files)})
+		}
+		packageMap = map[string]any{"base": pkg.Base, "path": pkg.Path, "packages": packages, "available": availableMap, "selection": "import-closure"}
 		// The last directory package upstream compiles is the program a later
 		// link/execute phase of this test acts on (rundir, errorcheckandrundir).
-		// The program carries upstream's identity and every earlier group —
+		// The program carries upstream's identity and its import closure —
 		// a single-package program too (S165.0, D8): its execute phase runs
 		// under the same `-p main` its compile phase was checked under.
 		program := backendProgram{files: append([]string(nil), compileInputs...), mapArgs: append([]string(nil), mapArgs...), identity: identity}
 		backendPrograms.Store(key, program)
 		deviations = append(deviations,
-			fmt.Sprintf("upstream package identity -D %s -p %s and the %d earlier package(s) of this test are handed to Bash++ as an explicit package map; relative imports are never resolved on disk", pkg.Base, pkg.Path, len(earlier)))
+			fmt.Sprintf("upstream package identity -D %s -p %s and the %d transitively imported earlier package(s) of this test are handed to Bash++ as an explicit package map; the complete available map is recorded separately; relative imports are never resolved on disk", pkg.Base, pkg.Path, len(earlier)))
 	}
 
 	switch mode {
@@ -1280,5 +1339,51 @@ func TestNativeModuleCommands(t *testing.T) {
 		if _, _, _, _, err := nativeModuleCommands(t.TempDir(), "bashy", "/runtime", record, []string{"/original/main.go"}); err == nil {
 			t.Errorf("accepted invalid/duplicate unit %q", path)
 		}
+	}
+}
+
+func TestS243DirectoryImportClosure(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, source string) string {
+		p := filepath.Join(dir, name)
+		if err := os.WriteFile(p, []byte(source), 0600); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	good := packageGroup{path: "test/good", files: []string{write("good.go", "package good; const N = 1")}}
+	bad := packageGroup{path: "test/bad", files: []string{write("bad.go", "package bad; var N int = `bad`")}}
+	via := packageGroup{path: "test/via", files: []string{write("via.go", "package via; import _ `./bad`")}}
+	available := []packageGroup{good, bad, via}
+	for _, tc := range []struct{ name, source, want string }{
+		{"unused rejected package", "package main; import _ `./good`", "test/good"},
+		{"direct rejected dependency", "package main; import _ `./bad`", "test/bad"},
+		{"absolute rejected dependency", "package main; import _ `test/bad`", "test/bad"},
+		{"transitive rejected dependency", "package main; import _ `./via`", "test/bad,test/via"},
+		{"broken import header", "package main; import", "test/good,test/bad,test/via"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := write("main.go", tc.source)
+			got := directoryImportClosure("test", []string{root}, available)
+			var paths []string
+			for _, p := range got {
+				paths = append(paths, p.path)
+			}
+			if strings.Join(paths, ",") != tc.want {
+				t.Fatalf("selected %v, want %s", paths, tc.want)
+			}
+			if tool := os.Getenv("BASHPP_TESTDIR_TOOL"); tool != "" {
+				args := []string{"--bashpp", "--source=go", "--check", "--go-import-base", "test", "--go-import-path", "main"}
+				for _, p := range got {
+					args = append(args, "--go-package", p.path+"="+strings.Join(p.files, ","))
+				}
+				args = append(args, "--go-file", root)
+				out, err := exec.Command(tool, args...).CombinedOutput()
+				wantFailure := tc.name != "unused rejected package"
+				if (err != nil) != wantFailure {
+					t.Fatalf("check: %v output=%s; want failure=%v", err, out, wantFailure)
+				}
+			}
+		})
 	}
 }

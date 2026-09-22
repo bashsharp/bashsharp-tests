@@ -12,9 +12,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"go/parser"
+	"go/token"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -102,13 +106,17 @@ type packageID struct {
 
 // packageMap is the explicit map the backend handed to Bash++ for a directory
 // package phase: the current identity plus every earlier package of the test.
+type mappedPackage struct {
+	Path  string   `json:"path"`
+	Files []string `json:"files"`
+}
+
 type packageMap struct {
-	Base     string `json:"base"`
-	Path     string `json:"path"`
-	Packages []struct {
-		Path  string   `json:"path"`
-		Files []string `json:"files"`
-	} `json:"packages"`
+	Base      string          `json:"base"`
+	Path      string          `json:"path"`
+	Packages  []mappedPackage `json:"packages"`
+	Available []mappedPackage `json:"available"`
+	Selection string          `json:"selection"`
 	// runindir (S150.2): the go command's resolution of "." — the argv the
 	// seam ran, the module dir, and the main package's files.
 	GoList []string `json:"go_list"`
@@ -242,6 +250,75 @@ func checkProgramIdentity(program *programRec, compile *eventRecord) error {
 		}
 		if got != want {
 			return fmt.Errorf("program map args %v hand %s %q, want %q", program.MapArgs, flag, got, want)
+		}
+	}
+	return nil
+}
+
+// verifyDirectoryMap validates both the complete upstream enumeration and
+// the exact source import closure. A missing imported failed package cannot
+// be disguised as an unused package, nor can its file identity be substituted.
+func verifyDirectoryMap(m *packageMap, inputs []string, prior []mappedPackage) error {
+	available := m.Packages
+	if m.Selection == "import-closure" {
+		available = m.Available
+	} else if m.Selection != "" {
+		return fmt.Errorf("unknown directory map selection %q", m.Selection)
+	}
+	if len(available) != len(prior) {
+		return fmt.Errorf("available package count %d, want %d", len(available), len(prior))
+	}
+	for i := range prior {
+		if available[i].Path != prior[i].Path || !reflect.DeepEqual(available[i].Files, prior[i].Files) {
+			return fmt.Errorf("available package %d differs from upstream compile inputs", i)
+		}
+	}
+	if m.Selection == "" {
+		return nil
+	}
+	byPath := map[string]mappedPackage{}
+	for _, p := range available {
+		byPath[p.Path] = p
+	}
+	needed := map[string]bool{}
+	pending := append([]string(nil), inputs...)
+	conservative := false
+	for len(pending) > 0 {
+		name := pending[0]
+		pending = pending[1:]
+		f, err := parser.ParseFile(token.NewFileSet(), name, nil, parser.ImportsOnly)
+		if err != nil {
+			conservative = true
+			break
+		}
+		for _, spec := range f.Imports {
+			imp, err := strconv.Unquote(spec.Path.Value)
+			if err != nil {
+				conservative = true
+				break
+			}
+			if strings.HasPrefix(imp, "./") || strings.HasPrefix(imp, "../") {
+				imp = path.Join(m.Base, imp)
+			}
+			p, ok := byPath[imp]
+			if ok && !needed[imp] {
+				needed[imp] = true
+				pending = append(pending, p.Files...)
+			}
+		}
+	}
+	var want []mappedPackage
+	for _, p := range available {
+		if conservative || needed[p.Path] {
+			want = append(want, p)
+		}
+	}
+	if len(want) != len(m.Packages) {
+		return fmt.Errorf("selected package count %d, want import closure %d", len(m.Packages), len(want))
+	}
+	for i := range want {
+		if !reflect.DeepEqual(want[i], m.Packages[i]) {
+			return fmt.Errorf("selected package %d differs from import closure", i)
 		}
 	}
 	return nil
@@ -583,7 +660,7 @@ func verifyDirectoryRow(row matrixRow, ev evidence, mode, goAction string) (stri
 	if want == "" {
 		return "", fmt.Errorf("unknown backend mode %q", mode)
 	}
-	var seen []string
+	var seen []mappedPackage
 	assembly := false
 	for i, backend := range ev.Backends {
 		phase := ev.Phases[i]
@@ -610,14 +687,10 @@ func verifyDirectoryRow(row matrixRow, ev evidence, mode, goAction string) (stri
 		if backend.PackageMap.Base != phase.Package.Base || backend.PackageMap.Path != phase.Package.Path {
 			return "", fmt.Errorf("backend map identity %s/%s differs from upstream %s/%s", backend.PackageMap.Base, backend.PackageMap.Path, phase.Package.Base, phase.Package.Path)
 		}
-		var got []string
-		for _, p := range backend.PackageMap.Packages {
-			got = append(got, p.Path)
+		if err := verifyDirectoryMap(backend.PackageMap, phase.CompileInputs, seen); err != nil {
+			return "", fmt.Errorf("directory phase %d: %v", i, err)
 		}
-		if !reflect.DeepEqual(got, seen) {
-			return "", fmt.Errorf("backend map for phase %d lists %v, want the earlier packages %v", i, got, seen)
-		}
-		seen = append(seen, phase.Package.Path)
+		seen = append(seen, mappedPackage{Path: phase.Package.Path, Files: phase.CompileInputs})
 		if len(backend.ProgramArgv) != 0 {
 			return "", fmt.Errorf("directory phase %d must carry an empty program argv", i)
 		}
@@ -1097,7 +1170,7 @@ func verifyRunDirRow(row matrixRow, ev evidence, mode, goAction string) (string,
 	if wantCompile == "" {
 		return "", fmt.Errorf("unknown backend mode %q", mode)
 	}
-	var seen []string
+	var seen []mappedPackage
 	var last *eventRecord
 	var program *programRec
 	stage := "compile"
@@ -1114,17 +1187,17 @@ func verifyRunDirRow(row matrixRow, ev evidence, mode, goAction string) (string,
 			if backend.PackageMap.Base != phase.Package.Base || backend.PackageMap.Path != phase.Package.Path {
 				return "", fmt.Errorf("phase %d map identity %s/%s differs from upstream %s/%s", i, backend.PackageMap.Base, backend.PackageMap.Path, phase.Package.Base, phase.Package.Path)
 			}
-			var got []string
-			for _, p := range backend.PackageMap.Packages {
-				got = append(got, p.Path)
+			// A repeated package identity starts the upstream run pass.
+			for j, p := range seen {
+				if p.Path == phase.Package.Path {
+					seen = seen[:j]
+					break
+				}
 			}
-			if len(got) == 0 {
-				seen = nil // a new upstream pass over the directory
+			if err := verifyDirectoryMap(backend.PackageMap, phase.CompileInputs, seen); err != nil {
+				return "", fmt.Errorf("phase %d: %v", i, err)
 			}
-			if !reflect.DeepEqual(got, seen) {
-				return "", fmt.Errorf("phase %d map lists %v, want the earlier packages %v", i, got, seen)
-			}
-			seen = append(seen, phase.Package.Path)
+			seen = append(seen, mappedPackage{Path: phase.Package.Path, Files: phase.CompileInputs})
 			last = &ev.Backends[i]
 		case "link":
 			if stage != "compile" || last == nil {

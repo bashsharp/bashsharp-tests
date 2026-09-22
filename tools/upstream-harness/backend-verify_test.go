@@ -863,3 +863,42 @@ func TestVerifierRunDirLinkAdoptsCompiledObject(t *testing.T) {
 		t.Fatalf("link recording the object: error = %v", err)
 	}
 }
+
+func TestS243DirectoryMapImportClosureEvidence(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, source string) string {
+		p := filepath.Join(dir, name)
+		if err := os.WriteFile(p, []byte(source), 0600); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	good := mappedPackage{Path: "test/good", Files: []string{write("good.go", "package good; const N = 1")}}
+	bad := mappedPackage{Path: "test/bad", Files: []string{write("bad.go", "package bad; var N int = `bad`")}}
+	via := mappedPackage{Path: "test/via", Files: []string{write("via.go", "package via; import _ `./bad`")}}
+	available := []mappedPackage{good, bad, via}
+	main := write("main.go", "package main; import _ `./good`")
+	m := &packageMap{Base: "test", Path: "main", Selection: "import-closure", Available: available, Packages: []mappedPackage{good}}
+	if err := verifyDirectoryMap(m, []string{main}, available); err != nil {
+		t.Fatal(err)
+	}
+	for _, source := range []string{"package main; import _ `./bad`", "package main; import _ `test/bad`", "package main; import _ `./via`"} {
+		write("main.go", source)
+		if err := verifyDirectoryMap(m, []string{main}, available); err == nil {
+			t.Fatal("accepted omitted rejected dependency")
+		}
+	}
+	m.Packages = []mappedPackage{bad, via}
+	if err := verifyDirectoryMap(m, []string{main}, available); err != nil {
+		t.Fatal(err)
+	}
+	m.Available = []mappedPackage{good, via}
+	if err := verifyDirectoryMap(m, []string{main}, available); err == nil {
+		t.Fatal("accepted altered upstream enumeration")
+	}
+	m.Available = available
+	m.Packages = []mappedPackage{{Path: "test/bad", Files: good.Files}, via}
+	if err := verifyDirectoryMap(m, []string{main}, available); err == nil {
+		t.Fatal("accepted substituted imported source")
+	}
+}
