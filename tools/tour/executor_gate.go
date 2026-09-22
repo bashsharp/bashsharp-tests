@@ -268,15 +268,22 @@ func cmdExecutorGate(root string) int {
 	}
 	// Older retained ledgers predate managed runtime metadata. When present,
 	// bind it to the same authenticated SDK instead of weakening their receipt.
-	if runtimeSDK, ok := manifest["runtime_sdk"].(map[string]any); ok {
-		if runtimeSDK["identity"] != recordedGoIdentity || !jsonEqual(runtimeSDK["sha256"], dig(manifest, "go", "sha256")) {
-			g.bad("runtime_sdk:authentication")
-		}
-		cache := toS(runtimeSDK["cache"])
-		managedGo := toS(runtimeSDK["managed_go"])
-		if cache == "" || managedGo != filepath.Join(cache, "go", strings.TrimPrefix(field(tc, 2), "go"), "go", "bin", "go") ||
-			toS(dig(manifest, "environment", "bashy_bin_cache_shared_by_all_modes")) != cache {
+	rawRuntimeSDK, runtimeSDKDeclared := manifest["runtime_sdk"]
+	sharedRuntimeCache := dig(manifest, "environment", "bashy_bin_cache_shared_by_all_modes")
+	if runtimeSDKDeclared || sharedRuntimeCache != nil {
+		runtimeSDK, ok := rawRuntimeSDK.(map[string]any)
+		if !ok {
 			g.bad("runtime_sdk:binding")
+		} else {
+			if runtimeSDK["identity"] != recordedGoIdentity || !jsonEqual(runtimeSDK["sha256"], dig(manifest, "go", "sha256")) {
+				g.bad("runtime_sdk:authentication")
+			}
+			cache := toS(runtimeSDK["cache"])
+			managedGo := toS(runtimeSDK["managed_go"])
+			if cache == "" || managedGo != filepath.Join(cache, "go", strings.TrimPrefix(field(tc, 2), "go"), "go", "bin", "go") ||
+				toS(dig(manifest, "environment", "bashy_bin_cache_shared_by_all_modes")) != cache {
+				g.bad("runtime_sdk:binding")
+			}
 		}
 	}
 
