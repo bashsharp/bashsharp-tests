@@ -13,15 +13,11 @@
 package testdir_test
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"go/ast"
-	"go/format"
 	"go/parser"
-	"go/printer"
 	"go/token"
 	"io"
 	"os"
@@ -176,43 +172,6 @@ func absPackageFiles(dir string, files []string) []string {
 		abs = append(abs, filepath.Join(dir, f))
 	}
 	return abs
-}
-
-func bodylessDeclSource(files []string) ([]byte, bool, error) {
-	fset := token.NewFileSet()
-	var pkgName string
-	var decls []string
-	for _, name := range files {
-		f, err := parser.ParseFile(fset, name, nil, 0)
-		if err != nil {
-			return nil, false, err
-		}
-		if pkgName == "" {
-			pkgName = f.Name.Name
-		} else if pkgName != f.Name.Name {
-			return nil, false, fmt.Errorf("mixed package names %q and %q", pkgName, f.Name.Name)
-		}
-		for _, decl := range f.Decls {
-			fn, ok := decl.(*ast.FuncDecl)
-			if !ok || fn.Body != nil {
-				continue
-			}
-			var b bytes.Buffer
-			if err := printer.Fprint(&b, fset, fn); err != nil {
-				return nil, false, err
-			}
-			decls = append(decls, b.String())
-		}
-	}
-	if len(decls) == 0 {
-		return nil, false, nil
-	}
-	src := []byte("package " + pkgName + "\n\n" + strings.Join(decls, "\n\n") + "\n")
-	formatted, err := format.Source(src)
-	if err != nil {
-		return src, true, nil
-	}
-	return formatted, true, nil
 }
 
 // packageGroup is one directory package upstream has already planned for a
@@ -770,13 +729,6 @@ func nativeModuleCommands(dir, tool, shellrt string, record map[string]any, main
 		unitDir := filepath.Join(dir, strings.TrimPrefix(rel, "/"))
 		if err := os.MkdirAll(unitDir, 0o700); err != nil {
 			return nil, nil, nil, "", err
-		}
-		if decls, ok, err := bodylessDeclSource(files); err != nil {
-			return nil, nil, nil, "", err
-		} else if ok {
-			if err := os.WriteFile(filepath.Join(unitDir, "bashpp_asmdecls.go"), decls, 0o600); err != nil {
-				return nil, nil, nil, "", err
-			}
 		}
 		for _, companion := range companions {
 			relCompanion, err := filepath.Rel(filepath.Dir(files[0]), companion)
@@ -1550,9 +1502,8 @@ func TestResolveModuleProgramAcceptsAuthenticatedAssemblyCompanion(t *testing.T)
 	if _, err := os.Stat(copied); err != nil {
 		t.Fatalf("compiled unit lacks copied companion %s: %v", copied, err)
 	}
-	stub, err := os.ReadFile(filepath.Join(mainDir, "bashpp_asmdecls.go"))
-	if err != nil || !strings.Contains(string(stub), "func f() int64") || strings.Contains(string(stub), "panic") {
-		t.Fatalf("bodyless declaration stub = %q, %v", stub, err)
+	if _, err := os.Stat(filepath.Join(mainDir, "bashpp_asmdecls.go")); !os.IsNotExist(err) {
+		t.Fatalf("compiled unit generated duplicate bodyless declaration stub: %v", err)
 	}
 }
 
