@@ -316,6 +316,30 @@ func evidenceToolchainRow(path, goos, goarch string) []string {
 	return nil
 }
 
+func evidenceToolchainIdentityRow(path, identity string) []string {
+	parts := strings.Fields(identity)
+	if len(parts) != 4 || parts[0] != "go" || parts[1] != "version" {
+		return nil
+	}
+	platform := strings.Split(parts[3], "/")
+	if len(platform) != 2 {
+		return nil
+	}
+	goos, goarch := platform[0], platform[1]
+	switch goarch {
+	case "amd64":
+		goarch = "x86_64"
+	case "arm64":
+	default:
+		return nil
+	}
+	return evidenceToolchainRow(path, goos, goarch)
+}
+
+func evidenceToolchainDigestMatches(row []string, digest any) bool {
+	return row != nil && digest != nil && toS(digest) != "" && toS(digest) == field(row, 4)
+}
+
 func overlayEnv(env map[string]string) []string {
 	merged := map[string]string{}
 	for _, kv := range os.Environ() {

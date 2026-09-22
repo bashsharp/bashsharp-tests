@@ -200,7 +200,8 @@ func cmdExecutorGate(root string) int {
 	}
 	accepted := loadAccepted(filepath.Join(refs, "tests/tour/results.tsv"))
 	pin := tsvRows(filepath.Join(refs, "docs/tour/pin.tsv"))[0]
-	tc := tsvRows(filepath.Join(refs, "docs/tour/toolchain.tsv"))[0]
+	recordedGoIdentity := toS(dig(manifest, "go", "identity"))
+	tc := evidenceToolchainIdentityRow(filepath.Join(refs, "docs/tour/toolchain.tsv"), recordedGoIdentity)
 	declaredVolatility := map[string]map[string]any{}
 	for _, row := range tsvRows(filepath.Join(refs, "docs/tour/volatility.tsv")) {
 		declaredVolatility[field(row, 0)] = map[string]any{"volatile_element": field(row, 1), "comparator_needed": field(row, 2)}
@@ -259,10 +260,10 @@ func cmdExecutorGate(root string) int {
 	}
 
 	// --- 3. pinned Go baseline identity
-	if dig(manifest, "go", "identity") != tc[3] {
+	if tc == nil || recordedGoIdentity != field(tc, 3) {
 		g.bad("toolchain:identity")
 	}
-	if dig(manifest, "go", "sha256") != tc[4] {
+	if !evidenceToolchainDigestMatches(tc, dig(manifest, "go", "sha256")) {
 		g.bad("toolchain:sha256")
 	}
 
