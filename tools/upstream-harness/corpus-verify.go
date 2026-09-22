@@ -75,6 +75,7 @@ type corpusStreamRecord struct {
 	Test          string   `json:"test"`
 	Mode          string   `json:"mode"`
 	BackendSchema string   `json:"backend_schema"`
+	Action        string   `json:"action"`
 	PhaseKind     string   `json:"phase_kind"`
 	Phase         string   `json:"phase"`
 	CompileInputs []string `json:"compile_inputs"`
@@ -97,8 +98,16 @@ type corpusStreamRecord struct {
 }
 
 type corpusPackageMap struct {
-	Base string `json:"base"`
-	Path string `json:"path"`
+	Base           string          `json:"base"`
+	Path           string          `json:"path"`
+	Dir            string          `json:"dir"`
+	Companions     []string        `json:"companions"`
+	CompanionProof []companionFile `json:"companion_proof"`
+}
+
+type companionFile struct {
+	Path   string `json:"path"`
+	SHA256 string `json:"sha256"`
 }
 
 type corpusManifestEntry struct {
@@ -353,6 +362,9 @@ func (o *corpusObserver) readTestdirRecords(mode, name string) {
 			if rec.BackendSchema != corpusTestdirBackendSchema || rec.Mode != mode || rec.Disposition == "" || len(rec.NativeArgv) == 0 {
 				o.violate("%s:%d: incomplete %s backend record for %s", o.rel(name), line, mode, id)
 			}
+			if rec.Action == "runindir" && rec.Phase == "execute" && rec.PackageMap != nil {
+				o.checkCompanionEvidence(name, line, mode, id, rec.PackageMap)
+			}
 			if len(rec.Argv) != 0 && len(rec.NativeArgv) != 0 && rec.Argv[0] == rec.NativeArgv[0] {
 				o.nativeExec++
 				o.violate("%s %s backend record executed native argv[0] %q", mode, id, rec.Argv[0])
@@ -455,6 +467,35 @@ func (o *corpusObserver) readTypesRecords(mode, name, pkg string) {
 		// leaf accounting.
 		if !o.allTerminals[id][mode] {
 			o.violate("%s types-backend execution %s has no Go terminal", mode, id)
+		}
+	}
+}
+
+func (o *corpusObserver) checkCompanionEvidence(name string, line int, mode, id string, m *corpusPackageMap) {
+	if len(m.Companions) == 0 {
+		if len(m.CompanionProof) != 0 {
+			o.violate("%s:%d: %s %s has companion proof without companion paths", o.rel(name), line, mode, id)
+		}
+		return
+	}
+	if len(m.Companions) != len(m.CompanionProof) {
+		o.violate("%s:%d: %s %s companion path/proof count differs: %d/%d", o.rel(name), line, mode, id, len(m.Companions), len(m.CompanionProof))
+		return
+	}
+	for i, companion := range m.Companions {
+		proof := m.CompanionProof[i]
+		if proof.Path != companion || len(proof.SHA256) != 64 {
+			o.violate("%s:%d: %s %s companion %q lacks matching sha256 proof", o.rel(name), line, mode, id, companion)
+			continue
+		}
+		for _, r := range proof.SHA256 {
+			if !strings.ContainsRune("0123456789abcdef", r) {
+				o.violate("%s:%d: %s %s companion %q has non-hex sha256 %q", o.rel(name), line, mode, id, companion, proof.SHA256)
+				break
+			}
+		}
+		if m.Dir == "" || filepath.Dir(companion) != m.Dir || !strings.HasSuffix(companion, ".s") {
+			o.violate("%s:%d: %s %s companion %q is not a selected .s file in %q", o.rel(name), line, mode, id, companion, m.Dir)
 		}
 	}
 }

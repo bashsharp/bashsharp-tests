@@ -19,7 +19,7 @@ func TestEmitPartitions(t *testing.T) {
 
 	testdir := map[string]map[string]fixtureVerdict{
 		"interpreted": {
-			"kept.go":  {action: "fail", output: "Bash++ backend unsupported execute phase: module package kept.dir has non-Go inputs [a.s]"},
+			"kept.go":  {action: "fail", output: "package requires cgo, which this pure-Go shell does not provide"},
 			"pass.go":  {action: "pass"},
 			"skip.go":  {action: "skip"},
 			"s151.go":  {action: "fail", output: "../../work/goroot/test/s151.go:4: gosource: unsupported LabeledStmt"},
@@ -99,7 +99,7 @@ func TestEmitPartitions(t *testing.T) {
 			"package:example/unclassified\tinterpreted\tmystery product limitation\t" + noVerdict + "\n",
 		"active-unclassified.tsv": "root\tmode\tfirst_line\tverdict\n",
 		"active-retained-manifest.tsv": "root\tmode\tfirst_line\tverdict\n" +
-			"testdir:kept.go\tinterpreted\tBash++ backend unsupported execute phase: module package kept.dir has non-Go inputs [a.s]\t" + noVerdict + "\n",
+			"testdir:kept.go\tinterpreted\tpackage requires cgo, which this pure-Go shell does not provide\t" + noVerdict + "\n",
 		"native-only-typechecker.tsv": "root\tclass\tcredit\n" +
 			"typechecker:go/types/TestCheck/no-backend.go\tnative-only\t0\n",
 		"active-summary.tsv": "runner\tPASS\tFAIL\tSKIP\ttotal\tnative-only\n" +

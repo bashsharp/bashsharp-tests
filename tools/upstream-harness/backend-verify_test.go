@@ -49,6 +49,56 @@ func TestVerifierAcceptsCompileProof(t *testing.T) {
 	}
 }
 
+// Sprint: #249; Story: #715; Story-ID: 90f96d4f4dae
+func TestVerifierRequiresRunInDirCompanionEvidence(t *testing.T) {
+	phase, backend, result := runInDirEvidence("compiled")
+	status, err := verifyRunInDirEvidence(t, "compiled", "pass", phase, backend, result)
+	if err != nil || status != "RUNINDIR-PASS" {
+		t.Fatalf("verifyRow = %q, %v", status, err)
+	}
+	backend.PackageMap.CompanionProof = nil
+	if _, err := verifyRunInDirEvidence(t, "compiled", "pass", phase, backend, result); err == nil || !strings.Contains(err.Error(), "companion path and hash evidence") {
+		t.Fatalf("verifyRow missing proof error = %v", err)
+	}
+	backend.PackageMap.CompanionProof = []companionFile{{Path: backend.PackageMap.Companions[0], SHA256: strings.Repeat("z", 64)}}
+	if _, err := verifyRunInDirEvidence(t, "compiled", "pass", phase, backend, result); err == nil || !strings.Contains(err.Error(), "companion path and hash evidence") {
+		t.Fatalf("verifyRow tampered proof error = %v", err)
+	}
+}
+
+func runInDirEvidence(mode string) (eventRecord, eventRecord, eventRecord) {
+	cwd := "/tmp/upstream/asmrun.dir"
+	native := []string{"go", "run", "."}
+	companion := cwd + "/f_amd64.s"
+	phase := eventRecord{Kind: "phase", Test: "fixedbugs/asmrun.go", Action: "runindir", PhaseKind: "execute", CompileInputs: []string{"."}, ProgramArgv: []string{}, Argv: native, Cwd: cwd}
+	backend := eventRecord{
+		Kind: "backend", Test: phase.Test, BackendSchema: backendSchema, Mode: mode, Tool: toolIdentity{Path: "/bin/bashy", Version: "test"},
+		Action: phase.Action, Phase: phase.PhaseKind, CompileInputs: phase.CompileInputs, ProgramArgv: phase.ProgramArgv, NativeArgv: native,
+		Disposition: "check-then-run", Deviations: []string{"structured evidence"},
+		PackageMap: &packageMap{GoList: []string{"go", "list", "-json", "-deps", "."}, Dir: cwd, Files: []string{cwd + "/main.go"}, Companions: []string{companion}, CompanionProof: []companionFile{{Path: companion, SHA256: strings.Repeat("a", 64)}}},
+	}
+	if mode == "compiled" {
+		backend.Disposition = "transpile-build-run"
+	}
+	result := eventRecord{Kind: "phase_result", Test: phase.Test, Exit: 0}
+	return phase, backend, result
+}
+
+func verifyRunInDirEvidence(t *testing.T, mode, goAction string, records ...eventRecord) (string, error) {
+	t.Helper()
+	test := "fixedbugs/asmrun.go"
+	dir := t.TempDir()
+	base := filepath.Join(dir, strings.NewReplacer("/", "_", ".", "_").Replace(test))
+	writeJSONLines(t, base+".go-test.json", goRecord{Action: goAction, Test: "Test/" + test})
+	items := make([]any, 0, len(records)+1)
+	for _, record := range records {
+		items = append(items, record)
+	}
+	items = append(items, eventRecord{Kind: "terminal", Test: test, Failed: goAction == "fail"})
+	writeJSONLines(t, base+".events.jsonl", items...)
+	return verifyRow(matrixRow{Test: test, Action: "runindir"}, dir, mode, "test", "/bin/bashy")
+}
+
 func TestVerifierRetainsCompileProductFailure(t *testing.T) {
 	for _, mode := range []string{"interpreted", "compiled"} {
 		t.Run(mode, func(t *testing.T) {

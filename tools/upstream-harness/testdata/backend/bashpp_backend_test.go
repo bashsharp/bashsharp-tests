@@ -13,14 +13,23 @@
 package testdir_test
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"go/ast"
+	"go/format"
 	"go/parser"
+	"go/printer"
 	"go/token"
+	"io"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
+	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -141,6 +150,69 @@ func (t test) backendEventProgram(mode, action, phase, disposition string, compi
 		"disposition": disposition,
 		"deviations":  nonNil(deviations),
 	})
+}
+
+type companionFile struct {
+	Path   string `json:"path"`
+	SHA256 string `json:"sha256"`
+}
+
+func companionProof(paths []string) ([]companionFile, error) {
+	proofs := make([]companionFile, 0, len(paths))
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		digest := sha256.Sum256(data)
+		proofs = append(proofs, companionFile{Path: path, SHA256: hex.EncodeToString(digest[:])})
+	}
+	return proofs, nil
+}
+
+func absPackageFiles(dir string, files []string) []string {
+	abs := make([]string, 0, len(files))
+	for _, f := range files {
+		abs = append(abs, filepath.Join(dir, f))
+	}
+	return abs
+}
+
+func bodylessDeclSource(files []string) ([]byte, bool, error) {
+	fset := token.NewFileSet()
+	var pkgName string
+	var decls []string
+	for _, name := range files {
+		f, err := parser.ParseFile(fset, name, nil, 0)
+		if err != nil {
+			return nil, false, err
+		}
+		if pkgName == "" {
+			pkgName = f.Name.Name
+		} else if pkgName != f.Name.Name {
+			return nil, false, fmt.Errorf("mixed package names %q and %q", pkgName, f.Name.Name)
+		}
+		for _, decl := range f.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || fn.Body != nil {
+				continue
+			}
+			var b bytes.Buffer
+			if err := printer.Fprint(&b, fset, fn); err != nil {
+				return nil, false, err
+			}
+			decls = append(decls, b.String())
+		}
+	}
+	if len(decls) == 0 {
+		return nil, false, nil
+	}
+	src := []byte("package " + pkgName + "\n\n" + strings.Join(decls, "\n\n") + "\n")
+	formatted, err := format.Source(src)
+	if err != nil {
+		return src, true, nil
+	}
+	return formatted, true, nil
 }
 
 // packageGroup is one directory package upstream has already planned for a
@@ -601,7 +673,8 @@ type goListPackage struct {
 // resolveModuleProgram asks the pinned go command what "." is in dir: the main
 // package's Go files (absolute) and every in-module dependency as an ordered
 // --go-package entry (go list -deps emits dependencies before dependents).
-// A package with assembly or cgo files has no direct Go-source meaning.
+// Assembly sources selected by go list are authenticated companions of their
+// same package. Cgo sources still have no direct pure-Go source meaning.
 func resolveModuleProgram(goTool, dir string, env []string) (files, mapArgs []string, record map[string]any, err error) {
 	if goTool == "" {
 		return nil, nil, nil, fmt.Errorf("resolving a module program requires BASHPP_TESTDIR_GO")
@@ -624,21 +697,38 @@ func resolveModuleProgram(goTool, dir string, env []string) (files, mapArgs []st
 		if pkg.Standard || pkg.Module == nil || !pkg.Module.Main {
 			continue
 		}
-		if len(pkg.SFiles) != 0 || len(pkg.CgoFiles) != 0 {
-			return nil, nil, record, fmt.Errorf("module package %s has non-Go inputs %v", pkg.ImportPath, append(pkg.SFiles, pkg.CgoFiles...))
+		if len(pkg.CgoFiles) != 0 {
+			return nil, nil, record, fmt.Errorf("module package %s has non-Go inputs %v", pkg.ImportPath, pkg.CgoFiles)
 		}
-		abs := make([]string, 0, len(pkg.GoFiles))
-		for _, f := range pkg.GoFiles {
-			abs = append(abs, filepath.Join(pkg.Dir, f))
+		abs := absPackageFiles(pkg.Dir, pkg.GoFiles)
+		companionPaths := absPackageFiles(pkg.Dir, pkg.SFiles)
+		for _, path := range companionPaths {
+			rel, relErr := filepath.Rel(pkg.Dir, path)
+			if relErr != nil || rel == "." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || rel == ".." || filepath.IsAbs(rel) {
+				return nil, nil, record, fmt.Errorf("module package %s has unauthenticated assembly companion %q", pkg.ImportPath, path)
+			}
+		}
+		companionProofs, proofErr := companionProof(companionPaths)
+		if proofErr != nil {
+			return nil, nil, record, fmt.Errorf("module package %s assembly companion proof failed: %v", pkg.ImportPath, proofErr)
+		}
+		unit := map[string]any{"path": pkg.ImportPath, "files": abs, "dir": pkg.Dir}
+		if len(companionProofs) != 0 {
+			unit["companions"] = companionPaths
+			unit["companion_proof"] = companionProofs
 		}
 		if pkg.Name == "main" && pkg.Dir == dir {
 			p := pkg
 			main = &p
 			files = abs
+			if len(companionProofs) != 0 {
+				record["companions"] = companionPaths
+				record["companion_proof"] = companionProofs
+			}
 			continue
 		}
 		mapArgs = append(mapArgs, "--go-package", pkg.ImportPath+"="+strings.Join(abs, ","))
-		packages = append(packages, map[string]any{"path": pkg.ImportPath, "files": abs})
+		packages = append(packages, unit)
 	}
 	if main == nil || len(files) == 0 {
 		return nil, nil, record, fmt.Errorf("go list found no main package in %s", dir)
@@ -663,11 +753,15 @@ func nativeModuleCommands(dir, tool, shellrt string, record map[string]any, main
 	}
 	packages, _ := record["packages"].([]map[string]any)
 	units := append(append([]map[string]any(nil), packages...), map[string]any{"path": mainPath, "files": mainFiles})
+	if companions, _ := record["companions"].([]string); len(companions) != 0 {
+		units[len(units)-1]["companions"] = companions
+	}
 	var deps []string
 	seen := map[string]bool{}
 	for _, unit := range units {
 		path, _ := unit["path"].(string)
 		files, _ := unit["files"].([]string)
+		companions, _ := unit["companions"].([]string)
 		rel := strings.TrimPrefix(path, module)
 		if path != module && !strings.HasPrefix(path, module+"/") || strings.Contains(rel, "\\") || strings.Contains(rel, "//") || strings.Contains(rel, "/../") || strings.HasSuffix(rel, "/..") || rel != "" && filepath.Clean(strings.TrimPrefix(rel, "/")) != strings.TrimPrefix(rel, "/") || seen[path] || len(files) == 0 {
 			return nil, nil, nil, "", fmt.Errorf("invalid module unit %q", path)
@@ -676,6 +770,44 @@ func nativeModuleCommands(dir, tool, shellrt string, record map[string]any, main
 		unitDir := filepath.Join(dir, strings.TrimPrefix(rel, "/"))
 		if err := os.MkdirAll(unitDir, 0o700); err != nil {
 			return nil, nil, nil, "", err
+		}
+		if decls, ok, err := bodylessDeclSource(files); err != nil {
+			return nil, nil, nil, "", err
+		} else if ok {
+			if err := os.WriteFile(filepath.Join(unitDir, "bashpp_asmdecls.go"), decls, 0o600); err != nil {
+				return nil, nil, nil, "", err
+			}
+		}
+		for _, companion := range companions {
+			relCompanion, err := filepath.Rel(filepath.Dir(files[0]), companion)
+			if err != nil || relCompanion == "." || strings.HasPrefix(relCompanion, ".."+string(filepath.Separator)) || relCompanion == ".." || filepath.IsAbs(relCompanion) {
+				return nil, nil, nil, "", fmt.Errorf("assembly companion %q is not inside package unit %q", companion, path)
+			}
+			target := filepath.Join(unitDir, relCompanion)
+			if filepath.Base(target) == "main.go" {
+				return nil, nil, nil, "", fmt.Errorf("assembly companion %q would overwrite generated source", companion)
+			}
+			if err := os.MkdirAll(filepath.Dir(target), 0o700); err != nil {
+				return nil, nil, nil, "", err
+			}
+			in, err := os.Open(companion)
+			if err != nil {
+				return nil, nil, nil, "", err
+			}
+			out, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+			if err != nil {
+				in.Close()
+				return nil, nil, nil, "", err
+			}
+			_, copyErr := io.Copy(out, in)
+			closeErr := out.Close()
+			in.Close()
+			if copyErr != nil {
+				return nil, nil, nil, "", copyErr
+			}
+			if closeErr != nil {
+				return nil, nil, nil, "", closeErr
+			}
 		}
 		generated := filepath.Join(unitDir, "main.go")
 		mapFile := generated + ".map"
@@ -1367,6 +1499,95 @@ func TestNativeModuleCommands(t *testing.T) {
 		if _, _, _, _, err := nativeModuleCommands(t.TempDir(), "bashy", "/runtime", record, []string{"/original/main.go"}); err == nil {
 			t.Errorf("accepted invalid/duplicate unit %q", path)
 		}
+	}
+}
+
+// Sprint: #249; Story: #715; Story-ID: 90f96d4f4dae
+func TestResolveModuleProgramAcceptsAuthenticatedAssemblyCompanion(t *testing.T) {
+	goTool := os.Getenv("BASHPP_TESTDIR_GO")
+	if goTool == "" {
+		var err error
+		goTool, err = exec.LookPath("go")
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example.test/asmrun\n\ngo 1.20\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	main := []byte("package main\n\nfunc f() int64\n\nfunc main() { if f() != 42 { panic(\"f\") } }\n")
+	if err := os.WriteFile(filepath.Join(dir, "main.go"), main, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	writeAsm := func(name, body string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeAsm("f_arm64.s", "TEXT ·f(SB),4,$0-8\n\tMOVD\t$42, R0\n\tMOVD\tR0, ret+0(FP)\n\tRET\n")
+	writeAsm("f_amd64.s", "TEXT ·f(SB),4,$0-8\n\tMOVQ\t$42, ret+0(FP)\n\tRET\n")
+	files, mapArgs, record, err := resolveModuleProgram(goTool, dir, append(os.Environ(), "GOOS="+runtime.GOOS, "GOARCH="+runtime.GOARCH, "CGO_ENABLED=0"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	companion := filepath.Join(dir, "f_"+runtime.GOARCH+".s")
+	if strings.Join(files, ",") != filepath.Join(dir, "main.go") || len(mapArgs) != 0 {
+		t.Fatalf("files/map=%v/%v", files, mapArgs)
+	}
+	gotCompanions, _ := record["companions"].([]string)
+	gotProof, _ := record["companion_proof"].([]companionFile)
+	if !reflect.DeepEqual(gotCompanions, []string{companion}) || !validCompanionRecords(gotProof, []string{companion}) {
+		t.Fatalf("companion evidence = %#v %#v, want %s", gotCompanions, gotProof, companion)
+	}
+	moduleDir := t.TempDir()
+	_, _, _, mainDir, err := nativeModuleCommands(moduleDir, "bashy", "/runtime", record, files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	copied := filepath.Join(mainDir, filepath.Base(companion))
+	if _, err := os.Stat(copied); err != nil {
+		t.Fatalf("compiled unit lacks copied companion %s: %v", copied, err)
+	}
+	stub, err := os.ReadFile(filepath.Join(mainDir, "bashpp_asmdecls.go"))
+	if err != nil || !strings.Contains(string(stub), "func f() int64") || strings.Contains(string(stub), "panic") {
+		t.Fatalf("bodyless declaration stub = %q, %v", stub, err)
+	}
+}
+
+func validCompanionRecords(got []companionFile, paths []string) bool {
+	if len(got) != len(paths) {
+		return false
+	}
+	for i, proof := range got {
+		if proof.Path != paths[i] || len(proof.SHA256) != 64 {
+			return false
+		}
+	}
+	return true
+}
+
+// Sprint: #249; Story: #715; Story-ID: 90f96d4f4dae
+func TestResolveModuleProgramStillRefusesCgo(t *testing.T) {
+	goTool := os.Getenv("BASHPP_TESTDIR_GO")
+	if goTool == "" {
+		var err error
+		goTool, err = exec.LookPath("go")
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example.test/cgo\n\ngo 1.20\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte("package main\n\nimport \"C\"\n\nfunc main() {}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, _, _, err := resolveModuleProgram(goTool, dir, append(os.Environ(), "CGO_ENABLED=1"))
+	if err == nil || !strings.Contains(err.Error(), "non-Go inputs [main.go]") {
+		t.Fatalf("resolveModuleProgram cgo error = %v, want existing non-Go refusal", err)
 	}
 }
 

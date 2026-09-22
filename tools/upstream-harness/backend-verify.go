@@ -107,8 +107,11 @@ type packageID struct {
 // packageMap is the explicit map the backend handed to Bash++ for a directory
 // package phase: the current identity plus every earlier package of the test.
 type mappedPackage struct {
-	Path  string   `json:"path"`
-	Files []string `json:"files"`
+	Path           string          `json:"path"`
+	Files          []string        `json:"files"`
+	Dir            string          `json:"dir"`
+	Companions     []string        `json:"companions"`
+	CompanionProof []companionFile `json:"companion_proof"`
 }
 
 type packageMap struct {
@@ -119,9 +122,16 @@ type packageMap struct {
 	Selection string          `json:"selection"`
 	// runindir (S150.2): the go command's resolution of "." — the argv the
 	// seam ran, the module dir, and the main package's files.
-	GoList []string `json:"go_list"`
-	Dir    string   `json:"dir"`
-	Files  []string `json:"files"`
+	GoList         []string        `json:"go_list"`
+	Dir            string          `json:"dir"`
+	Files          []string        `json:"files"`
+	Companions     []string        `json:"companions"`
+	CompanionProof []companionFile `json:"companion_proof"`
+}
+
+type companionFile struct {
+	Path   string `json:"path"`
+	SHA256 string `json:"sha256"`
 }
 
 type fileProof struct {
@@ -1267,9 +1277,9 @@ func verifyRunDirRow(row matrixRow, ev evidence, mode, goAction string) (string,
 // phase names "." in the module directory it prepared; the backend resolved
 // that through the pinned go command's own policy (`go list -json -deps .`
 // in that directory, recorded on the event) into the main package's files
-// and an ordered in-module package map, then ran it directly; or it recorded
-// the module as unsupported because a package carries non-Go inputs. The
-// event keeps upstream's "." as its compile input.
+// and an ordered in-module package map, then ran it directly. Assembly
+// companions selected by go list are explicit path+hash evidence on that
+// map. The event keeps upstream's "." as its compile input.
 func verifyRunInDirRow(row matrixRow, ev evidence, mode, goAction string) (string, error) {
 	if goAction == "skip" {
 		if len(ev.Phases) != 0 {
@@ -1306,6 +1316,14 @@ func verifyRunInDirRow(row matrixRow, ev evidence, mode, goAction string) (strin
 	if !directDisposition(mode, backend.Disposition) || len(m.Files) == 0 {
 		return "", fmt.Errorf("resolved module program was not run directly: disposition=%s files=%v", backend.Disposition, m.Files)
 	}
+	if err := verifyCompanionSet(phase.Cwd, m.Companions, m.CompanionProof); err != nil {
+		return "", fmt.Errorf("runindir main package: %v", err)
+	}
+	for _, p := range m.Packages {
+		if err := verifyCompanionSet(p.Dir, p.Companions, p.CompanionProof); err != nil {
+			return "", fmt.Errorf("runindir package %s: %v", p.Path, err)
+		}
+	}
 	for _, f := range m.Files {
 		if !strings.HasSuffix(f, ".go") || filepath.Dir(f) != phase.Cwd {
 			return "", fmt.Errorf("main package file %q is not a Go file in the module directory", f)
@@ -1334,6 +1352,41 @@ func verifyRunInDirRow(row matrixRow, ev evidence, mode, goAction string) (strin
 		return "RUNINDIR-PASS", nil
 	}
 	return "RUNINDIR-PRODUCT-FAIL", nil
+}
+
+func verifyCompanionSet(dir string, companions []string, proofs []companionFile) error {
+	if len(companions) == 0 {
+		if len(proofs) != 0 {
+			return fmt.Errorf("companion proof without companion paths")
+		}
+		return nil
+	}
+	if !validCompanionProofs(companions, proofs) {
+		return fmt.Errorf("companion row lacks companion path and hash evidence")
+	}
+	for _, companion := range companions {
+		if dir == "" || !strings.HasSuffix(companion, ".s") || filepath.Dir(companion) != dir {
+			return fmt.Errorf("assembly companion %q is not a .s file in package directory %q", companion, dir)
+		}
+	}
+	return nil
+}
+
+func validCompanionProofs(paths []string, proofs []companionFile) bool {
+	if len(paths) == 0 || len(paths) != len(proofs) {
+		return false
+	}
+	for i, proof := range proofs {
+		if proof.Path != paths[i] || len(proof.SHA256) != 64 {
+			return false
+		}
+		for _, r := range proof.SHA256 {
+			if !strings.ContainsRune("0123456789abcdef", r) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func validProofs(paths []string, proofs []fileProof) bool {

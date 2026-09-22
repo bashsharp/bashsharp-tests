@@ -269,6 +269,20 @@ func TestCorpusVerifyDefectFixtures(t *testing.T) {
 			},
 			want: "types-backend execution typechecker:cmd/compile/internal/types2/TestMissing has no Go terminal",
 		},
+		{
+			name: "runindir companion missing proof",
+			edit: func(f *corpusFixture) {
+				f.writeRunInDirTestdir("interpreted", false, false)
+			},
+			want: "companion path/proof count differs",
+		},
+		{
+			name: "runindir native argv execution remains rejected",
+			edit: func(f *corpusFixture) {
+				f.writeRunInDirTestdir("compiled", true, true)
+			},
+			want: "backend record executed native argv[0]",
+		},
 	}
 
 	for _, tc := range tests {
@@ -350,6 +364,40 @@ func (f *corpusFixture) writeTestdir(mode, action string) {
 	records = append(records,
 		map[string]any{"schema": corpusTestdirEventSchema, "kind": "phase_result", "test": "a.go"},
 		terminal)
+	f.writeRecords(filepath.Join("evidence-"+mode, "testdir.events.jsonl"), records...)
+}
+
+func (f *corpusFixture) writeRunInDirTestdir(mode string, proof, nativeExec bool) {
+	f.t.Helper()
+	dir := "/tmp/upstream/asmrun.dir"
+	companion := dir + "/f_amd64.s"
+	packageMap := map[string]any{
+		"dir": dir, "go_list": []string{"go", "list", "-json", "-deps", "."},
+		"files": []string{dir + "/main.go"}, "companions": []string{companion},
+	}
+	if proof {
+		packageMap["companion_proof"] = []map[string]string{{"path": companion, "sha256": strings.Repeat("a", 64)}}
+	}
+	argv := []string{"bashy", "--go-file", dir + "/main.go"}
+	if nativeExec {
+		argv = []string{"go", "run", "."}
+	}
+	records := []any{
+		map[string]any{
+			"schema": corpusTestdirEventSchema, "kind": "phase", "test": "a.go",
+			"action": "runindir", "phase_kind": "execute", "compile_inputs": []string{"."},
+			"argv": []string{"go", "run", "."},
+		},
+		map[string]any{
+			"schema": corpusTestdirEventSchema, "kind": "backend", "test": "a.go",
+			"mode": mode, "backend_schema": corpusTestdirBackendSchema, "action": "runindir",
+			"phase": "execute", "compile_inputs": []string{"."},
+			"native_argv": []string{"go", "run", "."}, "argv": argv,
+			"disposition": "check-then-run", "package_map": packageMap,
+		},
+		map[string]any{"schema": corpusTestdirEventSchema, "kind": "phase_result", "test": "a.go"},
+		map[string]any{"schema": corpusTestdirEventSchema, "kind": "terminal", "test": "a.go"},
+	}
 	f.writeRecords(filepath.Join("evidence-"+mode, "testdir.events.jsonl"), records...)
 }
 
