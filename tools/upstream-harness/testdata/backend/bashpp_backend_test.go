@@ -49,6 +49,27 @@ func directSourceCommand(selected *exec.Cmd, name string, args ...string) *exec.
 	return cmd
 }
 
+func replaceCommandEnv(env []string, name, value string) []string {
+	if env == nil {
+		env = os.Environ()
+	}
+	prefix := name + "="
+	result := make([]string, 0, len(env)+1)
+	for _, entry := range env {
+		if !strings.HasPrefix(entry, prefix) {
+			result = append(result, entry)
+		}
+	}
+	return append(result, prefix+value)
+}
+
+func interpretedRecipeGOFLAGS(recipeFlags []string) (string, bool) {
+	if len(recipeFlags) == 1 && recipeFlags[0] == "-gcflags=-d=converthash=qy" {
+		return recipeFlags[0], true
+	}
+	return "", false
+}
+
 func shellQuote(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
 }
@@ -984,13 +1005,20 @@ func (t test) backendPlan(step *planStep, action, phase string, pkg *packageIden
 			runArgs = append(runArgs, programArgv...)
 		}
 		runDeviations := deviations
-		if len(recipeFlags) != 0 {
+		goFlags, transportPolicy := interpretedRecipeGOFLAGS(recipeFlags)
+		if transportPolicy {
+			runDeviations = append(append([]string(nil), deviations...),
+				"the exact supported unscoped compiler conversion policy is transported to both direct Go-source commands as GOFLAGS=-gcflags=-d=converthash=qy; recipe_flags retains the upstream spelling")
+		} else if len(recipeFlags) != 0 {
 			runDeviations = append(append([]string(nil), deviations...),
 				"upstream go-command recipe flags have no representation in the direct Go-source interpreter and remain explicit evidence only")
 		}
 		*step.cmd = *shellCommand(step.cmd,
 			append([]string{tool}, checkArgs...),
 			append([]string{tool}, runArgs...))
+		if transportPolicy {
+			step.cmd.Env = replaceCommandEnv(step.cmd.Env, "GOFLAGS", goFlags)
+		}
 		t.backendEventMap(mode, action, phase, "check-then-run", compileInputs, programArgv, recipeFlags, nativeArgv, nil, nil, runDeviations, moduleMap)
 
 	case "compiled":
@@ -1385,5 +1413,33 @@ func TestS243DirectoryImportClosure(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestS243InterpretedRecipeGOFLAGS(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		flags []string
+		want  bool
+	}{
+		{"default", nil, false},
+		{"exact supported policy", []string{"-gcflags=-d=converthash=qy"}, true},
+		{"suffix", []string{"-gcflags=-d=converthash=qySuffix"}, false},
+		{"package pattern", []string{"-gcflags=example.com/unrelated=-d=converthash=qy"}, false},
+		{"additional recipe flag", []string{"-gcflags=-d=converthash=qy", "-race"}, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, ok := interpretedRecipeGOFLAGS(test.flags)
+			if ok != test.want {
+				t.Fatalf("interpretedRecipeGOFLAGS(%q) = %q, %v", test.flags, got, ok)
+			}
+			if ok && got != "-gcflags=-d=converthash=qy" {
+				t.Fatalf("transported GOFLAGS = %q", got)
+			}
+		})
+	}
+	env := replaceCommandEnv([]string{"A=1", "GOFLAGS=-gcflags=-d=converthash=xx", "B=2"}, "GOFLAGS", "-gcflags=-d=converthash=qy")
+	if got := strings.Join(env, "|"); got != "A=1|B=2|GOFLAGS=-gcflags=-d=converthash=qy" {
+		t.Fatalf("replaced environment = %q", got)
 	}
 }
