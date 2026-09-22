@@ -8,3 +8,4 @@
 #
 # goos	goarch	results_path	results_sha256	pin_path	pin_sha256	toolchain_identity	toolchain_sha256
 darwin	arm64	tests/tour/results.tsv	a92dcd38ff06d064d6e1dcff4ede2f674e712d4c02e87206ba52b28aa12fd21c	docs/tour/baseline-pin.tsv	198dd6ee50ac37fd4b9163ad62cd37f012b15179e6786982166b2646bb3519ac	go version go1.27.0 darwin/arm64	a19a71df81715c12d9a7e81bab036c12696fec1ddbd4258b48a2131a9080b267
+linux	x86_64	tests/tour/results.linux-x86_64.tsv	bc0688d6e39d41375e88502156b443564509f7fdd34a31cb704b1129900d48ae	docs/tour/baseline-pin.linux-x86_64.tsv	5042296d2ee94aec51d1fb4b2cbcc7fe3f9950e48915dc16ae88290a2484b762	go version go1.27.1 linux/amd64	30969f97169d7f43fe6a085873d75613adc21e30818a8c61d95bd27275df4624
