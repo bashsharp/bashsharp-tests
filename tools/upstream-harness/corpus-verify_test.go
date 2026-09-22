@@ -117,6 +117,20 @@ func TestCorpusVerifyAcceptsMissingUnselectedTypeStream(t *testing.T) {
 	}
 }
 
+func TestCorpusVerifyRejectsUnselectedTypeStreamExecution(t *testing.T) {
+	f := newCorpusFixture(t)
+	f.writeRecords(filepath.Join("evidence-interpreted", "types.events.jsonl"), map[string]any{
+		"kind": "types-backend", "test": "TestCheck/x.go", "argv": []string{"bashy", "--check"},
+	})
+	code, _, stderr := f.verify(3)
+	if code != 1 {
+		t.Fatalf("verify = %d, want 1; stderr:\n%s", code, stderr)
+	}
+	if want := "types-backend execution typechecker:go/types/TestCheck/x.go has no Go terminal"; !strings.Contains(stderr, want) {
+		t.Fatalf("stderr lacks %q:\n%s", want, stderr)
+	}
+}
+
 func TestCorpusVerifyRejectsMissingRequiredTypeStream(t *testing.T) {
 	f := newCorpusFixture(t)
 	if err := os.Remove(filepath.Join(f.evidence, "evidence-interpreted", "types2.events.jsonl")); err != nil {

@@ -191,9 +191,13 @@ func (o *corpusObserver) readLane(mode string) {
 		{"types2.events.jsonl", "cmd/compile/internal/types2"},
 		{"types.events.jsonl", "go/types"},
 	} {
-		if o.hasExecutedTypeRoot(mode, pkg.name) {
-			o.readTypesRecords(mode, filepath.Join(dir, pkg.stream), pkg.name)
+		stream := filepath.Join(dir, pkg.stream)
+		if !o.hasExecutedTypeRoot(mode, pkg.name) {
+			if _, err := os.Lstat(stream); os.IsNotExist(err) {
+				continue
+			}
 		}
+		o.readTypesRecords(mode, stream, pkg.name)
 	}
 	packagesDir := filepath.Join(dir, "packages")
 	entries, err := os.ReadDir(packagesDir)
