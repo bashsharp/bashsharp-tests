@@ -27,7 +27,6 @@ func evidenceCommandInfo(path string, versionArgs ...string) map[string]any {
 
 func cmdEvidenceRunner(root string) int {
 	inventoryFile := envOr("TOUR_INVENTORY", filepath.Join(root, "tests/tour/inventory.tsv"))
-	baselineFile := envOr("TOUR_BASE_RESULTS", filepath.Join(root, "tests/tour/results.tsv"))
 	output := envOr("TOUR_EVIDENCE", filepath.Join(root, "tests/tour/evidence.jsonl"))
 	normalizer := envOr("TOUR_NORMALIZER", filepath.Join(root, normalizerPath))
 	timeout := float64(mustInt(envOr("TOUR_STEP_TIMEOUT", "30")))
@@ -40,6 +39,11 @@ func cmdEvidenceRunner(root string) int {
 	version, inventorySHA := pin[1], pin[7]
 	tourRoot := envOr("TOUR_ROOT", filepath.Join(shellOutput(nil, "go", "env", "GOMODCACHE"), "golang.org/x/website@"+version))
 	goos, goarch := hostGoosGoarch()
+	acceptedBinding, err := acceptedPlatform(root, goos, goarch)
+	if err != nil {
+		return abortf("FATAL: %v", err)
+	}
+	baselineFile := filepath.Join(root, acceptedBinding.Results)
 	tc := evidenceToolchainRow(filepath.Join(root, "docs/tour/toolchain.tsv"), goos, goarch)
 	if tc == nil {
 		return abortf("FATAL: no pinned Go toolchain row for %s/%s in docs/tour/toolchain.tsv", goos, goarch)
@@ -89,8 +93,8 @@ func cmdEvidenceRunner(root string) int {
 	manifest := map[string]any{
 		"type": "manifest", "schema": evidenceSchema,
 		"inventory": map[string]any{"path": "tests/tour/inventory.tsv", "executable_programs": int64(97), "data_sha256": inventorySHA},
-		"baseline": map[string]any{"accepted_results": "tests/tour/results.tsv", "accepted_results_sha256": shaFile(baselineFile),
-			"pin": "docs/tour/baseline-pin.tsv", "pin_sha256": shaFile(filepath.Join(root, "docs/tour/baseline-pin.tsv"))},
+		"baseline": map[string]any{"accepted_results": acceptedBinding.Results, "accepted_results_sha256": acceptedBinding.ResultsSHA256,
+			"pin": acceptedBinding.Pin, "pin_sha256": acceptedBinding.PinSHA256},
 		"go":    goInfo,
 		"bashy": bashyInfo,
 		"normalizer": map[string]any{"path": filepath.ToSlash(normalizerRel), "version": normalizerVersion,

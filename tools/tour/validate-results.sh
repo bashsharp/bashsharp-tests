@@ -34,10 +34,28 @@ TOOLCHAIN="${ROOT}/docs/tour/toolchain.tsv"
 HELPERS="${ROOT}/docs/tour/helpers.tsv"
 SCHEMA="${ROOT}/docs/tour/differential-schema.tsv"
 INV="${TOUR_INVENTORY:-${ROOT}/tests/tour/inventory.tsv}"
-RESULTS="${TOUR_RESULTS:-${ROOT}/tests/tour/results.tsv}"
-BASELINE_PIN="${TOUR_BASELINE_PIN:-${ROOT}/docs/tour/baseline-pin.tsv}"
+PLATFORM_GOOS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+PLATFORM_GOARCH="$(uname -m)"
+ACCEPTED_INDEX="${ROOT}/docs/tour/accepted-observations.tsv"
 
 die() { echo "FATAL: $*" >&2; exit 2; }
+
+if [ -n "${TOUR_RESULTS:-}" ] || [ -n "${TOUR_BASELINE_PIN:-}" ]; then
+  [ -n "${TOUR_RESULTS:-}" ] && [ -n "${TOUR_BASELINE_PIN:-}" ] \
+    || die "TOUR_RESULTS and TOUR_BASELINE_PIN overrides must be supplied together"
+  RESULTS="${TOUR_RESULTS}"
+  BASELINE_PIN="${TOUR_BASELINE_PIN}"
+else
+  accepted_row="$(awk -F '\t' -v goos="${PLATFORM_GOOS}" -v goarch="${PLATFORM_GOARCH}" '
+    $1 !~ /^#/ && NF && $1 == goos && $2 == goarch { print; found++ }
+    END { if (found != 1) exit 2 }' "${ACCEPTED_INDEX}")" \
+    || die "no unique accepted observation for ${PLATFORM_GOOS}/${PLATFORM_GOARCH}"
+  IFS=$'\t' read -r _agos _agarch results_rel results_sha pin_rel pin_sha accepted_tc_identity accepted_tc_sha <<<"${accepted_row}"
+  RESULTS="${ROOT}/${results_rel}"
+  BASELINE_PIN="${ROOT}/${pin_rel}"
+  [ "$(shasum -a 256 "${RESULTS}" | awk '{print $1}')" = "${results_sha}" ] || die "accepted results registry digest mismatch"
+  [ "$(shasum -a 256 "${BASELINE_PIN}" | awk '{print $1}')" = "${pin_sha}" ] || die "accepted pin registry digest mismatch"
+fi
 
 [ -f "${INV}" ] || die "missing tour inventory: ${INV}"
 [ -f "${RESULTS}" ] || die "missing tour baseline results: ${RESULTS} (run tools/tour/run-baseline.sh)"
@@ -87,6 +105,12 @@ res_tc_sha="$(res_header toolchain_sha256)"
 tc_match="$(awk -F '\t' -v id="${res_tc_identity}" -v sha="${res_tc_sha}" '
   $1 !~ /^#/ && NF && $4 == id && $5 == sha { found = 1; exit }
   END { print found ? "match" : ""; exit 0 }' "${TOOLCHAIN}")"
+[ -n "${tc_match}" ] || {
+  registry_match="$(awk -F '\t' -v id="${res_tc_identity}" -v sha="${res_tc_sha}" '
+    $1 !~ /^#/ && NF && $7 == id && $8 == sha { found = 1; exit }
+    END { print found ? "match" : ""; exit 0 }' "${ACCEPTED_INDEX}")"
+  tc_match="${registry_match}"
+}
 [ -n "${tc_match}" ] \
   || die "results toolchain '${res_tc_identity}' (sha ${res_tc_sha}) is not a pinned row in docs/tour/toolchain.tsv — the baseline must come from the exact pinned Go"
 

@@ -1,0 +1,10 @@
+# Platform-specific accepted native Tour observations.
+#
+# Selection is exact on the host key used by docs/tour/toolchain.tsv. Each
+# results/pin pair is independently captured by tools/tour/run-baseline.sh and
+# authenticated here by its whole-file SHA-256. Consumers must fail closed for
+# an absent, duplicate, path-unsafe, or digest-mismatched row; there is no
+# cross-platform fallback.
+#
+# goos	goarch	results_path	results_sha256	pin_path	pin_sha256	toolchain_identity	toolchain_sha256
+darwin	arm64	tests/tour/results.tsv	a92dcd38ff06d064d6e1dcff4ede2f674e712d4c02e87206ba52b28aa12fd21c	docs/tour/baseline-pin.tsv	198dd6ee50ac37fd4b9163ad62cd37f012b15179e6786982166b2646bb3519ac	go version go1.27.0 darwin/arm64	a19a71df81715c12d9a7e81bab036c12696fec1ddbd4258b48a2131a9080b267

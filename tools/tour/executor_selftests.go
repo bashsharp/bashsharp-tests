@@ -115,6 +115,10 @@ func buildFixture(root, dir string) (*fixture, error) {
 	os.WriteFile(filepath.Join(dir, "docs/tour/corpus.tsv"),
 		[]byte(fmt.Sprintf("# fixture\ntour\ttour/LICENSE\t%d\t%s\t97\t98\tfixture\n", len(license), sha256hex(license))), 0o644)
 	os.WriteFile(filepath.Join(dir, "docs/tour/baseline-pin.tsv"), []byte("# fixture\nfixture\n"), 0o644)
+	resultsSHA := shaFile(filepath.Join(dir, "tests/tour/results.tsv"))
+	pinSHA := shaFile(filepath.Join(dir, "docs/tour/baseline-pin.tsv"))
+	os.WriteFile(filepath.Join(dir, acceptedPlatformsPath), []byte(fmt.Sprintf(
+		"# fixture\ndarwin\tarm64\ttests/tour/results.tsv\t%s\tdocs/tour/baseline-pin.tsv\t%s\tgo version go1.27.0 darwin/arm64\t%s\n", resultsSHA, pinSHA, strings.Repeat("c", 64))), 0o644)
 	// One declared-volatile fixture row, adjudicated by the real `line_set`
 	// comparator against a real oracle record.
 	os.WriteFile(filepath.Join(dir, "docs/tour/volatility.tsv"),
@@ -253,6 +257,7 @@ func buildFixtureLedger(fx *fixture, contract Contract, migration Migration) []m
 			"sha256": shaOf("docs/tour/volatility.tsv")},
 		"normalizer":            map[string]any{"path": normalizerPath, "sha256": shaOf(normalizerPath), "version": normalizerVersion},
 		"environment":           map[string]any{"input_absence_scope": inputAbsenceScope, "os_sandbox": false},
+		"platform":              map[string]any{"goos": "darwin", "goarch": "arm64"},
 		"expected_observations": int64(observationsFull),
 	}
 	records := []map[string]any{manifest}

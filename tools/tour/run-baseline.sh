@@ -57,8 +57,20 @@ TOOLCHAIN="${ROOT}/docs/tour/toolchain.tsv"
 HELPERS="${ROOT}/docs/tour/helpers.tsv"
 SCHEMA="${ROOT}/docs/tour/differential-schema.tsv"
 INV="${TOUR_INVENTORY:-${ROOT}/tests/tour/inventory.tsv}"
-RESULTS="${TOUR_RESULTS:-${ROOT}/tests/tour/results.tsv}"
-BASELINE_PIN="${TOUR_BASELINE_PIN:-${ROOT}/docs/tour/baseline-pin.tsv}"
+PLATFORM_GOOS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+PLATFORM_GOARCH="$(uname -m)"
+ACCEPTED_INDEX="${ROOT}/docs/tour/accepted-observations.tsv"
+accepted_row="$(awk -F '\t' -v goos="${PLATFORM_GOOS}" -v goarch="${PLATFORM_GOARCH}" '
+  $1 !~ /^#/ && NF && $1 == goos && $2 == goarch { print; found++ }
+  END { if (found > 1) exit 2 }' "${ACCEPTED_INDEX}")" || { echo "FATAL: duplicate accepted observation for ${PLATFORM_GOOS}/${PLATFORM_GOARCH}" >&2; exit 2; }
+if [ -n "${accepted_row}" ]; then
+  IFS=$'\t' read -r _agos _agarch accepted_results _arsha accepted_pin _apsha _atid _atsha <<<"${accepted_row}"
+else
+  accepted_results="tests/tour/results.${PLATFORM_GOOS}-${PLATFORM_GOARCH}.tsv"
+  accepted_pin="docs/tour/baseline-pin.${PLATFORM_GOOS}-${PLATFORM_GOARCH}.tsv"
+fi
+RESULTS="${TOUR_RESULTS:-${ROOT}/${accepted_results}}"
+BASELINE_PIN="${TOUR_BASELINE_PIN:-${ROOT}/${accepted_pin}}"
 BUILD_TIMEOUT="${TOUR_BUILD_TIMEOUT:-120}"
 RUN_TIMEOUT="${TOUR_RUN_TIMEOUT:-20}"
 KILL_GRACE="${TOUR_KILL_GRACE:-3}"
@@ -93,7 +105,7 @@ case "${helper_zip_sum:-}" in h1:*=) ;; *) die "helper zip_sum must be an h1: mo
   || die "helper sums must be h1:<44 base64 chars>"
 case "${helper_pkgs:-}" in pic,reader,tree,wc) ;; *) die "helper packages pin must be pic,reader,tree,wc" ;; esac
 
-toolchain_row="$(awk -F '\t' -v goos="$(uname -s | tr '[:upper:]' '[:lower:]')" -v goarch="$(uname -m)" '
+toolchain_row="$(awk -F '\t' -v goos="${PLATFORM_GOOS}" -v goarch="${PLATFORM_GOARCH}" '
   $1 !~ /^#/ && NF && $1 == goos && $2 == goarch { print; exit }' "${TOOLCHAIN}")"
 [ -n "${toolchain_row}" ] || die "no pinned Go toolchain row for $(uname -s)/$(uname -m) in docs/tour/toolchain.tsv — the pinned baseline is unsupported here, not degraded"
 IFS=$'\t' read -r _gos _gar tc_version tc_identity tc_sha _acq _tprov <<<"${toolchain_row}"

@@ -61,8 +61,16 @@ func cmdEvidenceValidator(root string) int {
 		return abortf("FATAL: manifest inventory binding mismatch")
 	}
 
-	baseFile := filepath.Join(root, toS(dig(manifest, "baseline", "accepted_results")))
-	pinFile := filepath.Join(root, toS(dig(manifest, "baseline", "pin")))
+	goos, goarch := hostGoosGoarch()
+	acceptedBinding, err := acceptedPlatform(root, goos, goarch)
+	if err != nil {
+		return abortf("FATAL: %v", err)
+	}
+	if dig(manifest, "baseline", "accepted_results") != acceptedBinding.Results || dig(manifest, "baseline", "pin") != acceptedBinding.Pin {
+		return abortf("FATAL: accepted baseline platform binding mismatch")
+	}
+	baseFile := filepath.Join(root, acceptedBinding.Results)
+	pinFile := filepath.Join(root, acceptedBinding.Pin)
 	if !jsonEqual(shaFile(baseFile), dig(manifest, "baseline", "accepted_results_sha256")) {
 		return abortf("FATAL: accepted baseline file binding mismatch")
 	}
@@ -70,7 +78,7 @@ func cmdEvidenceValidator(root string) int {
 		return abortf("FATAL: baseline pin binding mismatch")
 	}
 	validate := exec.Command(filepath.Join(root, "tools/tour/validate-results.sh"))
-	validate.Env = append(os.Environ(), "TOUR_RESULTS="+baseFile)
+	validate.Env = append(os.Environ(), "TOUR_RESULTS="+baseFile, "TOUR_BASELINE_PIN="+pinFile)
 	validate.Stdout = nil
 	validate.Stderr = os.Stderr
 	if err := validate.Run(); err != nil {
@@ -85,7 +93,6 @@ func cmdEvidenceValidator(root string) int {
 	pinRow := firstDataRow(filepath.Join(root, "docs/tour/pin.tsv"))
 	tourVersion := pinRow[1]
 	helperRow := firstDataRow(filepath.Join(root, "docs/tour/helpers.tsv"))
-	goos, goarch := hostGoosGoarch()
 	var tcRow []string
 	for _, f := range tsvRowsLoose(filepath.Join(root, "docs/tour/toolchain.tsv")) {
 		if field(f, 0) == goos && field(f, 1) == goarch {

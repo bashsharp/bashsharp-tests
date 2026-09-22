@@ -77,13 +77,22 @@ func cmdExecutorGate(root string) int {
 	if summary["type"] != "summary" || rootRecord["type"] != "root" || verdict["type"] != "verdict" {
 		return abortf("FATAL: malformed ledger envelope")
 	}
+	platformGOOS := toS(dig(manifest, "platform", "goos"))
+	platformGOARCH := toS(dig(manifest, "platform", "goarch"))
+	if platformGOARCH == "amd64" {
+		platformGOARCH = "x86_64"
+	}
+	acceptedBinding, err := acceptedPlatform(refs, platformGOOS, platformGOARCH)
+	if err != nil {
+		return abortf("FATAL: %v", err)
+	}
 
 	// --- 1. binding: every pin the manifest names is re-hashed here
 	for _, binding := range []struct{ key, path string }{
 		{"contract", "docs/tour/executor-contract.tsv"},
 		{"phase_migration", "docs/tour/phase-migration.tsv"},
 		{"inventory", "tests/tour/inventory.tsv"},
-		{"accepted_baseline", "tests/tour/results.tsv"},
+		{"accepted_baseline", acceptedBinding.Results},
 		{"source_pin", "docs/tour/pin.tsv"},
 		{"corpus", "docs/tour/corpus.tsv"},
 	} {
@@ -156,7 +165,8 @@ func cmdExecutorGate(root string) int {
 	if !libraryOK {
 		g.bad("semantics:library_sha256")
 	}
-	if !jsonEqual(dig(manifest, "accepted_baseline", "pin_sha256"), shaFile(filepath.Join(refs, "docs/tour/baseline-pin.tsv"))) {
+	if dig(manifest, "accepted_baseline", "pin") != acceptedBinding.Pin ||
+		!jsonEqual(dig(manifest, "accepted_baseline", "pin_sha256"), acceptedBinding.PinSHA256) {
 		g.bad("binding:baseline_pin")
 	}
 	if dig(manifest, "normalizer", "version") != normalizerVersion {
@@ -198,7 +208,7 @@ func cmdExecutorGate(root string) int {
 		items[item.Path] = item
 		itemOrder = append(itemOrder, item.Path)
 	}
-	accepted := loadAccepted(filepath.Join(refs, "tests/tour/results.tsv"))
+	accepted := loadAccepted(filepath.Join(refs, acceptedBinding.Results))
 	pin := tsvRows(filepath.Join(refs, "docs/tour/pin.tsv"))[0]
 	recordedGoIdentity := toS(dig(manifest, "go", "identity"))
 	tc := evidenceToolchainIdentityRow(filepath.Join(refs, "docs/tour/toolchain.tsv"), recordedGoIdentity)

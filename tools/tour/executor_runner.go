@@ -58,7 +58,7 @@ func baseEnv(home, tmp, gomodcache, gocache, goproxy, goroot, binCache string) m
 		"GOMAXPROCS": "2", "GOROOT": goroot, "GOTOOLCHAIN": "local", "GOFLAGS": "-mod=mod", "GOPROXY": goproxy,
 		"GOMODCACHE": gomodcache, "GOCACHE": gocache, "GOPATH": filepath.Join(home, "go"),
 		"BASHY_BIN_CACHE": binCache,
-		"BASHY_HINTS": "off", "BASHY_AGENTIC": "",
+		"BASHY_HINTS":     "off", "BASHY_AGENTIC": "",
 	}
 }
 
@@ -241,7 +241,6 @@ func cmdExecutor(root string) int {
 	semanticsPath := filepath.Join(root, "docs/tour/semantics.tsv")
 	volatilityPath := filepath.Join(root, "docs/tour/volatility.tsv")
 	inventoryPath := envOr("TOUR_INVENTORY", filepath.Join(root, "tests/tour/inventory.tsv"))
-	acceptedPath := envOr("TOUR_BASE_RESULTS", filepath.Join(root, "tests/tour/results.tsv"))
 	output := envOr("TOUR_EXECUTOR_RESULTS", filepath.Join(root, "tests/tour/executor-results.jsonl"))
 	corpusRoot := envOr("TOUR_CORPUS_ROOT", filepath.Join(root, "tour"))
 	timeout := float64(mustInt(envOr("TOUR_STEP_TIMEOUT", "60")))
@@ -275,8 +274,6 @@ func cmdExecutor(root string) int {
 	if applicable != applicableRows || buildOnly != buildOnlyRows {
 		die("denominator split must be %d+%d, got %d+%d", applicableRows, buildOnlyRows, applicable, buildOnly)
 	}
-	accepted := loadAccepted(acceptedPath)
-
 	if failures := phaseMigrationFailures(migration, contract, items); len(failures) > 0 {
 		die("phase migration is inconsistent: %s", strings.Join(failures, ", "))
 	}
@@ -312,6 +309,12 @@ func cmdExecutor(root string) int {
 
 	pin := tsvRows(filepath.Join(root, "docs/tour/pin.tsv"))[0]
 	goos, goarch := hostGoosGoarch()
+	acceptedBinding, err := acceptedPlatform(root, goos, goarch)
+	if err != nil {
+		die("%v", err)
+	}
+	acceptedPath := filepath.Join(root, acceptedBinding.Results)
+	accepted := loadAccepted(acceptedPath)
 	tc := evidenceToolchainRow(filepath.Join(root, "docs/tour/toolchain.tsv"), goos, goarch)
 	if tc == nil {
 		die("no pinned Go toolchain row for %s/%s in docs/tour/toolchain.tsv", goos, goarch)
@@ -453,9 +456,9 @@ func cmdExecutor(root string) int {
 		"inventory": map[string]any{"path": "tests/tour/inventory.tsv", "sha256": shaFile(inventoryPath), "rows": inventory.Rows,
 			"executable_programs": int64(len(items)), "applicable": int64(applicable), "build_only": int64(buildOnly),
 			"data_sha256": inventory.DataSHA256},
-		"accepted_baseline": map[string]any{"path": "tests/tour/results.tsv", "sha256": shaFile(acceptedPath),
-			"pin":        "docs/tour/baseline-pin.tsv",
-			"pin_sha256": shaFile(filepath.Join(root, "docs/tour/baseline-pin.tsv")),
+		"accepted_baseline": map[string]any{"path": acceptedBinding.Results, "sha256": acceptedBinding.ResultsSHA256,
+			"pin":        acceptedBinding.Pin,
+			"pin_sha256": acceptedBinding.PinSHA256,
 			"role":       "exact oracle for the 87 stable rows; HISTORICAL stream evidence only for the 10 semantic rows"},
 		"source_pin": map[string]any{"path": "docs/tour/pin.tsv", "release": pin[0] + "@" + pin[1], "commit": pin[2], "license": pin[4],
 			"sha256": shaFile(filepath.Join(root, "docs/tour/pin.tsv"))},
@@ -483,9 +486,9 @@ func cmdExecutor(root string) int {
 		"environment": map[string]any{"toolchain_path": toolchainPath, "body_path": "", "lc_all": "C", "gomaxprocs": int64(2),
 			"goproxy_during_run": "off", "gomodcache": gomodcache, "gocache": gocache,
 			"goroot_shared_by_all_modes": goroot, "bashy_bin_cache_shared_by_all_modes": binCache,
-			"input_absence_scope":        inputAbsenceScope,
-			"os_sandbox":                 false,
-			"fresh_state":                "module tree per mode; HOME, TMPDIR, artifact and runtime directories per (row, mode)"},
+			"input_absence_scope": inputAbsenceScope,
+			"os_sandbox":          false,
+			"fresh_state":         "module tree per mode; HOME, TMPDIR, artifact and runtime directories per (row, mode)"},
 		"evidence_root":         evidenceRoot,
 		"platform":              map[string]any{"goos": shellOutput(nil, goBin, "env", "GOOS"), "goarch": shellOutput(nil, goBin, "env", "GOARCH"), "go": runtime.Version()},
 		"expected_observations": int64(observationsFull),
