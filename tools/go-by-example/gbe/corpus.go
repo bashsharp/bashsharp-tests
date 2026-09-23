@@ -570,7 +570,8 @@ func lineageArtifact(path string, producer string) (*Object, error) {
 }
 
 func appendLineage(path string, envelope *Object) error {
-	f, err := os.OpenFile(expandPath(path), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o600)
+	// LockFileEx needs a read/write handle on Windows; writes remain append only.
+	f, err := os.OpenFile(expandPath(path), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0o600)
 	if err != nil {
 		return err
 	}

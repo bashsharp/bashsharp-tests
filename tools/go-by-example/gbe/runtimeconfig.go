@@ -38,12 +38,11 @@ func provisionManagedToolCache(cache string, tc *toolchainContext) (string, erro
 	if err := linkSDK(link, tc.goroot); err != nil {
 		return "", err
 	}
-	resolved, err := filepath.EvalSymlinks(link)
-	if err != nil {
-		return "", err
-	}
-	wantRoot, err := filepath.EvalSymlinks(tc.goroot)
-	if err != nil || resolved != wantRoot {
+	// Windows junctions may retain their own path through EvalSymlinks. File
+	// identity proves this managed directory names the authenticated SDK.
+	linked, err := os.Stat(link)
+	target, targetErr := os.Stat(tc.goroot)
+	if err != nil || targetErr != nil || !os.SameFile(linked, target) {
 		return "", fmt.Errorf("managed Go SDK target mismatch")
 	}
 	fastGo := goExecutable(link)

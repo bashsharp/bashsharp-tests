@@ -967,7 +967,7 @@ func runEnv(tc *toolchainContext, root string, behaviors []string) map[string]st
 	if contains(behaviors, "process_exec") {
 		path = "/usr/bin:/bin"
 	}
-	return map[string]string{
+	env := map[string]string{
 		"PATH": path,
 		"LANG": "C.UTF-8", "LC_ALL": "C.UTF-8", "TZ": "UTC",
 		"HOME": root + "/home", "TMPDIR": root + "/tmp", "PWD": root,
@@ -977,6 +977,12 @@ func runEnv(tc *toolchainContext, root string, behaviors []string) map[string]st
 		"GOTOOLCHAIN":     "local", "GOPROXY": "off", "GOSUMDB": "off",
 		"BASHY_HINTS": "off", "OTEL_TRACES_EXPORTER": "none",
 	}
+	if runtime.GOOS == "windows" {
+		// The direct SDK was authenticated before gate execution. Name it
+		// explicitly because Windows junctions are not stable Go resolver paths.
+		env["BASHPP_GO"] = tc.goBinary
+	}
+	return env
 }
 
 // envProfile: root-independent form, so the three environments are actually

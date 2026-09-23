@@ -12,6 +12,22 @@ import (
 	"time"
 )
 
+func TestWindowsLineageAppend(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "lineage.jsonl")
+	for i := int64(1); i <= 2; i++ {
+		if err := appendLineage(path, Obj("sequence", Int(i))); err != nil {
+			t.Fatal(err)
+		}
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "{\"sequence\":1}\n{\"sequence\":2}\n" {
+		t.Fatalf("lineage append lost a record: %q", data)
+	}
+}
+
 func TestWindowsJobSurvivingDescendant(t *testing.T) {
 	switch os.Getenv("WINDOWS_JOB_HELPER") {
 	case "child":
