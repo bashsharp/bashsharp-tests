@@ -53,13 +53,19 @@ func die(format string, args ...any) {
 // baseEnv: GOROOT names the pinned SDK and is supplied IDENTICALLY to all
 // three modes. It is toolchain configuration, not a source-access grant.
 func baseEnv(home, tmp, gomodcache, gocache, goproxy, goroot, binCache string) map[string]string {
-	return map[string]string{
+	env := map[string]string{
 		"HOME": home, "TMPDIR": tmp, "LC_ALL": "C",
 		"GOMAXPROCS": "2", "GOROOT": goroot, "GOTOOLCHAIN": "local", "GOFLAGS": "-mod=mod", "GOPROXY": goproxy,
 		"GOMODCACHE": gomodcache, "GOCACHE": gocache, "GOPATH": filepath.Join(home, "go"),
 		"BASHY_BIN_CACHE": binCache,
 		"BASHY_HINTS":     "off", "BASHY_AGENTIC": "",
 	}
+	if runtime.GOOS == "windows" {
+		// Name the same already-authenticated SDK explicitly. Windows junctions
+		// cannot be relied on by the embedded Go resolver during body execution.
+		env["BASHPP_GO"] = goExecutable(goroot)
+	}
+	return env
 }
 
 func withPath(env map[string]string, path string) map[string]string {

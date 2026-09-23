@@ -30,9 +30,11 @@ func provisionManagedGo(cache, goroot, version, digest string) (string, error) {
 	if err := linkSDK(link, goroot); err != nil {
 		return "", err
 	}
-	resolved, err := filepath.EvalSymlinks(link)
-	want, wantErr := filepath.EvalSymlinks(goroot)
-	if err != nil || wantErr != nil || resolved != want {
+	// Windows junctions may retain their own path through EvalSymlinks. File
+	// identity proves that the managed directory names the authenticated SDK.
+	linked, err := os.Stat(link)
+	target, targetErr := os.Stat(goroot)
+	if err != nil || targetErr != nil || !os.SameFile(linked, target) {
 		return "", fmt.Errorf("managed Go SDK target mismatch")
 	}
 	managedGo := goExecutable(link)

@@ -25,6 +25,22 @@ func TestWindowsExecutableRecognition(t *testing.T) {
 	}
 }
 
+func TestWindowsLineageAppend(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "lineage.jsonl")
+	for i := int64(1); i <= 2; i++ {
+		if err := appendLineage(path, map[string]any{"sequence": i}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "{\"sequence\":1}\n{\"sequence\":2}\n" {
+		t.Fatalf("lineage append lost a record: %q", data)
+	}
+}
+
 // A descendant must remain visible after its launcher has exited. The former
 // leader-only check reported this tree empty and silently skipped cleanup.
 func TestWindowsJobSurvivingDescendant(t *testing.T) {
