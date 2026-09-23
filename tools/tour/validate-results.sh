@@ -39,6 +39,13 @@ PLATFORM_GOARCH="$(uname -m)"
 ACCEPTED_INDEX="${ROOT}/docs/tour/accepted-observations.tsv"
 
 die() { echo "FATAL: $*" >&2; exit 2; }
+sha256() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$@"
+  else
+    bashy sha256sum "$@"
+  fi | awk '{print $1}'
+}
 
 if [ -n "${TOUR_RESULTS:-}" ] || [ -n "${TOUR_BASELINE_PIN:-}" ]; then
   [ -n "${TOUR_RESULTS:-}" ] && [ -n "${TOUR_BASELINE_PIN:-}" ] \
@@ -53,8 +60,8 @@ else
   IFS=$'\t' read -r _agos _agarch results_rel results_sha pin_rel pin_sha accepted_tc_identity accepted_tc_sha <<<"${accepted_row}"
   RESULTS="${ROOT}/${results_rel}"
   BASELINE_PIN="${ROOT}/${pin_rel}"
-  [ "$(shasum -a 256 "${RESULTS}" | awk '{print $1}')" = "${results_sha}" ] || die "accepted results registry digest mismatch"
-  [ "$(shasum -a 256 "${BASELINE_PIN}" | awk '{print $1}')" = "${pin_sha}" ] || die "accepted pin registry digest mismatch"
+  [ "$(sha256 "${RESULTS}")" = "${results_sha}" ] || die "accepted results registry digest mismatch"
+  [ "$(sha256 "${BASELINE_PIN}")" = "${pin_sha}" ] || die "accepted pin registry digest mismatch"
 fi
 
 [ -f "${INV}" ] || die "missing tour inventory: ${INV}"
@@ -131,7 +138,7 @@ case "${bp_records_sha}" in *[!0-9a-f]*|'') die "baseline pin records_sha256 mus
 
 # ------------------------------------------------- data row integrity ----
 actual_rows="$(awk '$0 !~ /^#/ && NF' "${RESULTS}" | wc -l | tr -d ' ')"
-actual_sha="$(awk '$0 !~ /^#/ && NF' "${RESULTS}" | shasum -a 256 | awk '{print $1}')"
+actual_sha="$(awk '$0 !~ /^#/ && NF' "${RESULTS}" | sha256)"
 header_rows="$(res_header records)"
 case "${header_rows}" in ''|*[!0-9]*) die "results records header must be an integer" ;; esac
 [ "${header_rows}" -gt 0 ] || die "results records header must be positive — 0 measured rows is not a baseline"

@@ -531,6 +531,7 @@ func validateMain(args []string, out io.Writer) (code int) {
 			return nil
 		}
 		rel, _ := filepath.Rel(base, path)
+		rel = filepath.ToSlash(rel)
 		st, lerr := os.Lstat(path)
 		if lerr != nil {
 			return nil
@@ -759,6 +760,7 @@ func refreshMain(args []string) {
 			}
 			if st, e := os.Lstat(path); e == nil && st.Mode().IsRegular() && strings.HasSuffix(path, ".go") {
 				rel, _ := filepath.Rel(gbeRoot, path)
+				rel = filepath.ToSlash(rel)
 				upstreamGo = append(upstreamGo, rel)
 			}
 			return nil
