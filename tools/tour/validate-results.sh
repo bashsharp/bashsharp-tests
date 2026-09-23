@@ -24,7 +24,11 @@
 set -euo pipefail
 export LC_ALL=C
 
-ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+if [ "$(uname -s | tr '[:upper:]' '[:lower:]')" = "windows_nt" ]; then
+  ROOT="$(cd "$(dirname "$0")/../.." && pwd -W)"
+else
+  ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+fi
 # The strict UTF-8 gate is the Go harness (`tour utf8-check`); Sprint 155 /
 # S155.9 / 43af37063b09 retired the inline Ruby probe it replaces.
 . "${ROOT}/tools/tour/tour-build.sh"
