@@ -199,6 +199,14 @@ func TestStreamAwareness(t *testing.T) {
 }
 
 func TestPortsTmpPathsAndListings(t *testing.T) {
+	for _, total := range []string{"total 0\n", "total 4.0K\n"} {
+		if got := mustNormalize(t, total+"home\ntmp\n", []string{"file_metadata"}, "stdout"); got != "total <metadata>\nhome\ntmp\n" {
+			t.Fatalf("ls total metadata: %q", got)
+		}
+	}
+	if got := mustNormalize(t, "total 4 files\nhome\n", []string{"file_metadata"}, "stdout"); got != "total 4 files\nhome\n" {
+		t.Fatalf("non-metadata total changed: %q", got)
+	}
 	if got := mustNormalize(t, "listening on :8090 and 127.0.0.1:54321 not :123456 nor :80a\n", []string{"ephemeral_port"}, "stdout"); got != "listening on :<port> and 127.0.0.1:<port> not :123456 nor :80a\n" {
 		t.Fatalf("ephemeral_port: %q", got)
 	}
@@ -211,7 +219,7 @@ func TestPortsTmpPathsAndListings(t *testing.T) {
 	if got := mustNormalize(t, "FOO:1\nBAR:\n\nZ\nA\n", []string{"env_listing"}, "stdout"); got != "FOO:1\nBAR:\n\nA\nZ\n" {
 		t.Fatalf("env_listing: %q", got)
 	}
-	if got := mustNormalize(t, "total 0\ndrwxr-xr-x@ 4 qiangli  staff   128B Sep  9 06:36 .\n", []string{"file_metadata"}, "stdout"); got != "total 0\ndrwxr-xr-x <metadata> .\n" {
+	if got := mustNormalize(t, "total 0\ndrwxr-xr-x@ 4 qiangli  staff   128B Sep  9 06:36 .\n", []string{"file_metadata"}, "stdout"); got != "total <metadata>\ndrwxr-xr-x <metadata> .\n" {
 		t.Fatalf("file_metadata: %q", got)
 	}
 	if got := mustNormalize(t, "took 1.5ms and 20µs\n", []string{"duration"}, "stdout"); got != "{\"text\":\"took 1.5ms and 20µs\\n\",\"values\":[\"1.5ms\",\"20µs\"]}" {

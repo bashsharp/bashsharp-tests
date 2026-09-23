@@ -1,7 +1,7 @@
 // Sprint: #155; Story: S155.10; Story-ID: 67bdd9fae2b3
 //
 // Repository-versioned normalization semantics shared by evidence production
-// and verification, ported from tools/go-by-example/normalizer.rb (VERSION 7), now at VERSION 9.
+// and verification, ported from tools/go-by-example/normalizer.rb (VERSION 7), now at VERSION 10.
 // Bump NormalizerVersion whenever these transformations change.
 //
 // VERSION 2 (Sprint 118) dropped `goexit_status`. It existed only because the
@@ -61,7 +61,10 @@ import (
 
 // VERSION 9 applies the testing row's existing duration licence to elapsed
 // seconds on Go test result lines. Names, outcomes and other output stay exact.
-const NormalizerVersion = 9
+// VERSION 10 covers the `total` block-count summary from `ls -l` under the
+// existing file_metadata licence. It keeps the file names, order and every
+// non-metadata line exact.
+const NormalizerVersion = 10
 
 var NormalizerNames = []string{"none", "argv0_path", "env_listing", "file_metadata", "tmp_path", "ephemeral_port", "wallclock", "duration", "panic_trace", "random_stream", "map_order", "interleave_order", "closing_channel_order", "throughput_count", "pointer_address"}
 var stdoutNames = []string{"argv0_path", "env_listing", "file_metadata", "tmp_path", "ephemeral_port", "duration", "random_stream", "map_order", "interleave_order", "closing_channel_order", "throughput_count", "pointer_address"}
@@ -101,6 +104,7 @@ var (
 	reThroughput   = regexp.MustCompile(`\A(readOps|writeOps): (\d+)\n?\z`)
 	reMetaLine     = regexp.MustCompile(`\A[-dl][rwx-]{9}[@+]?\s+`)
 	reMetaFields   = regexp.MustCompile(`\A([-dl][rwx-]{9})[@+]?\s+\d+\s+\S+\s+\S+\s+\S+\s+\S+\s+\d+\s+\d\d:\d\d`)
+	reMetaTotal    = regexp.MustCompile(`\Atotal [0-9]+(?:\.[0-9]+)?[BKMGTPE]?\z`)
 	reMonotonicTag = regexp.MustCompile(` m=[+-][\d.]+\z`)
 	reGoDuration   = regexp.MustCompile(`\A(?:(\d+)h)?(?:(\d+)m)?(\d+(?:\.\d+)?)s\z`)
 )
@@ -821,6 +825,11 @@ func Normalize(data []byte, names []string, stream string) (string, error) {
 		case "file_metadata":
 			lines := rubyLines(output)
 			for i, line := range lines {
+				body := rubyChomp(line)
+				if reMetaTotal.MatchString(body) {
+					lines[i] = "total <metadata>" + line[len(body):]
+					continue
+				}
 				if !reMetaLine.MatchString(line) {
 					continue
 				}
