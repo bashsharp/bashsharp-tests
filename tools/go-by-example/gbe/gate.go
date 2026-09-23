@@ -1461,9 +1461,9 @@ func gateMain(args []string) {
 		for _, mode := range []string{"interpreted", "compiled"} {
 			productSrc := work + "/src/" + mode
 			stageSources(productSrc, row, name)
-			inputs := []string{productSrc + "/" + name}
+			inputs := []string{filepath.Clean(productSrc + "/" + name)}
 			if testRow {
-				driver := productSrc + "/gbe_test_driver.go"
+				driver := filepath.Clean(productSrc + "/gbe_test_driver.go")
 				source, err := os.ReadFile(ROOT + "/" + path)
 				if err != nil {
 					fatal(err.Error())
