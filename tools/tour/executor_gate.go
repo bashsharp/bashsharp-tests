@@ -79,6 +79,9 @@ func cmdExecutorGate(root string) int {
 	}
 	platformGOOS := toS(dig(manifest, "platform", "goos"))
 	platformGOARCH := toS(dig(manifest, "platform", "goarch"))
+	if platformGOOS == "windows" {
+		platformGOOS = "windows_nt" // registry host key uses uname, ledger uses Go GOOS
+	}
 	if platformGOARCH == "amd64" {
 		platformGOARCH = "x86_64"
 	}
@@ -290,7 +293,11 @@ func cmdExecutorGate(root string) int {
 			}
 			cache := toS(runtimeSDK["cache"])
 			managedGo := toS(runtimeSDK["managed_go"])
-			if cache == "" || managedGo != filepath.Join(cache, "go", strings.TrimPrefix(field(tc, 2), "go"), "go", "bin", "go") ||
+			goName := "go"
+			if platformGOOS == "windows_nt" {
+				goName = "go.exe"
+			}
+			if cache == "" || managedGo != filepath.Join(cache, "go", strings.TrimPrefix(field(tc, 2), "go"), "go", "bin", goName) ||
 				toS(dig(manifest, "environment", "bashy_bin_cache_shared_by_all_modes")) != cache {
 				g.bad("runtime_sdk:binding")
 			}
@@ -544,7 +551,7 @@ func cmdExecutorGate(root string) int {
 		evidenceRoot := toS(manifest["evidence_root"])
 		artifactDir := filepath.Join(evidenceRoot, mode, slug(path), "artifacts")
 		expectedSubs := substitutions(path, toS(dig(candidate, "binaries", "launcher", "path")), toS(dig(manifest, "go", "path")), artifactDir)
-		if !strings.HasPrefix(evidenceRoot, "/") {
+		if !filepath.IsAbs(evidenceRoot) {
 			g.bad("artifact_root:missing_or_relative")
 		}
 		// -- forged commands: re-render argv from the contract itself

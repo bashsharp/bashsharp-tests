@@ -335,6 +335,9 @@ func evidenceToolchainIdentityRow(path, identity string) []string {
 		return nil
 	}
 	goos, goarch := platform[0], platform[1]
+	if goos == "windows" {
+		goos = "windows_nt"
+	}
 	switch goarch {
 	case "amd64":
 		goarch = "x86_64"

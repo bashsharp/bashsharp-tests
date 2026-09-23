@@ -35,7 +35,11 @@ func main() {
 	command := argv[3:]
 	cmd := exec.Command(command[0], command[1:]...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-	cmd.Env = os.Environ()
+	for _, entry := range os.Environ() {
+		if !strings.EqualFold(strings.SplitN(entry, "=", 2)[0], "GBE_LIVENESS_HANDLE") {
+			cmd.Env = append(cmd.Env, entry)
+		}
+	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		CreationFlags:              syscall.CREATE_NEW_PROCESS_GROUP,
 		AdditionalInheritedHandles: []syscall.Handle{handle},

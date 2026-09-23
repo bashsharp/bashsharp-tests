@@ -55,6 +55,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -536,6 +537,13 @@ type gateContext struct {
 // join; the interpreter's own stderr dump would only add unattributed noise to
 // the replay log.
 func (g *gateContext) run(cmd []string, cwd string, env map[string]string, input string, outer float64, childLimit float64, path string, adapters []string, adapterDir string, logPrefix string, launch bool) *runResult {
+	// Windows liveness setup adds a per-launch handle. Keep it out of the
+	// caller's environment profile, which describes the program inputs.
+	stageEnv := make(map[string]string, len(env))
+	for key, value := range env {
+		stageEnv[key] = value
+	}
+	env = stageEnv
 	result := &runResult{state: "unspawned", stdout: []byte{}, stderr: []byte{}, command: cmd}
 	budget := left(outer)
 	if childLimit < budget {
@@ -876,12 +884,12 @@ func copyFile(src, dst string) error {
 // the directory holding the source file.
 func stageAssets(dir string, row []string) string {
 	os.MkdirAll(dir, 0o755)
-	exampleDir := filepath.Dir(row[0])
+	exampleDir := path.Dir(row[0])
 	for _, asset := range toks(row[5]) {
 		if !strings.HasPrefix(asset, exampleDir+"/") {
 			fatal(fmt.Sprintf("asset %s is not inside %s", asset, exampleDir))
 		}
-		target := filepath.Join(dir, asset[len(exampleDir)+1:])
+		target := filepath.Join(dir, filepath.FromSlash(asset[len(exampleDir)+1:]))
 		os.MkdirAll(filepath.Dir(target), 0o755)
 		if err := copyFile(ROOT+"/"+asset, target); err != nil {
 			fatal(err.Error())
@@ -927,7 +935,7 @@ type toolchainContext struct {
 }
 
 func buildEnv(tc *toolchainContext, gocache, gomodcache, gohome, gotmp string) map[string]string {
-	return map[string]string{
+	env := map[string]string{
 		"LC_ALL": "C.UTF-8", "LANG": "C.UTF-8", "TZ": "UTC",
 		"HOME": gohome, "TMPDIR": gotmp, "GOTMPDIR": gotmp,
 		"GOROOT": tc.goroot, "PATH": filepath.Dir(tc.goBinary), "GOTOOLCHAIN": "local",
@@ -935,6 +943,11 @@ func buildEnv(tc *toolchainContext, gocache, gomodcache, gohome, gotmp string) m
 		"GOFLAGS": "-mod=mod -p=2", "GOPROXY": "off", "GOSUMDB": "off",
 		"GOWORK": "off", "CGO_ENABLED": "0",
 	}
+	if runtime.GOOS == "windows" {
+		env["BASHPP_GO"] = tc.goBinary
+		env["LocalAppData"] = filepath.Join(gohome, "AppData", "Local")
+	}
+	return env
 }
 
 // runEnv: run environment, identical in all three modes apart from the
@@ -981,6 +994,8 @@ func runEnv(tc *toolchainContext, root string, behaviors []string) map[string]st
 		// The direct SDK was authenticated before gate execution. Name it
 		// explicitly because Windows junctions are not stable Go resolver paths.
 		env["BASHPP_GO"] = tc.goBinary
+		// Go's UserConfigDir uses AppData; keep telemetry in this mode's root.
+		env["AppData"] = root + "/home/AppData/Roaming"
 	}
 	return env
 }
@@ -1350,6 +1365,9 @@ func gateMain(args []string) {
 	}
 	os.WriteFile(launcherSrc+"/go.mod", []byte("module gbelaunch\n\ngo 1.27\n"), 0o644)
 	LAUNCHER := base + "/bin/gbe-launch"
+	if runtime.GOOS == "windows" {
+		LAUNCHER += ".exe"
+	}
 	os.MkdirAll(base+"/bin", 0o755)
 	launcherBuild := g.run([]string{tc.goBinary, "build", "-o", LAUNCHER, "."}, launcherSrc, benv, "",
 		monotonicSeconds()+buildLimit, buildLimit, "tools/go-by-example/launch.go", nil, base+"/stage/launcher", base+"/logs/launcher", false)
@@ -1416,6 +1434,9 @@ func gateMain(args []string) {
 		os.WriteFile(oracleSrc+"/go.mod", []byte(goModOracle), 0o644)
 		bindings = append(bindings, newInputBinding(oracleSrc, true, "oracle"))
 		oracleBin := work + "/bin/oracle"
+		if runtime.GOOS == "windows" {
+			oracleBin += ".exe"
+		}
 		os.MkdirAll(work+"/bin", 0o755)
 		oracleCmd := []string{tc.goBinary, "build", "-o", oracleBin, "."}
 		if testRow {
@@ -1522,6 +1543,9 @@ func gateMain(args []string) {
 			}
 			bindings = append(bindings, newInputBinding(buildDir, true, "compiled"))
 			loweredBin := work + "/bin/lowered"
+			if runtime.GOOS == "windows" {
+				loweredBin += ".exe"
+			}
 			build := g.run([]string{tc.goBinary, "build", "-o", loweredBin, "."}, buildDir, benv, "", deadline, buildLimit, path, nil, work+"/stage/build", work+"/logs/build", false)
 			enforceRun(build, bindings, []string{"shared", "compiled"})
 			stages["compiled"] = append(stages["compiled"], stageRecord("build", build, replacements, Obj("generated_go_sha256", sha(generated))))

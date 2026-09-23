@@ -106,7 +106,8 @@ func configureRuntime(goBinary string, root string, env map[string]string, deadl
 	if err != nil {
 		return fail(err.Error())
 	}
-	if !strings.HasPrefix(modeReal, rootReal+"/") {
+	rel, err := filepath.Rel(rootReal, modeReal)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
 		return fail("telemetry configuration escaped isolated HOME")
 	}
 	record, err := fileRecord(mode)
