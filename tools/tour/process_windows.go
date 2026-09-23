@@ -26,6 +26,10 @@ func configureProcess(cmd *exec.Cmd) {
 }
 func candidatePayloadPath(launcher string) string { return launcher }
 func goExecutable(goroot string) string           { return filepath.Join(goroot, "bin", "go.exe") }
+func isExecutable(path string) bool {
+	st, err := os.Stat(path)
+	return err == nil && st.Mode().IsRegular()
+}
 func linkSDK(link, target string) error {
 	root := os.Getenv("SystemRoot")
 	if root == "" {

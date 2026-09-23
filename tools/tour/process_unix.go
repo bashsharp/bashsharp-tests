@@ -15,7 +15,11 @@ func registerProcessTree(*exec.Cmd) error         { return nil }
 func releaseProcessTree(int)                      {}
 func candidatePayloadPath(launcher string) string { return launcher + ".real" }
 func goExecutable(goroot string) string           { return filepath.Join(goroot, "bin", "go") }
-func linkSDK(link, target string) error           { return os.Symlink(target, link) }
+func isExecutable(path string) bool {
+	st, err := os.Stat(path)
+	return err == nil && st.Mode().IsRegular() && st.Mode()&0o111 != 0
+}
+func linkSDK(link, target string) error { return os.Symlink(target, link) }
 
 func processTreeAlive(pgid int) bool {
 	err := syscall.Kill(-pgid, 0)

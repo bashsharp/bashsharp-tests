@@ -12,6 +12,19 @@ import (
 	"time"
 )
 
+func TestWindowsExecutableRecognition(t *testing.T) {
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !isExecutable(exe) {
+		t.Fatalf("native executable rejected: %s", exe)
+	}
+	if isExecutable(t.TempDir()) || isExecutable(filepath.Join(t.TempDir(), "missing.exe")) {
+		t.Fatal("directory or missing executable accepted")
+	}
+}
+
 // A descendant must remain visible after its launcher has exited. The former
 // leader-only check reported this tree empty and silently skipped cleanup.
 func TestWindowsJobSurvivingDescendant(t *testing.T) {

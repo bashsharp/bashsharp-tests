@@ -766,11 +766,6 @@ func cmdExecutor(root string) int {
 	return 1
 }
 
-func isExecutable(path string) bool {
-	st, err := os.Stat(path)
-	return err == nil && st.Mode().IsRegular() && st.Mode()&0o111 != 0
-}
-
 func countEntries(dir string) int {
 	n := 0
 	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
