@@ -186,7 +186,7 @@ func sentinelHeld(fifo *os.File, budget float64) bool {
 // observation, and turning that into `adapter_error` would hide the real
 // result behind an incomplete one. A deadline reached while the program is
 // still running is a genuine adapter failure and still raises.
-func drive(path string, deadline float64, stop *stopFlag) error {
+func drive(path string, stdoutPath string, deadline float64, stop *stopFlag) error {
 	var socket net.Conn
 	for socket == nil {
 		if stop.get() {
@@ -223,11 +223,11 @@ func drive(path string, deadline float64, stop *stopFlag) error {
 		}
 		return nil
 	}
+	if strings.Contains(path, "context/") {
+		return driveContext(socket, stdoutPath, deadline, stop)
+	}
 	if _, err := socket.Write([]byte("GET /hello HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")); err != nil {
 		return fmt.Errorf("%s: %v", ioErrorClass(err), err)
-	}
-	if strings.Contains(path, "context/") {
-		return nil
 	}
 	body, err := io.ReadAll(socket)
 	if err != nil {
@@ -237,6 +237,25 @@ func drive(path string, deadline float64, stop *stopFlag) error {
 		return errors.New("RuntimeError: bad HTTP response")
 	}
 	return nil
+}
+
+func driveContext(socket net.Conn, stdoutPath string, deadline float64, stop *stopFlag) error {
+	if _, err := socket.Write([]byte("GET /hello HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")); err != nil {
+		return fmt.Errorf("%s: %v", ioErrorClass(err), err)
+	}
+	// A successful write proves only that the listener accepted bytes. The
+	// handler may not have started yet, especially in interpreted mode.
+	ready, err := awaitOutputContaining(stdoutPath, "server: hello handler started\n", deadline, stop)
+	if err != nil || !ready {
+		return err
+	}
+	// Disconnect the client to cancel the request, then let the handler finish
+	// reporting before the adapter terminates the server.
+	if err := socket.Close(); err != nil {
+		return err
+	}
+	_, err = awaitOutputContaining(stdoutPath, "server: hello handler ended\n", deadline, stop)
+	return err
 }
 
 func ioErrorClass(err error) string {
@@ -518,6 +537,25 @@ func awaitOutput(stream string, deadline float64, stop *stopFlag) (bool, error) 
 	}
 }
 
+func awaitOutputContaining(stream, text string, deadline float64, stop *stopFlag) (bool, error) {
+	for {
+		if stop.get() {
+			return false, nil
+		}
+		if !(left(deadline) > 0) {
+			return false, fmt.Errorf("RuntimeError: server adapter: handler never reported %q", text)
+		}
+		data, err := os.ReadFile(stream)
+		if err != nil && !os.IsNotExist(err) {
+			return false, err
+		}
+		if strings.Contains(string(data), text) {
+			return true, nil
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
 type gateContext struct {
 	launcher string // the corpus run launcher binary, once built
 }
@@ -617,7 +655,7 @@ func (g *gateContext) run(cmd []string, cwd string, env map[string]string, input
 				if err != nil || pid == 0 {
 					return err
 				}
-				if err := drive(path, deadline, stop); err != nil {
+				if err := drive(path, logPrefix+".stdout", deadline, stop); err != nil {
 					return err
 				}
 				if !stop.get() {
