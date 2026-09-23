@@ -425,6 +425,21 @@ func validateEvidenceMain(args []string) {
 	if !legacyRuntimeEnv && !managedRuntimeEnv {
 		die("evidence does not bind the authenticated runtime managed-tool cache")
 	}
+	if processTools := recipe.Obj("windows_process_tools"); processTools != nil {
+		want := Obj(
+			"platform", "windows/amd64",
+			"archive_sha256", windowsMinGitSHA256,
+			"source_sha256", sha(gbeDir+"/windows_process_tools.go"),
+			"root", "${WORK}/managed-tools/mingit/usr/bin",
+			"environment", "GBE_WINDOWS_MINGIT_ZIP",
+			"network", "not used; the pinned archive is staged before gate execution",
+		)
+		if !deepEqual(processTools, want) {
+			die("evidence does not bind the pinned Windows process tools")
+		}
+	} else if runtime.GOOS == "windows" {
+		die("Windows evidence omits pinned process tools")
+	}
 	if !deepEqual(recipe.Get("effect_normalizations"), effectNormalizations) {
 		die("evidence licenses an unreviewed effect normalization: " + Generate(recipe.Get("effect_normalizations")))
 	}

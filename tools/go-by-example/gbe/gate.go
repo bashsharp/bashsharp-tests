@@ -962,14 +962,15 @@ func stageRoot(dir string, row []string, adapters []string) string {
 // --- environments -------------------------------------------------------
 
 type toolchainContext struct {
-	goroot     string
-	goBinary   string
-	goVersion  string
-	goSHA256   string
-	gomodcache string
-	runGocache string
-	binCache   string
-	shModule   string
+	goroot          string
+	goBinary        string
+	goVersion       string
+	goSHA256        string
+	gomodcache      string
+	runGocache      string
+	binCache        string
+	processToolsDir string
+	shModule        string
 }
 
 func buildEnv(tc *toolchainContext, gocache, gomodcache, gohome, gotmp string) map[string]string {
@@ -1016,7 +1017,11 @@ func buildEnv(tc *toolchainContext, gocache, gomodcache, gohome, gotmp string) m
 func runEnv(tc *toolchainContext, root string, behaviors []string) map[string]string {
 	path := ""
 	if contains(behaviors, "process_exec") {
-		path = "/usr/bin:/bin"
+		if runtime.GOOS == "windows" {
+			path = tc.processToolsDir
+		} else {
+			path = "/usr/bin:/bin"
+		}
 	}
 	env := map[string]string{
 		"PATH": path,
@@ -1039,6 +1044,11 @@ func runEnv(tc *toolchainContext, root string, behaviors []string) map[string]st
 		// per-mode input fixture under root/tmp.
 		env["TMP"] = root + "/tmp"
 		env["TEMP"] = root + "/tmp"
+		if contains(behaviors, "process_exec") {
+			// MinGit's date renders TZ=UTC as GMT; UTC0 preserves the
+			// requested zero offset and the authored wallclock shape.
+			env["TZ"] = "UTC0"
+		}
 	}
 	return env
 }
@@ -1355,6 +1365,14 @@ func gateMain(args []string) {
 				"go_sha256", tc.goSHA256,
 				"network", "not used for SDK provisioning; authenticated cache prepared before execution",
 			),
+			"windows_process_tools", Obj(
+				"platform", "windows/amd64",
+				"archive_sha256", windowsMinGitSHA256,
+				"source_sha256", sha(gbeDir+"/windows_process_tools.go"),
+				"root", "${WORK}/managed-tools/mingit/usr/bin",
+				"environment", "GBE_WINDOWS_MINGIT_ZIP",
+				"network", "not used; the pinned archive is staged before gate execution",
+			),
 			"effect_normalizations", effectNormalizations,
 			"process_primitives", "tools/go-by-example/gbe/corpus.go Corpus.capture/success?/snapshot/file_record/authenticate_candidate (absorbed from tools/corpus/executor.rb)",
 			"corpus_executor_sha256", sha(gbeDir+"/corpus.go"),
@@ -1384,6 +1402,12 @@ func gateMain(args []string) {
 	tc.binCache = base + "/managed-tools"
 	if _, err := provisionManagedToolCache(tc.binCache, tc); err != nil {
 		fatal("cannot provision authenticated runtime SDK: " + err.Error())
+	}
+	if runtime.GOOS == "windows" {
+		tc.processToolsDir, err = provisionWindowsProcessTools(tc.binCache)
+		if err != nil {
+			fatal("cannot provision authenticated Windows process tools: " + err.Error())
+		}
 	}
 
 	gocache := base + "/gocache"

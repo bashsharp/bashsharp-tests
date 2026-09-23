@@ -276,6 +276,16 @@ exemption this rule exists to forbid. PATH is provisioned only for the rows
 whose declared behavior is to execute another program; every other row runs with
 an empty PATH.
 
+On Windows, `process_exec` rows use the pinned Git for Windows MinGit 2.55.0.2
+archive. Stage `MinGit-2.55.0.2-64-bit.zip` locally and set
+`GBE_WINDOWS_MINGIT_ZIP` to its absolute path before the gate. The runner
+checks the archive SHA-256
+`e3ea2944cea4b3fabcd69c7c1669ef69b1b66c05ac7806d81224d0abad2dec31`,
+extracts only the reviewed date, grep, ls, GNU Bash (`sh.exe` copied as
+`bash.exe`), and required DLL bytes into the shared managed-tool cache, then
+uses that directory as PATH only for those rows. This preparation uses no
+network or ambient system tools during the gate.
+
 That empty PATH is **command-lookup isolation, not an OS-level denial** of the
 SDK or of the source tree, and the evidence says so in as many words; the
 validator refuses a chain that words it more strongly than the harness earns.
