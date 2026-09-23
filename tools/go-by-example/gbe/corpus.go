@@ -427,7 +427,12 @@ func snapshot(root string) (map[string]*Object, error) {
 		if err != nil {
 			return nil // Find.find skips entries it cannot stat
 		}
-		relative := strings.TrimPrefix(path, root+"/")
+		relative, relErr := filepath.Rel(root, path)
+		if relErr != nil || !filepath.IsLocal(relative) {
+			walkErr = contractErr("snapshot path escaped root: %q", path)
+			return walkErr
+		}
+		relative = filepath.ToSlash(relative)
 		st, lerr := os.Lstat(path)
 		if lerr != nil {
 			return nil
