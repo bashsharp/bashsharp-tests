@@ -1,7 +1,7 @@
 // Sprint: #155; Story: S155.10; Story-ID: 67bdd9fae2b3
 //
 // Repository-versioned normalization semantics shared by evidence production
-// and verification, ported from tools/go-by-example/normalizer.rb (VERSION 7), now at VERSION 11.
+// and verification, ported from tools/go-by-example/normalizer.rb (VERSION 7), now at VERSION 12.
 // Bump NormalizerVersion whenever these transformations change.
 //
 // VERSION 2 (Sprint 118) dropped `goexit_status`. It existed only because the
@@ -69,7 +69,10 @@ import (
 // execing-processes row. Native Windows syscall.Exec always returns EWINDOWS,
 // so that row necessarily panics; the site and stack addresses differ between
 // the three execution modes while the panic body and exit status remain exact.
-const NormalizerVersion = 11
+// VERSION 12 extends the declared tmp_path normalization to Windows drive
+// paths rooted in tmp; the random sample leaf and its per-mode sandbox prefix
+// are one temporary path. Other files and output remain exact.
+const NormalizerVersion = 12
 
 func effectiveNormalizations(goos, path string, declared []string) []string {
 	if goos != "windows" || path != "examples/execing-processes/execing-processes.go" {
@@ -109,7 +112,7 @@ func contains(list []string, s string) bool {
 var (
 	reArgv0        = regexp.MustCompile(`\A\[[^\] ]+`)
 	reEnvKey       = regexp.MustCompile(`\A[A-Za-z_][A-Za-z0-9_]*\n?\z`)
-	reTmpPath      = regexp.MustCompile(`(?:/[^\s]+/)?sample(?:dir)?\d+`)
+	reTmpPath      = regexp.MustCompile(`(?:[A-Za-z]:\\[^\r\n]*\\tmp\\|/[^\s]+/)?sample(?:dir)?\d+`)
 	rePointer      = regexp.MustCompile(`0x[0-9a-fA-F]+`)
 	reWallclock    = regexp.MustCompile(`\bm=[+-][\d.]+|\b\d{4}[-/]\d\d[-/]\d\d(?:T| )[0-9:.+\-Z ]+|\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+\w+\s+\d+\s+\d\d:\d\d:\d\d\s+(?:UTC\s+)?\d{4}\b|\b\d{1,2}:\d\d(?:AM|PM)\b`)
 	reDayClass     = regexp.MustCompile(`It's (?:the weekend|a weekday)`)

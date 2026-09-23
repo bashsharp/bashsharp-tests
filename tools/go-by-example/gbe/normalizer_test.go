@@ -241,6 +241,14 @@ func TestPortsTmpPathsAndListings(t *testing.T) {
 	if got := mustNormalize(t, "/var/folders/x/sampledir123/file sample456\n", []string{"tmp_path"}, "stdout"); got != "<tmp>/file <tmp>\n" {
 		t.Fatalf("tmp_path: %q", got)
 	}
+	windowsA := "Temp file name: C:\\run\\oracle\\tmp\\sample3648106481\nTemp dir name: C:\\run\\oracle\\tmp\\sampledir74641814\nreport: C:\\run\\oracle\\data\\report.txt\n"
+	windowsB := "Temp file name: C:\\run\\interpreted\\tmp\\sample1273857254\nTemp dir name: C:\\run\\interpreted\\tmp\\sampledir2027004459\nreport: C:\\run\\oracle\\data\\report.txt\n"
+	wantWindows := "Temp file name: <tmp>\nTemp dir name: <tmp>\nreport: C:\\run\\oracle\\data\\report.txt\n"
+	for _, input := range []string{windowsA, windowsB} {
+		if got := mustNormalize(t, input, []string{"tmp_path"}, "stdout"); got != wantWindows {
+			t.Fatalf("Windows tmp path: %q", got)
+		}
+	}
 	if got := mustNormalize(t, "[/tmp/bin/prog foo bar]\nsecond\n", []string{"argv0_path"}, "stdout"); got != "[<argv0> foo bar]\nsecond\n" {
 		t.Fatalf("argv0_path: %q", got)
 	}
