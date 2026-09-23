@@ -37,6 +37,14 @@ func TestAcceptedPlatformSelectsAndAuthenticatesExactPlatform(t *testing.T) {
 	if _, err := acceptedPlatform(root, "linux", "arm64"); err == nil {
 		t.Fatal("wrong platform fell back")
 	}
+	for _, unsafe := range []string{"../results.tsv", "tests//tour/results.tsv", "tests\\tour\\results.tsv", "C:/results.tsv", "/tmp/results.tsv"} {
+		badIndex := strings.Replace(index, "tests/tour/results.linux-x86_64.tsv", unsafe, 1)
+		write(acceptedPlatformsPath, badIndex)
+		if _, err := acceptedPlatform(root, "linux", "x86_64"); err == nil {
+			t.Errorf("accepted unsafe path %q", unsafe)
+		}
+	}
+	write(acceptedPlatformsPath, index)
 	write("tests/tour/results.linux-x86_64.tsv", "forged\n")
 	if _, err := acceptedPlatform(root, "linux", "x86_64"); err == nil {
 		t.Fatal("tampered platform observation accepted")

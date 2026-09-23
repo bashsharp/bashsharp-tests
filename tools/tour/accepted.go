@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"path"
 	"path/filepath"
+	"strings"
 )
 
 const acceptedPlatformsPath = "docs/tour/accepted-observations.tsv"
@@ -37,14 +39,14 @@ func acceptedPlatform(root, goos, goarch string) (*AcceptedPlatform, error) {
 		return nil, fmt.Errorf("accepted observations: unsupported platform %s/%s", goos, goarch)
 	}
 	for _, rel := range []string{found.Results, found.Pin} {
-		if rel == "" || filepath.IsAbs(rel) || filepath.Clean(rel) != rel || rel == "." || rel[:1] == "." {
+		if rel == "" || path.IsAbs(rel) || filepath.IsAbs(rel) || filepath.VolumeName(rel) != "" || path.Clean(rel) != rel || rel == "." || rel[:1] == "." || strings.ContainsAny(rel, "\\:") {
 			return nil, fmt.Errorf("accepted observations: unsafe path %q", rel)
 		}
 	}
-	if shaFile(filepath.Join(root, found.Results)) != found.ResultsSHA256 {
+	if shaFile(filepath.Join(root, filepath.FromSlash(found.Results))) != found.ResultsSHA256 {
 		return nil, fmt.Errorf("accepted observations: results digest mismatch for %s/%s", goos, goarch)
 	}
-	if shaFile(filepath.Join(root, found.Pin)) != found.PinSHA256 {
+	if shaFile(filepath.Join(root, filepath.FromSlash(found.Pin))) != found.PinSHA256 {
 		return nil, fmt.Errorf("accepted observations: pin digest mismatch for %s/%s", goos, goarch)
 	}
 	return found, nil
