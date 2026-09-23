@@ -1034,6 +1034,11 @@ func runEnv(tc *toolchainContext, root string, behaviors []string) map[string]st
 		env["BASHPP_GO"] = tc.goBinary
 		// Go's UserConfigDir uses AppData; keep telemetry in this mode's root.
 		env["AppData"] = root + "/home/AppData/Roaming"
+		// Windows os.TempDir uses GetTempPath2/GetTempPath, which consults TMP
+		// and TEMP rather than TMPDIR. Point all three modes at the existing
+		// per-mode input fixture under root/tmp.
+		env["TMP"] = root + "/tmp"
+		env["TEMP"] = root + "/tmp"
 	}
 	return env
 }
