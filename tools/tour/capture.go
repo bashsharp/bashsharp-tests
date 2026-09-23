@@ -17,14 +17,12 @@ package main
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -44,6 +42,13 @@ func (e *ContractError) Error() string { return e.msg }
 
 func contractError(format string, args ...any) error {
 	return &ContractError{msg: fmt.Sprintf(format, args...)}
+}
+
+func bootstrapGo() string {
+	if path := os.Getenv("TOUR_BOOTSTRAP_GO"); path != "" {
+		return path
+	}
+	return "go"
 }
 
 var monotonicBase = time.Now()
@@ -71,23 +76,16 @@ func groupAlive(pgid int) bool {
 	if pgid <= 0 {
 		return false
 	}
-	err := syscall.Kill(-pgid, 0)
-	if err == nil {
-		return true
-	}
-	if errors.Is(err, syscall.ESRCH) {
-		return false
-	}
-	return true // EPERM: something in the group is still there
+	return processTreeAlive(pgid)
 }
 
 func signalGroup(pgid int, events *[]any, reason string) bool {
 	var errName any
 	delivered := true
-	err := syscall.Kill(-pgid, syscall.SIGKILL)
+	err := killProcessTree(pgid)
 	if err != nil {
 		delivered = false
-		if !errors.Is(err, syscall.ESRCH) {
+		if !processGone(err) {
 			errName = "Errno::EPERM"
 		}
 	}
@@ -231,10 +229,18 @@ func Capture(argv []string, cwd string, logPrefix string, env map[string]string,
 	cmd.Stdin = devnull
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	if err := cmd.Start(); err != nil {
-		launchError = map[string]any{"class": "Errno::ENOENT", "message": err.Error(), "errno": nil}
-		fmt.Fprintf(stderr, "Errno::ENOENT: %s\n", err.Error())
+	configureProcess(cmd)
+	startErr := cmd.Start()
+	if startErr == nil {
+		startErr = registerProcessTree(cmd)
+		if startErr != nil {
+			_ = cmd.Process.Kill()
+			_ = cmd.Wait()
+		}
+	}
+	if startErr != nil {
+		launchError = map[string]any{"class": "Errno::ENOENT", "message": startErr.Error(), "errno": nil}
+		fmt.Fprintf(stderr, "Errno::ENOENT: %s\n", startErr.Error())
 	} else {
 		leader = cmd.Process.Pid
 		pid = int64(leader)
@@ -263,12 +269,7 @@ func Capture(argv []string, cwd string, logPrefix string, env map[string]string,
 				}
 			}
 		}
-		ws, _ := cmd.ProcessState.Sys().(syscall.WaitStatus)
-		if ws.Exited() {
-			exitStatus = int64(ws.ExitStatus())
-		} else if ws.Signaled() {
-			signal = int64(ws.Signal())
-		}
+		exitStatus, signal = processStatus(cmd.ProcessState)
 		descendantObserved = groupAlive(leader)
 		if descendantObserved {
 			if state == "exited" {
@@ -285,6 +286,9 @@ func Capture(argv []string, cwd string, logPrefix string, env map[string]string,
 	devnull.Close()
 
 	groupEmpty := leader == 0 || waitGroupEmpty(leader, reapGraceSeconds)
+	if leader != 0 {
+		defer releaseProcessTree(leader)
+	}
 	finishedNS := monotonicNS()
 	outRecord, err := lineageArtifact(stdoutPath, launchID)
 	if err != nil {
@@ -344,13 +348,7 @@ func Capture(argv []string, cwd string, logPrefix string, env map[string]string,
 func reapEvent(pid int, state *os.ProcessState, reason string) map[string]any {
 	var exitStatus, signal any
 	if state != nil {
-		if ws, ok := state.Sys().(syscall.WaitStatus); ok {
-			if ws.Exited() {
-				exitStatus = int64(ws.ExitStatus())
-			} else if ws.Signaled() {
-				signal = int64(ws.Signal())
-			}
-		}
+		exitStatus, signal = processStatus(state)
 	}
 	return map[string]any{"waited_pid": int64(pid), "exit": exitStatus, "signal": signal, "reason": reason,
 		"monotonic_ns": monotonicNS(), "wall": wallTime()}
@@ -365,10 +363,11 @@ func appendLineage(path string, envelope map[string]any) error {
 		return err
 	}
 	defer f.Close()
-	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
+	unlock, err := lockFile(f)
+	if err != nil {
 		return err
 	}
-	defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+	defer unlock()
 	if _, err := f.WriteString(canonical(envelope) + "\n"); err != nil {
 		return err
 	}
@@ -393,7 +392,14 @@ func authenticateFile(path string, expected string) (map[string]any, error) {
 }
 
 func gitOutput(dir string, args ...string) (string, bool) {
-	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+	name := "git"
+	argv := append([]string{"-C", dir}, args...)
+	if _, err := exec.LookPath(name); err != nil {
+		if bashy, berr := exec.LookPath("bashy"); berr == nil {
+			name, argv = bashy, append([]string{"git", "-C", dir}, args...)
+		}
+	}
+	cmd := exec.Command(name, argv...)
 	out, err := cmd.Output()
 	if err != nil {
 		return "", false
@@ -423,7 +429,7 @@ func AuthenticateCandidate(bashy string, candidate map[string]any) (map[string]a
 	if err != nil {
 		return nil, err
 	}
-	payload, err := authenticateFile(bashy+".real", asString(candidate["payload_sha256"]))
+	payload, err := authenticateFile(candidatePayloadPath(bashy), asString(candidate["payload_sha256"]))
 	if err != nil {
 		return nil, err
 	}

@@ -1,3 +1,5 @@
+//go:build !windows
+
 // Sprint: #118; Story: #3; Story-ID: fa07603b71dc
 //
 // Corpus-owned launcher for one run stage. It exists so this corpus's row

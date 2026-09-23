@@ -7,14 +7,12 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -29,7 +27,7 @@ func cmdProbe(args []string) int {
 		os.Stderr.WriteString("err\n")
 		return 7
 	case "signal":
-		syscall.Kill(os.Getpid(), syscall.SIGTERM)
+		terminateSelf()
 		time.Sleep(5 * time.Second)
 		return 0
 	case "sleep":
@@ -95,7 +93,7 @@ func cmdEvidenceSelftests(root string) int {
 	pidText, _ := os.ReadFile(pidfile)
 	child, _ := strconv.Atoi(strings.TrimSpace(string(pidText)))
 	time.Sleep(100 * time.Millisecond)
-	alive := child > 0 && !errors.Is(syscall.Kill(child, 0), syscall.ESRCH)
+	alive := child > 0 && processTreeAlive(child)
 	if !check("deadline kills descendant process group", tree.State == "deadline" && !alive) {
 		return 1
 	}
@@ -140,7 +138,7 @@ func cmdEvidenceSelftests(root string) int {
 	os.WriteFile(sourcePath, []byte("package main\nimport (\"fmt\"; \"example.local/context/helper\")\nfunc main() { fmt.Println(helper.Value()) }\n"), 0o644)
 	transpiler := filepath.Join(dir, "copy-transpiler")
 	os.WriteFile(transpiler, []byte("#!/bin/sh\nset -eu\n[ \"$1\" = transpile ]\n[ \"$3\" = -o ]\ncp \"$2\" \"$4\"\n"), 0o755)
-	goBin := filepath.Join(shellOutput(nil, "go", "env", "GOROOT"), "bin", "go")
+	goBin := goExecutable(shellOutput(nil, bootstrapGo(), "env", "GOROOT"))
 	pipeline := evidenceCompiledPipeline(transpiler, goBin, sourcePath, mod, out, 15,
 		map[string]string{"GOTOOLCHAIN": "local", "BASHY_HINTS": "off"})
 	if !check("compiled pipeline builds from the supplied module context",

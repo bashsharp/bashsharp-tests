@@ -15,4 +15,5 @@
 # --inventory-only writes the derived inventory to stdout.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+if [ "$(uname -s | tr '[:upper:]' '[:lower:]')" = "windows_nt" ]; then exec bashy "${ROOT}/tools/go-by-example/gbe.sh" refresh "$@"; fi
 exec "${ROOT}/tools/go-by-example/gbe.sh" refresh "$@"

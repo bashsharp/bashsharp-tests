@@ -292,7 +292,7 @@ func cmdEvidenceValidator(root string) int {
 	// PROCESS PHASE — replay authentication.
 	// -------------------------------------------------------------------
 	timeout := float64(mustInt(envOr("TOUR_STEP_TIMEOUT", "30")))
-	tourRoot := envOr("TOUR_ROOT", filepath.Join(shellOutput(nil, "go", "env", "GOMODCACHE"), "golang.org/x/website@"+tourVersion))
+	tourRoot := envOr("TOUR_ROOT", filepath.Join(shellOutput(nil, bootstrapGo(), "env", "GOMODCACHE"), "golang.org/x/website@"+tourVersion))
 	work, err := os.MkdirTemp("", "tour-evidence-replay")
 	if err != nil {
 		return abortf("FATAL: %v", err)

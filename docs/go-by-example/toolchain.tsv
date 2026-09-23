@@ -1,3 +1,4 @@
 # goos	goarch	version	identity	go_bin_sha256
 darwin	arm64	go1.27.1	go version go1.27.1 darwin/arm64	132b69336a1f809932a8a20b0201dbbb980e86e3a323ae32e893639d83d71598
 linux	amd64	go1.27.1	go version go1.27.1 linux/amd64	30969f97169d7f43fe6a085873d75613adc21e30818a8c61d95bd27275df4624
+windows	amd64	go1.27.1	go version go1.27.1 windows/amd64	d3ccdb604eafa6031133aefe1a3db24f0bb7362b857bc2125ac4e4c178b4b490

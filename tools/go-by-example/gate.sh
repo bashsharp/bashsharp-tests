@@ -7,4 +7,5 @@
 # There is no default candidate. See docs/go-by-example/candidates.tsv.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+if [ "$(uname -s | tr '[:upper:]' '[:lower:]')" = "windows_nt" ]; then exec bashy "${ROOT}/tools/go-by-example/gbe.sh" gate "$@"; fi
 exec "${ROOT}/tools/go-by-example/gbe.sh" gate "$@"

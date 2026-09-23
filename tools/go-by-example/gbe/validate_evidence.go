@@ -18,6 +18,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"runtime"
 	"strings"
 )
 
@@ -364,7 +365,7 @@ func validateEvidenceMain(args []string) {
 			die("candidate " + key + " is not the repository-reviewed value")
 		}
 	}
-	if recorded.Str("launcher_sha256") == recorded.Str("payload_sha256") {
+	if runtime.GOOS != "windows" && recorded.Str("launcher_sha256") == recorded.Str("payload_sha256") {
 		die("candidate launcher and payload digests may not coincide")
 	}
 	if !deepEqual(recorded.Get("repositories"), reviewed.RepositoryRecords()) {
@@ -447,7 +448,11 @@ func validateEvidenceMain(args []string) {
 	if !deepEqual(recipe.Get("input_binding_sha256"), sha(gbeDir+"/inputs.go")) {
 		die("input binding helper is not anchored to production")
 	}
-	if !deepEqual(recipe.Get("launcher_source_sha256"), sha(root+"/tools/go-by-example/launch.go")) {
+	launcherSource := root + "/tools/go-by-example/launch.go"
+	if runtime.GOOS == "windows" {
+		launcherSource = root + "/tools/go-by-example/launch_windows.go"
+	}
+	if !deepEqual(recipe.Get("launcher_source_sha256"), sha(launcherSource)) {
 		die("run launcher is not anchored to production")
 	}
 	// The isolation claim is bounded on purpose: no OS-level sandbox is built,

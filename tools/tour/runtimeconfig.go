@@ -15,7 +15,7 @@ func provisionManagedGo(cache, goroot, version, digest string) (string, error) {
 	if release == "" || release == version {
 		return "", fmt.Errorf("invalid pinned Go version %q", version)
 	}
-	goBinary := filepath.Join(goroot, "bin", "go")
+	goBinary := goExecutable(goroot)
 	if got := shaFile(goBinary); got != digest {
 		return "", fmt.Errorf("authenticated Go binary checksum changed: got %s", got)
 	}
@@ -27,7 +27,7 @@ func provisionManagedGo(cache, goroot, version, digest string) (string, error) {
 	if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
 		return "", err
 	}
-	if err := os.Symlink(goroot, link); err != nil {
+	if err := linkSDK(link, goroot); err != nil {
 		return "", err
 	}
 	resolved, err := filepath.EvalSymlinks(link)
@@ -35,7 +35,7 @@ func provisionManagedGo(cache, goroot, version, digest string) (string, error) {
 	if err != nil || wantErr != nil || resolved != want {
 		return "", fmt.Errorf("managed Go SDK target mismatch")
 	}
-	managedGo := filepath.Join(link, "bin", "go")
+	managedGo := goExecutable(link)
 	if got := shaFile(managedGo); got != digest {
 		return "", fmt.Errorf("managed Go binary checksum mismatch: got %s", got)
 	}

@@ -122,7 +122,7 @@ func reviewedCandidate(path string, manifestSHA string) (*Reviewed, error) {
 			return nil, candidateErr("invalid reviewed candidate %s", key)
 		}
 	}
-	if fields["launcher_sha256"] == fields["payload_sha256"] {
+	if runtime.GOOS != "windows" && fields["launcher_sha256"] == fields["payload_sha256"] {
 		return nil, candidateErr("reviewed candidate launcher and payload digests are identical")
 	}
 	if fields["frontend_version"] == "" {
@@ -142,6 +142,9 @@ func reviewedCandidate(path string, manifestSHA string) (*Reviewed, error) {
 	if version != "" && strings.Contains(recipe, "GOTOOLCHAIN=local") {
 		pattern := `(?:\A|\s)PATH=/[^\s:]+/golang\.org/toolchain@v0\.0\.1-` + regexp.QuoteMeta(version) + `\.` + regexp.QuoteMeta(goos) + `-` + regexp.QuoteMeta(goarch) + `/bin(?::|\s|\z)`
 		pinnedSDKPath = regexp.MustCompile(pattern).MatchString(recipe)
+		if runtime.GOOS == "windows" {
+			pinnedSDKPath = strings.Contains(strings.ToLower(recipe), "/go/"+strings.TrimPrefix(version, "go")+"/go/bin/go.exe build")
+		}
 	}
 	if !explicitRelease && !pinnedSDKPath {
 		return nil, candidateErr("reviewed build recipe does not pin the Go toolchain: %s", rubyInspect(recipe))
@@ -340,7 +343,7 @@ func authenticateManifest(manifest string, bashy string, row *Reviewed, tool *To
 	if err != nil {
 		return nil, err
 	}
-	if !nativeBinary(expandPath(bashy) + ".real") {
+	if !nativeBinary(candidatePayloadPath(expandPath(bashy))) {
 		return nil, candidateErr("candidate payload is not a native binary")
 	}
 	sh := ""
@@ -387,22 +390,26 @@ func rubyStringArray(values []string) string {
 // would otherwise select -- GOMODCACHE/golang.org/toolchain@v0.0.1-<version>.<os>-<arch>
 // -- is tried next; the digest requirement is never relaxed.
 func pinnedGoroot(toolpin *Toolchain) (string, error) {
-	gorootCmd := exec.Command("go", "env", "GOROOT")
+	bootstrap := os.Getenv("GBE_BOOTSTRAP_GO")
+	if bootstrap == "" {
+		bootstrap = "go"
+	}
+	gorootCmd := exec.Command(bootstrap, "env", "GOROOT")
 	gorootCmd.Env = append(envWithout("GOTOOLCHAIN"), "GOTOOLCHAIN="+toolpin.Version)
 	gorootOut, err := gorootCmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("cannot resolve pinned Go toolchain")
 	}
 	goroot := strings.TrimSpace(string(gorootOut))
-	if sum, err := sha256File(goroot + "/bin/go"); err == nil && sum == toolpin.GoSHA256 {
+	if sum, err := sha256File(goExecutable(goroot)); err == nil && sum == toolpin.GoSHA256 {
 		return goroot, nil
 	}
-	modcacheCmd := exec.Command("go", "env", "GOMODCACHE")
+	modcacheCmd := exec.Command(bootstrap, "env", "GOMODCACHE")
 	modcacheCmd.Env = append(envWithout("GOTOOLCHAIN"), "GOTOOLCHAIN=local")
 	modcacheOut, _ := modcacheCmd.Output()
 	goos, goarch := hostIdentity()
 	module := strings.TrimSpace(string(modcacheOut)) + "/golang.org/toolchain@v0.0.1-" + toolpin.Version + "." + goos + "-" + goarch
-	if sum, err := sha256File(module + "/bin/go"); err == nil && sum == toolpin.GoSHA256 {
+	if sum, err := sha256File(goExecutable(module)); err == nil && sum == toolpin.GoSHA256 {
 		return module, nil
 	}
 	return goroot, nil

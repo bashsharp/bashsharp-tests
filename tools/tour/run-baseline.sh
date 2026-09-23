@@ -47,7 +47,11 @@ set -euo pipefail
 set -m # every background job gets its own process group so -PGID kills the tree
 export LC_ALL=C
 
-ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+if [ "$(uname -s | tr '[:upper:]' '[:lower:]')" = "windows_nt" ]; then
+  ROOT="$(cd "$(dirname "$0")/../.." && pwd -W)"
+else
+  ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+fi
 # The strict UTF-8 gate is the Go harness (`tour utf8-check`); Sprint 155 /
 # S155.9 / 43af37063b09 retired the inline Ruby probe it replaces.
 . "${ROOT}/tools/tour/tour-build.sh"
@@ -59,6 +63,12 @@ SCHEMA="${ROOT}/docs/tour/differential-schema.tsv"
 INV="${TOUR_INVENTORY:-${ROOT}/tests/tour/inventory.tsv}"
 PLATFORM_GOOS="$(uname -s | tr '[:upper:]' '[:lower:]')"
 PLATFORM_GOARCH="$(uname -m)"
+WINDOWS_SYSTEM32=""
+BASELINE_EXE_SUFFIX=""
+if [ "${PLATFORM_GOOS}" = windows_nt ]; then
+  WINDOWS_SYSTEM32="$(printf '%s' "${SystemRoot:-C:\\Windows}" | tr '\\' '/')/System32"
+  BASELINE_EXE_SUFFIX=".exe"
+fi
 ACCEPTED_INDEX="${ROOT}/docs/tour/accepted-observations.tsv"
 accepted_row="$(awk -F '\t' -v goos="${PLATFORM_GOOS}" -v goarch="${PLATFORM_GOARCH}" '
   $1 !~ /^#/ && NF && $1 == goos && $2 == goarch { print; found++ }
@@ -77,13 +87,19 @@ KILL_GRACE="${TOUR_KILL_GRACE:-3}"
 
 die() { echo "FATAL: $*" >&2; exit 2; }
 
-file_sha() { shasum -a 256 "$1" | awk '{print $1}'; }
+file_sha() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  else
+    sha256sum "$1" | awk '{print $1}'
+  fi
+}
 file_bytes() { wc -c < "$1" | tr -d ' '; }
 file_mode() { # portable octal permission bits, e.g. 444
   local m
   case "${PLATFORM_GOOS}" in
     darwin) m="$(stat -f %Lp "$1" 2>/dev/null)" || die "cannot stat mode of $1" ;;
-    linux)  m="$(stat -c %a "$1" 2>/dev/null)" || die "cannot stat mode of $1" ;;
+    linux|windows_nt) m="$(stat -c %a "$1" 2>/dev/null)" || die "cannot stat mode of $1" ;;
     *) die "unsupported stat platform ${PLATFORM_GOOS}" ;;
   esac
   printf '%s\n' "${m#0}"
@@ -133,11 +149,14 @@ BASE_TOKEN_RUN="$(baseline_for applicable_go_program)"
 BASE_TOKEN_BUILD="$(baseline_for build_only_go_program)"
 
 # ----------------------------------------------------------- toolchain ----
-command -v go >/dev/null 2>&1 || die "no go on PATH to resolve the pinned toolchain"
-tc_root="$(GOTOOLCHAIN="go${tc_version#go}" go env GOROOT 2>/dev/null)" \
-  || die "cannot resolve GOROOT for ${tc_version} (GOTOOLCHAIN=go${tc_version#go} go env GOROOT)"
-GO_BIN="${tc_root}/bin/go"
-[ -x "${GO_BIN}" ] || die "resolved toolchain binary is not executable: ${GO_BIN}"
+bootstrap_go="$(tour_bootstrap_go)" || die "no Go resolver is available for the pinned ${tc_version} toolchain"
+tc_root="$(GOTOOLCHAIN="go${tc_version#go}" "${bootstrap_go}" env GOROOT 2>/dev/null)" \
+  || die "cannot resolve GOROOT for ${tc_version}"
+tc_root="$(printf '%s' "${tc_root}" | tr '\\' '/')"
+go_name=go
+[ "${PLATFORM_GOOS}" = windows_nt ] && go_name=go.exe
+GO_BIN="${tc_root}/bin/${go_name}"
+[ -f "${GO_BIN}" ] || die "resolved toolchain binary is missing: ${GO_BIN}"
 actual_identity="$("${GO_BIN}" version 2>/dev/null)" || die "cannot run ${GO_BIN} version"
 [ "${actual_identity}" = "${tc_identity}" ] \
   || die "toolchain identity mismatch: pinned '${tc_identity}', got '${actual_identity}'"
@@ -147,7 +166,11 @@ actual_tc_sha="$(file_sha "${GO_BIN}")"
 echo "toolchain OK: ${actual_identity} (sha256 ${actual_tc_sha:0:16}…) ${GO_BIN}"
 
 # -------------------------------------------------------------- source ----
-GOMODCACHE_DIR="$(go env GOMODCACHE)"
+GOMODCACHE_DIR="$(GOTOOLCHAIN=local "${GO_BIN}" env GOMODCACHE)"
+GOMODCACHE_DIR="$(printf '%s' "${GOMODCACHE_DIR}" | tr '\\' '/')"
+# bashy presents HOME as a shell path on Windows; native Go must instead see
+# the absolute drive path resolved above when it derives module-cache paths.
+export GOMODCACHE="${GOMODCACHE_DIR}"
 TOUR_ROOT="${1:-${TOUR_ROOT:-${GOMODCACHE_DIR}/golang.org/x/website@${version}}}"
 [ -d "${TOUR_ROOT}" ] || die "TOUR_ROOT is not a directory: ${TOUR_ROOT}"
 [ -f "${TOUR_ROOT}/LICENSE" ] || die "TOUR_ROOT is missing upstream LICENSE (BSD provenance)"
@@ -186,7 +209,11 @@ cleanup() {
   done
   [ "${TOUR_KEEP_RUN_ROOT:-0}" = "1" ] || rm -rf "${RUN_ROOT}"
 }
-trap cleanup EXIT HUP INT TERM
+if [ "${PLATFORM_GOOS}" = windows_nt ]; then
+  trap cleanup EXIT INT TERM
+else
+  trap cleanup EXIT HUP INT TERM
+fi
 
 printf 'module tour.baseline.local\n\ngo %s\n\nrequire %s %s\n' "${tc_version#go}" "${helper_mod}" "${helper_ver}" \
   > "${SRC_DIR}/go.mod"
@@ -206,6 +233,29 @@ bounded_run() { # bounded_run <timeout_s> <grace_s> <cmd...>
   # enabled it. Helper downloads/builds use such subshells: re-enable monitor
   # mode here so $! is the child's own PGID, never the surrounding helper's.
   set -m
+  if [ "${PLATFORM_GOOS}" = windows_nt ]; then
+    local limit="$1" grace="$2" rc=0 timer marker
+    shift 2
+    "$@" </dev/null &
+    local pid=$!
+    marker="${RUN_ROOT}/deadline-${pid}"
+    (
+      sleep "${limit}"
+      : > "${marker}"
+      "${WINDOWS_SYSTEM32}/taskkill.exe" /PID "${pid}" /T /F >/dev/null 2>&1 || kill -TERM "${pid}" 2>/dev/null || true
+      sleep "${grace}"
+      "${WINDOWS_SYSTEM32}/taskkill.exe" /PID "${pid}" /T /F >/dev/null 2>&1 || kill -KILL "${pid}" 2>/dev/null || true
+    ) &
+    timer=$!
+    wait "${pid}" || rc=$?
+    kill -KILL "${timer}" 2>/dev/null || true
+    wait "${timer}" 2>/dev/null || true
+    if [ -f "${marker}" ]; then
+      rm -f "${marker}"
+      return 137
+    fi
+    return "${rc}"
+  fi
   local limit_t=$(( $1 * 10 )) grace_t=$(( $2 * 10 )); shift 2
   "$@" </dev/null &
   local pid=$! t=0 rc=0 g
@@ -259,12 +309,15 @@ emit_record() { # 14 fields: path applic src_bytes src_sha src_mode baseline bui
 # is a MATERIALIZED FILE, not a process substitution: this suite also runs
 # under bash reimplementations (bashy) whose process-substitution FIFOs may
 # never see EOF once the writer exits, hanging the loop after the last row.
-# A regular file has unambiguous EOF; the read runs in the main shell, so
-# counters and LIVE_PGIDS survive.
+# A regular file has unambiguous EOF. Preloading its rows also prevents a
+# Windows child from disturbing the shell's buffered position on an inherited
+# input handle; the loop still runs in the main shell, so counters survive.
 feed="${RUN_ROOT}/executable.tsv"
 awk -F '\t' '$1 !~ /^#/ && NF && ($4 == "applicable_go_program" || $4 == "build_only_go_program") \
      { print $1 "\t" $4 "\t" $7 "\t" $8 }' "${INV}" > "${feed}"
-while IFS=$'\t' read -r path applicability inv_bytes inv_sha; do
+mapfile -t executable_rows < "${feed}"
+for executable_row in "${executable_rows[@]}"; do
+  IFS=$'\t' read -r path applicability inv_bytes inv_sha <<<"${executable_row}"
   case "${applicability}" in
     applicable_go_program) base_tok="${BASE_TOKEN_RUN}" ;;
     build_only_go_program) base_tok="${BASE_TOKEN_BUILD}" ;;
@@ -287,7 +340,11 @@ while IFS=$'\t' read -r path applicability inv_bytes inv_sha; do
     || die "source mode tampered for ${path}: pinned sources are read-only 444, got ${src_mode} (TOUR_ROOT must be the module-cache materialization, not a writable tree)"
   mkdir -p "$(dirname "${dst}")"
   cp "${src}" "${dst}"
-  chmod 0444 "${dst}"
+  if [ "${PLATFORM_GOOS}" = windows_nt ]; then
+    "${WINDOWS_SYSTEM32}/attrib.exe" +R "${dst}" >/dev/null
+  else
+    chmod 0444 "${dst}"
+  fi
   [ "$(file_bytes "${dst}")" = "${inv_bytes}" ] || die "copy byte drift for ${path}"
   [ "$(file_sha "${dst}")" = "${inv_sha}" ] || die "copy sha drift for ${path}"
   dst_mode="$(file_mode "${dst}")"
@@ -295,8 +352,9 @@ while IFS=$'\t' read -r path applicability inv_bytes inv_sha; do
     || die "source mode tamper for ${path}: expected read-only 444 after copy, got ${dst_mode}"
 
   build_exit=0
+  bin="${work}/bin${BASELINE_EXE_SUFFIX}"
   if ( cd "${SRC_DIR}" && bounded_run "${BUILD_TIMEOUT}" "${KILL_GRACE}" \
-         env GOTOOLCHAIN=local "${GO_BIN}" build -o "${work}/bin" "${path}" \
+         env GOTOOLCHAIN=local "${GO_BIN}" build -o "${bin}" "${path}" \
          > "${work}/build.stdout" 2> "${work}/build.stderr" ); then
     build_exit=0
   else
@@ -320,7 +378,7 @@ while IFS=$'\t' read -r path applicability inv_bytes inv_sha; do
   fi
 
   run_exit=0
-  if bounded_run "${RUN_TIMEOUT}" "${KILL_GRACE}" "${work}/bin" \
+  if bounded_run "${RUN_TIMEOUT}" "${KILL_GRACE}" "${bin}" \
        > "${work}/run.stdout" 2> "${work}/run.stderr"; then
     run_exit=0
   else
@@ -349,7 +407,7 @@ while IFS=$'\t' read -r path applicability inv_bytes inv_sha; do
   emit_record "${path}" "${applicability}" "${inv_bytes}" "${inv_sha}" "${dst_mode}" "${base_tok}" \
     0 0 "${out_bytes}" "${out_sha}" "${err_bytes}" "${err_sha}" "${utf8}" pass
   pass_count=$((pass_count + 1))
-done < "${feed}"
+done
 
 total_rows="$(wc -l < "${records}" | tr -d ' ')"
 [ "${total_rows}" -gt 0 ] || die "0 executable rows ran — a run that measured nothing is not a run"

@@ -37,7 +37,7 @@ func cmdEvidenceRunner(root string) int {
 
 	pin := firstDataRow(filepath.Join(root, "docs/tour/pin.tsv"))
 	version, inventorySHA := pin[1], pin[7]
-	tourRoot := envOr("TOUR_ROOT", filepath.Join(shellOutput(nil, "go", "env", "GOMODCACHE"), "golang.org/x/website@"+version))
+	tourRoot := envOr("TOUR_ROOT", filepath.Join(shellOutput(nil, bootstrapGo(), "env", "GOMODCACHE"), "golang.org/x/website@"+version))
 	goos, goarch := hostGoosGoarch()
 	acceptedBinding, err := acceptedPlatform(root, goos, goarch)
 	if err != nil {
@@ -48,7 +48,7 @@ func cmdEvidenceRunner(root string) int {
 	if tc == nil {
 		return abortf("FATAL: no pinned Go toolchain row for %s/%s in docs/tour/toolchain.tsv", goos, goarch)
 	}
-	goBin := filepath.Join(shellOutput(map[string]string{"GOTOOLCHAIN": tc[2]}, "go", "env", "GOROOT"), "bin/go")
+	goBin := goExecutable(shellOutput(map[string]string{"GOTOOLCHAIN": tc[2]}, bootstrapGo(), "env", "GOROOT"))
 
 	inventory, _ := evidenceInventory(inventoryFile)
 	if len(inventory) != 97 {

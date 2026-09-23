@@ -57,6 +57,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -138,9 +139,9 @@ func sha(path string) string {
 // --- process control ------------------------------------------------------
 
 // sig signals the program's process group; a vanished group is not an error.
-func sig(signal syscall.Signal, pgid int) {
-	err := syscall.Kill(-pgid, signal)
-	if err != nil && err != syscall.ESRCH && err != syscall.EPERM {
+func sig(signal string, pgid int) {
+	err := signalProcessTree(signal, pgid)
+	if err != nil && !processGone(err) && !processPermission(err) {
 		return
 	}
 }
@@ -565,9 +566,10 @@ func (g *gateContext) run(cmd []string, cwd string, env map[string]string, input
 		return result
 	}
 	pidfile := adapterDir + "/program.pid"
-	fifo := adapterDir + "/liveness.fifo"
+	livenessToken := ""
 	var org *origin
 	var liveness *os.File
+	var closeLiveness func()
 	type joinable struct {
 		done chan error
 	}
@@ -593,19 +595,12 @@ func (g *gateContext) run(cmd []string, cwd string, env map[string]string, input
 			env = org.apply(env)
 		}
 		if launch {
-			os.Remove(fifo)
-			if err := syscall.Mkfifo(fifo, 0o600); err != nil {
-				result.setDetail("Errno::" + err.Error())
-				return
-			}
-			// Opened before the spawn so the launcher's non-blocking write-open finds
-			// a reader; the descriptor is what descendants inherit across exec.
-			liveness, err = os.OpenFile(fifo, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+			liveness, livenessToken, closeLiveness, err = prepareLiveness(adapterDir, env)
 			if err != nil {
 				result.setDetail("Errno::" + err.Error())
 				return
 			}
-			argv = append([]string{g.launcher, fifo, pidfile, "--"}, cmd...)
+			argv = append([]string{g.launcher, livenessToken, pidfile, "--"}, cmd...)
 			result.launchArgv = argv
 		}
 		if contains(adapters, "loopback_server") {
@@ -618,7 +613,7 @@ func (g *gateContext) run(cmd []string, cwd string, env map[string]string, input
 					return err
 				}
 				if !stop.get() {
-					sig(syscall.SIGTERM, pid)
+					sig("TERM", pid)
 				}
 				return nil
 			})
@@ -640,7 +635,7 @@ func (g *gateContext) run(cmd []string, cwd string, env map[string]string, input
 					return err
 				}
 				if ready {
-					sig(syscall.SIGINT, pid)
+					sig("INT", pid)
 				}
 				return nil
 			})
@@ -728,10 +723,9 @@ func (g *gateContext) run(cmd []string, cwd string, env map[string]string, input
 			result.addDetail("descendant survived process-group termination still holding the inherited liveness descriptor")
 		}
 	}
-	if liveness != nil {
-		liveness.Close()
+	if closeLiveness != nil {
+		closeLiveness()
 	}
-	os.Remove(fifo)
 	return result
 }
 
@@ -1079,6 +1073,9 @@ func gateMain(args []string) {
 	classificationPath := DOCS + "/classification.tsv"
 	candidatesPath := DOCS + "/candidates.tsv"
 	launcherSource := ROOT + "/tools/go-by-example/launch.go"
+	if runtime.GOOS == "windows" {
+		launcherSource = ROOT + "/tools/go-by-example/launch_windows.go"
+	}
 
 	// --- CLI arg contract ---
 	// `--candidate MANIFEST` selects WHICH reviewed candidate to drive and
@@ -1229,7 +1226,8 @@ func gateMain(args []string) {
 	denominator := len(rows) * len(MODES)
 
 	launcherStat := mustStat(realBashy)
-	payloadStat := mustStat(realBashy + ".real")
+	payloadPath := candidatePayloadPath(realBashy)
+	payloadStat := mustStat(payloadPath)
 	// The whole candidate, not one artifact digest: launcher AND payload, the
 	// exact clean revision of every repository the candidate links (its
 	// lowering runtime and every other replaced module), the asserted build
@@ -1701,7 +1699,7 @@ func gateMain(args []string) {
 	if err != nil || bashyReal != realBashy || sha(realBashy) != bashySHA || !sameInode(realBashy, launcherStat[1]) {
 		fatal("candidate mutation during gate")
 	}
-	if sha(realBashy+".real") != payloadSHA || !sameInode(realBashy+".real", payloadStat[1]) {
+	if sha(payloadPath) != payloadSHA || !sameInode(payloadPath, payloadStat[1]) {
 		fatal("candidate payload mutation during gate")
 	}
 	if sha(candidateManifest) != candidate.Str("manifest_sha256") || sha(candidatesPath) != candidate.Str("candidates_sha256") {
@@ -1825,7 +1823,7 @@ func resolveToolchain(toolpin *Toolchain) *toolchainContext {
 	if err != nil {
 		fatal(err.Error())
 	}
-	goBinary := goroot + "/bin/go"
+	goBinary := goExecutable(goroot)
 	identityCmd := exec.Command(goBinary, "version")
 	identityCmd.Env = append(envWithout("GOTOOLCHAIN"), "GOTOOLCHAIN=local")
 	identity, err := identityCmd.Output()

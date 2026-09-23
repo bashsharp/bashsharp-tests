@@ -20,4 +20,5 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 : "${GBE_CANDIDATE:?set GBE_CANDIDATE to the authenticated candidate manifest}"
 : "${BASHY_BIN:?set BASHY_BIN to the authenticated candidate launcher}"
+if [ "$(uname -s | tr '[:upper:]' '[:lower:]')" = "windows_nt" ]; then exec bashy "${ROOT}/tools/go-by-example/gbe.sh" tamper-tests "$@"; fi
 exec "${ROOT}/tools/go-by-example/gbe.sh" tamper-tests "$@"

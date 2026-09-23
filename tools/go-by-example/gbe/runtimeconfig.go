@@ -35,7 +35,7 @@ func provisionManagedToolCache(cache string, tc *toolchainContext) (string, erro
 	if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
 		return "", err
 	}
-	if err := os.Symlink(tc.goroot, link); err != nil {
+	if err := linkSDK(link, tc.goroot); err != nil {
 		return "", err
 	}
 	resolved, err := filepath.EvalSymlinks(link)
@@ -46,7 +46,7 @@ func provisionManagedToolCache(cache string, tc *toolchainContext) (string, erro
 	if err != nil || resolved != wantRoot {
 		return "", fmt.Errorf("managed Go SDK target mismatch")
 	}
-	fastGo := filepath.Join(link, "bin", "go")
+	fastGo := goExecutable(link)
 	if got := sha(fastGo); got != tc.goSHA256 {
 		return "", fmt.Errorf("managed Go binary checksum mismatch: got %s", got)
 	}

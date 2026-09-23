@@ -12,8 +12,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -75,12 +75,21 @@ func evidenceCapture(argv []string, chdir string, timeout float64, env map[strin
 	cmd.Stdin = devnull
 	cmd.Stdout = out
 	cmd.Stderr = errf
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	if err := cmd.Start(); err != nil {
-		fmt.Fprintf(errf, "Errno::ENOENT: %s\n", err.Error())
+	configureProcess(cmd)
+	startErr := cmd.Start()
+	if startErr == nil {
+		startErr = registerProcessTree(cmd)
+		if startErr != nil {
+			_ = cmd.Process.Kill()
+			_ = cmd.Wait()
+		}
+	}
+	if startErr != nil {
+		fmt.Fprintf(errf, "Errno::ENOENT: %s\n", startErr.Error())
 	} else {
 		result.Spawned = true
 		pid := cmd.Process.Pid
+		defer releaseProcessTree(pid)
 		deadline := time.Now().Add(time.Duration(timeout * float64(time.Second)))
 		done := make(chan struct{})
 		go func() {
@@ -95,9 +104,9 @@ func evidenceCapture(argv []string, chdir string, timeout float64, env map[strin
 			default:
 				if time.Now().After(deadline) {
 					result.State = "deadline"
-					syscall.Kill(-pid, syscall.SIGTERM)
+					terminateProcessTree(pid)
 					time.Sleep(100 * time.Millisecond)
-					syscall.Kill(-pid, syscall.SIGKILL)
+					killProcessTree(pid)
 					<-done
 					waited = true
 				} else {
@@ -107,15 +116,9 @@ func evidenceCapture(argv []string, chdir string, timeout float64, env map[strin
 		}
 		if result.State != "deadline" {
 			result.State = "exited"
-			if ws, ok := cmd.ProcessState.Sys().(syscall.WaitStatus); ok {
-				if ws.Exited() {
-					result.Exit = int64(ws.ExitStatus())
-				} else if ws.Signaled() {
-					result.Exit = int64(128 + int(ws.Signal()))
-				}
-			}
+			result.Exit = processExit(cmd.ProcessState)
 		}
-		syscall.Kill(-pid, syscall.SIGKILL)
+		killProcessTree(pid)
 	}
 	result.Stdout, _ = os.ReadFile(out.Name())
 	result.Stderr, _ = os.ReadFile(errf.Name())
@@ -302,8 +305,14 @@ func firstDataRow(path string) []string {
 }
 
 func hostGoosGoarch() (string, string) {
-	goos := strings.ToLower(shellOutput(nil, "uname", "-s"))
-	goarch := shellOutput(nil, "uname", "-m")
+	goos := runtime.GOOS
+	if goos == "windows" {
+		goos = "windows_nt"
+	}
+	goarch := runtime.GOARCH
+	if goarch == "amd64" {
+		goarch = "x86_64"
+	}
 	return goos, goarch
 }
 

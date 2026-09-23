@@ -25,7 +25,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -1157,7 +1156,7 @@ func leakDescendantMain(args []string) {
 	cmd := exec.Command(self, "leak-survivor", ready.Name())
 	devnull, _ := os.OpenFile(os.DevNull, os.O_RDWR, 0)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = devnull, devnull, devnull
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	configureDetached(cmd)
 	if err := cmd.Start(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(3)

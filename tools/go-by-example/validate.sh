@@ -12,4 +12,5 @@
 # tests can feed mutated tables without editing the checked-in ones.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+if [ "$(uname -s | tr '[:upper:]' '[:lower:]')" = "windows_nt" ]; then exec bashy "${ROOT}/tools/go-by-example/gbe.sh" validate "$@"; fi
 exec "${ROOT}/tools/go-by-example/gbe.sh" validate "$@"

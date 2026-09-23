@@ -83,7 +83,7 @@ func validateCandidateMain(args []string) {
 	if err != nil {
 		fatal("cannot resolve the reviewed Go toolchain " + toolchain.Version)
 	}
-	goBinary := goroot + "/bin/go"
+	goBinary := goExecutable(goroot)
 	identityCmd := exec.Command(goBinary, "version")
 	identityCmd.Env = append(envWithout("GOTOOLCHAIN"), "GOTOOLCHAIN=local")
 	identity, err := identityCmd.Output()

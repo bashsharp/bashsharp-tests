@@ -330,11 +330,11 @@ func cmdExecutor(root string) int {
 	}
 
 	// --- pinned Go toolchain, fail closed
-	goroot := shellOutput(map[string]string{"GOTOOLCHAIN": tc[2]}, "go", "env", "GOROOT")
+	goroot := shellOutput(map[string]string{"GOTOOLCHAIN": tc[2]}, bootstrapGo(), "env", "GOROOT")
 	if goroot == "" {
 		die("cannot resolve GOROOT for %s", tc[2])
 	}
-	goBin := filepath.Join(goroot, "bin/go")
+	goBin := goExecutable(goroot)
 	if !isExecutable(goBin) {
 		die("pinned Go binary missing at %s", goBin)
 	}

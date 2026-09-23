@@ -121,7 +121,7 @@ func isDir(path string) bool {
 
 // isExecutable is File.executable?: an access(X_OK) probe for this process.
 func isExecutable(path string) bool {
-	return syscall.Access(path, 1) == nil
+	return executableFile(path)
 }
 
 func fileSize(path string) int64 {
@@ -500,22 +500,18 @@ func groupAlive(pgid int) bool {
 	if pgid <= 0 {
 		return false
 	}
-	err := syscall.Kill(-pgid, 0)
-	if err == nil {
-		return true
-	}
-	return err == syscall.EPERM
+	return processTreeAlive(pgid)
 }
 
-func signalGroup(sig syscall.Signal, name string, pgid int, events *[]any, reason string) bool {
+func signalGroup(name string, pgid int, events *[]any, reason string) bool {
 	var errName any
 	delivered := false
-	err := syscall.Kill(-pgid, sig)
+	err := signalProcessTree(name, pgid)
 	switch {
 	case err == nil:
 		delivered = true
-	case err == syscall.ESRCH:
-	case err == syscall.EPERM:
+	case processGone(err):
+	case processPermission(err):
 		errName = "Errno::EPERM"
 	}
 	*events = append(*events, Obj("signal", name, "target_pgid", Int(int64(pgid)), "reason", reason,
@@ -579,10 +575,11 @@ func appendLineage(path string, envelope *Object) error {
 		return err
 	}
 	defer f.Close()
-	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
+	unlock, err := lockFile(f)
+	if err != nil {
 		return err
 	}
-	defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+	defer unlock()
 	if _, err := f.WriteString(Canonical(envelope) + "\n"); err != nil {
 		return err
 	}
@@ -665,10 +662,16 @@ func capture(argv []string, cwd string, logPrefix string, env map[string]string,
 	cmd.Stdin = stdinFile
 	cmd.Stdout = stdoutFile
 	cmd.Stderr = stderrFile
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	if err := cmd.Start(); err != nil {
-		class, errno := errnoClass(err)
-		message := err.Error()
+	afterStart := configureProcess(cmd, env)
+	startErr := cmd.Start()
+	if err := afterStart(); err != nil && startErr == nil {
+		startErr = err
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+	}
+	if startErr != nil {
+		class, errno := errnoClass(startErr)
+		message := startErr.Error()
 		launchError = Obj("class", class, "message", message, "errno", errno)
 		fmt.Fprintf(stderrFile, "%s: %s\n", class, message)
 	} else {
@@ -680,15 +683,7 @@ func capture(argv []string, cwd string, logPrefix string, env map[string]string,
 			close(done)
 		}()
 		record := func() {
-			if ps := cmd.ProcessState; ps != nil {
-				if ws, ok := ps.Sys().(syscall.WaitStatus); ok {
-					if ws.Signaled() {
-						signalNo = Int(int64(ws.Signal()))
-					} else {
-						exitCode = Int(int64(ws.ExitStatus()))
-					}
-				}
-			}
+			exitCode, signalNo = processStatus(cmd.ProcessState)
 		}
 		for {
 			exited := false
@@ -704,7 +699,7 @@ func capture(argv []string, cwd string, logPrefix string, env map[string]string,
 			}
 			if monotonicNS() >= expiresNS {
 				state = "deadline"
-				signalGroup(syscall.SIGKILL, "KILL", pid, &killEvents, "deadline")
+				signalGroup("KILL", pid, &killEvents, "deadline")
 				<-done
 				record()
 				reapEvent(pid, "leader_wait_after_deadline")
@@ -717,13 +712,16 @@ func capture(argv []string, cwd string, logPrefix string, env map[string]string,
 			if state == "exited" {
 				state = "process_leak"
 			}
-			signalGroup(syscall.SIGKILL, "KILL", pid, &killEvents, "descendant_sweep")
+			signalGroup("KILL", pid, &killEvents, "descendant_sweep")
 		}
 		if groupAlive(pid) {
-			signalGroup(syscall.SIGKILL, "KILL", pid, &killEvents, "ensure_sweep")
+			signalGroup("KILL", pid, &killEvents, "ensure_sweep")
 		}
 	}
 	stdinFile.Close()
+	if pid != 0 {
+		defer releaseProcessTree(pid)
+	}
 	stdoutFile.Close()
 	stderrFile.Close()
 
@@ -810,7 +808,14 @@ func authenticateFile(path, expected string) (*Object, error) {
 }
 
 func gitOutput(dir string, args ...string) (string, bool) {
-	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+	name := "git"
+	argv := append([]string{"-C", dir}, args...)
+	if _, err := exec.LookPath(name); err != nil {
+		if bashy, berr := exec.LookPath("bashy"); berr == nil {
+			name, argv = bashy, append([]string{"git", "-C", dir}, args...)
+		}
+	}
+	cmd := exec.Command(name, argv...)
 	out, err := cmd.Output()
 	return string(out), err == nil
 }
@@ -838,7 +843,7 @@ func authenticateCandidate(bashy string, candidate *Object) (*Object, error) {
 	if err != nil {
 		return nil, err
 	}
-	payload, err := authenticateFile(bashy+".real", candidate.Str("payload_sha256"))
+	payload, err := authenticateFile(candidatePayloadPath(bashy), candidate.Str("payload_sha256"))
 	if err != nil {
 		return nil, err
 	}
@@ -866,15 +871,7 @@ func authenticateCandidate(bashy string, candidate *Object) (*Object, error) {
 
 // statIdentity returns (device, inode) of a path (File.stat dev/ino).
 func statIdentity(path string) (int64, int64, error) {
-	st, err := os.Stat(path)
-	if err != nil {
-		return 0, 0, err
-	}
-	sys, ok := st.Sys().(*syscall.Stat_t)
-	if !ok {
-		return 0, 0, fmt.Errorf("no stat identity for %s", path)
-	}
-	return int64(sys.Dev), int64(sys.Ino), nil
+	return platformStatIdentity(path)
 }
 
 // readTSV reads a TSV table: blank lines and lines starting with # skipped,
