@@ -1,0 +1,5 @@
+root	mode	decision	ground
+testdir:fixedbugs/issue20014.go	interpreted	S247-D gc-only-check	-goexperiment fieldtrack with -ldflags -k=main.fieldTrackInfo (linker-populated tracked-field list); replacement struct-tags-and-tracked-fields (sh TestS247DecisionReplacementConformance)
+testdir:fixedbugs/issue30862.go	interpreted	S247-D gc-only-check	//go:nointerface under -goexperiment fieldtrack across an imported embedded struct; replacement promoted-embedded-pointer-method-sets
+testdir:strcopy.go	interpreted	S247-D unsafe-reinterpretation	string data addresses compared through reflect.StringHeader; replacement string-conversion-copies
+testdir:fixedbugs/issue8606b.go	interpreted	S247-D unsafe-reinterpretation	string data pointed at an mmap PROT_NONE page through reflect.StringHeader, relying on gc comparison order; replacement struct-string-interface-equality
