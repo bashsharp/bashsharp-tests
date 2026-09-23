@@ -1,0 +1,8 @@
+root	mode	decision	ground
+testdir:maymorestack.go	interpreted	S248-D1 gc-only-check	-gcflags=-d=maymorestack compiler hook; replacement deep-recursion-with-large-frames (sh TestS248RuntimeObservationReplacementConformance)
+testdir:fixedbugs/issue47928.go	interpreted	S248-D1 gc-only-check	//go:nointerface under -goexperiment fieldtrack; replacement promoted-pointer-method-sets
+testdir:typeparam/mdempsky/15.go	interpreted	S248-D1 gc-only-check	//go:nointerface under -goexperiment fieldtrack on generic promoted methods; replacement promoted-generic-method-sets
+testdir:fixedbugs/issue15277.go	interpreted	S248-D1 gc-observation	runtime.MemStats heap deltas around KeepAlive; replacement keepalive-allocation-lifecycle
+testdir:fixedbugs/issue9110.go	interpreted	S248-D1 gc-observation	runtime.MemStats object counts (leaked sudogs); replacement select-timeout-churn-completes
+testdir:nilptr.go	interpreted	S248-D1 unsafe-reinterpretation	global placement in the first 256 MB of the address space; replacement nil-large-array-indirection-panics
+testdir:fixedbugs/bug260.go	interpreted	S248-D1 unsafe-reinterpretation	array-element addresses compared through %p (memory layout); replacement packed-struct-sizes-and-alignments
