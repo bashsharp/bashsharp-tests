@@ -6,7 +6,7 @@ seq: 89
 status: assigned
 priority: p0
 created: 2026-09-23T09:43:52.988025Z
-weave: 16
+weave: 18
 assignee: qiangli
 sprint: 250
 sprint_id: c912e608-edfe-59b8-bd36-a98f6dad1634
