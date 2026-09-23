@@ -1,7 +1,7 @@
 ---
 id: 953e38387470
 kind: bug
-title: S250 Windows GBE execing-processes native command parity
+title: S250 Windows GBE spawning-processes command fixture
 seq: 97
 status: todo
 priority: p0
@@ -14,4 +14,4 @@ sprint_id: c912e608-edfe-59b8-bd36-a98f6dad1634
 sprint_title: Validate Go by Example, Go Tour and BashSharp Tour on three hosts
 ---
 
-Final Windows GBE rows 23 execing-processes and 61 spawning-processes: the unchanged sources call exec.LookPath("ls") / syscall.Exec and exec.Command("date", "grep", "bash"). Current runEnv gives process_exec a Unix PATH string, while those tools are absent on that Windows path; oracle and compiled panic on lookup and interpreted produces different native-handle diagnostics. Diagnose the retained raw streams and distinguish missing deterministic command setup from sh product behavior. Repair only the proven Windows mechanism with a shared three-mode environment and exact semantic checks. Preserve source corpus, normalizer, and original limits; verify focused authenticated rows and full 255 gate.
+Final Windows GBE row 61 spawning-processes: the unchanged source invokes date, grep, and bash, while the current Windows process_exec PATH provides none of those commands. All three modes panic at the first date lookup, before the authored output is produced. Diagnose the retained streams and provide deterministic Windows command setup shared by all three modes, with authenticated bytes and exact semantic checks. Preserve source corpus, normalizer, and original limits; verify the focused authenticated row and full 255 gate. Row 23 syscall.Exec native Windows parity is tracked separately.
