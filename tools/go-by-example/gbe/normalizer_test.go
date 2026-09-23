@@ -4,9 +4,37 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
+
+func TestWindowsExecPanicTraceLicence(t *testing.T) {
+	path := "examples/execing-processes/execing-processes.go"
+	declared := []string{"file_metadata"}
+	got := effectiveNormalizations("windows", path, declared)
+	if !reflect.DeepEqual(got, []string{"file_metadata", "panic_trace"}) {
+		t.Fatalf("Windows execing-processes normalizations: %v", got)
+	}
+	if !reflect.DeepEqual(declared, []string{"file_metadata"}) {
+		t.Fatalf("authored classification changed: %v", declared)
+	}
+	for _, control := range []struct{ goos, path string }{
+		{"linux", path}, {"darwin", path}, {"windows", "examples/spawning-processes/spawning-processes.go"},
+	} {
+		if names := effectiveNormalizations(control.goos, control.path, declared); !reflect.DeepEqual(names, declared) {
+			t.Fatalf("unlicensed normalization on %s %s: %v", control.goos, control.path, names)
+		}
+	}
+	for _, trace := range []string{
+		"panic: not supported by windows\n\ngoroutine 1 [running]:\nmain.main()\n\tC:/oracle.go:48 +0x4f\n",
+		"panic: not supported by windows\n\ngoroutine 1 [running]:\nmain.main()\n\tC:\\interpreted.go:48\n",
+	} {
+		if got := mustNormalize(t, trace, got, "stderr"); got != "panic: not supported by windows\n\n" {
+			t.Fatalf("panic body changed: %q", got)
+		}
+	}
+}
 
 func repoRoot(t *testing.T) string {
 	t.Helper()

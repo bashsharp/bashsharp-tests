@@ -513,7 +513,7 @@ func validateEvidenceMain(args []string) {
 		if attempt.Str("kind") != inventoryRow[1] {
 			die("attempt kind differs from the inventory: " + attempt.Str("path"))
 		}
-		normalizations := splitNames(inventoryRow[3])
+		normalizations := hostNormalizations(attempt.Str("path"), splitNames(inventoryRow[3]))
 		label := attempt.Str("path") + ":" + attempt.Str("mode")
 
 		if recipe.Has("runtime_config_sha256") && attempt.Str("state") == "complete" {

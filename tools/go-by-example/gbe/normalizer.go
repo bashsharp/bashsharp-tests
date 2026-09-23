@@ -1,7 +1,7 @@
 // Sprint: #155; Story: S155.10; Story-ID: 67bdd9fae2b3
 //
 // Repository-versioned normalization semantics shared by evidence production
-// and verification, ported from tools/go-by-example/normalizer.rb (VERSION 7), now at VERSION 10.
+// and verification, ported from tools/go-by-example/normalizer.rb (VERSION 7), now at VERSION 11.
 // Bump NormalizerVersion whenever these transformations change.
 //
 // VERSION 2 (Sprint 118) dropped `goexit_status`. It existed only because the
@@ -52,6 +52,7 @@ import (
 	"math"
 	"math/big"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -64,7 +65,26 @@ import (
 // VERSION 10 covers the `total` block-count summary from `ls -l` under the
 // existing file_metadata licence. It keeps the file names, order and every
 // non-metadata line exact.
-const NormalizerVersion = 10
+// VERSION 11 applies the existing panic_trace licence only to the Windows
+// execing-processes row. Native Windows syscall.Exec always returns EWINDOWS,
+// so that row necessarily panics; the site and stack addresses differ between
+// the three execution modes while the panic body and exit status remain exact.
+const NormalizerVersion = 11
+
+func effectiveNormalizations(goos, path string, declared []string) []string {
+	if goos != "windows" || path != "examples/execing-processes/execing-processes.go" {
+		return declared
+	}
+	names := append([]string(nil), declared...)
+	if !contains(names, "panic_trace") {
+		names = append(names, "panic_trace")
+	}
+	return names
+}
+
+func hostNormalizations(path string, declared []string) []string {
+	return effectiveNormalizations(runtime.GOOS, path, declared)
+}
 
 var NormalizerNames = []string{"none", "argv0_path", "env_listing", "file_metadata", "tmp_path", "ephemeral_port", "wallclock", "duration", "panic_trace", "random_stream", "map_order", "interleave_order", "closing_channel_order", "throughput_count", "pointer_address"}
 var stdoutNames = []string{"argv0_path", "env_listing", "file_metadata", "tmp_path", "ephemeral_port", "duration", "random_stream", "map_order", "interleave_order", "closing_channel_order", "throughput_count", "pointer_address"}

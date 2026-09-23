@@ -1459,7 +1459,7 @@ func gateMain(args []string) {
 		deadline := monotonicSeconds() + rowLimit
 		path, kind := row[0], row[1]
 		behaviors := toks(row[2])
-		normalizations := toks(row[3])
+		normalizations := hostNormalizations(path, toks(row[3]))
 		adapters := toks(row[4])
 		testRow := kind == "test_program"
 		name := filepath.Base(path)
