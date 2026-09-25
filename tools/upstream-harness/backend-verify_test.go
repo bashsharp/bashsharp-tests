@@ -616,6 +616,25 @@ func TestVerifierBuildDirAssemblyCompanions(t *testing.T) {
 	if _, err := verifyBuildDirEvidence(t, "interpreted", "buildrundir", "pass", records); err == nil {
 		t.Fatal("an interpreted refusal with a passing terminal must be rejected")
 	}
+	// Sprint: #270; Story: #760; Story-ID: 809c2c0c0a47
+	// builddir executes nothing: interpreted mode checks the Go files and
+	// runs upstream's assembler natively, like compiled mode, and no longer
+	// refuses the companion.
+	records = buildDirEvidence("interpreted", true)
+	if status, err := verifyBuildDirEvidence(t, "interpreted", "builddir", "pass", records[:len(records)-3]); err != nil || status != "BUILDDIR-PASS" {
+		t.Fatalf("interpreted builddir with a companion: verifyRow = %q, %v", status, err)
+	}
+	if _, err := verifyBuildDirEvidence(t, "interpreted", "buildrundir", "pass", records); err == nil || !strings.Contains(err.Error(), "assembly generate phase") {
+		t.Fatalf("interpreted buildrundir native assembly: error = %v", err)
+	}
+	records = buildDirEvidence("compiled", true)[:3]
+	for i := range records {
+		records[i].Mode = "interpreted"
+	}
+	records[1].Disposition, records[1].Artifacts = "unsupported", nil
+	if _, err := verifyBuildDirEvidence(t, "interpreted", "builddir", "fail", records); err == nil || !strings.Contains(err.Error(), "declared unsupported") {
+		t.Fatalf("interpreted builddir refusal: error = %v", err)
+	}
 	// A link failure (a declaration no assembly implements) is a product
 	// failure with its recorded nonzero exit, never a pass.
 	records = buildDirEvidence("compiled", true)

@@ -540,13 +540,18 @@ runs `a.exe`. The seam gives every phase its meaning:
   assembler sees the generated file's constants and layouts (`go_asm.h`) and
   the compiler sees the assembly's ABI (`symabis`). Interpreted mode is
   `check-only` (no object; the sources stay the program).
-- **Assembly** → `assemble-native` (compiled only): assembly is a compiler
-  artifact (Sprint 155 D3). The pinned toolchain's `go tool asm` runs
-  upstream's exact argv on the upstream `.s` files, natively and unchanged,
-  as a recorded phase with its one output; the assembled object is remembered
-  for pack and nothing else may consume it. No Go source of the root runs
-  natively. Interpreted mode keeps the generate-phase refusal (`compile input
-  "…/a.s" is not a Go source file`), which the partition retains.
+- **Assembly** → `assemble-native` (compiled; interpreted `builddir`):
+  assembly is a compiler artifact (Sprint 155 D3). The pinned toolchain's
+  `go tool asm` runs upstream's exact argv on the upstream `.s` files,
+  natively and unchanged, as a recorded phase with its one output; the
+  assembled object is remembered for pack and nothing else may consume it.
+  No Go source of the root runs natively. A `builddir` root executes nothing,
+  so interpreted mode gives its assembly the same meaning (Sprint 270, G5):
+  the Go files are checked by Bash++ (`check-only`, no object) and the
+  assembler sees upstream's own empty `go_asm.h`. Interpreted `buildrundir`
+  keeps the generate-phase refusal (`compile input "…/a.s" is not a Go source
+  file`): it executes the program, and an interpreter has no meaning for the
+  companion's bodies.
 - **Pack** → `pack-adopt-artifact` / `pack-adopt-check`: the inputs must be
   exactly upstream's object name for the seam's compiler artifact (the `-o`
   operand, `go.o`) plus the seam's assembled objects; the archive becomes the

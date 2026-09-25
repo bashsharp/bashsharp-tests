@@ -4,6 +4,7 @@
 // Sprint: #150; Stories: S150.6 (4228ed646074), S150.5 (e87e1cbcbb20), S150.1 (a136a527c0b3), S150.2 (8f758b9dcd5a)
 // Sprint: #154; Story: S154.0; Story-ID: 4877afd3a207
 // Sprint: #165; Story: S165.0; Story-ID: 1528c3c2b1df
+// Sprint: #270; Story: #760; Story-ID: 809c2c0c0a47
 //
 // Direct Go-source backend for the authenticated Go 1.27 testdir seam. The
 // only program description accepted here is the compileInputs/programArgv
@@ -576,10 +577,14 @@ func assemblyInputs(inputs []string) bool {
 // exact argv, natively and unchanged, and the seam records it as a phase of
 // the test — no Go source of the root is ever run natively (the Go files go
 // through transpile + direct compile like every compile-only recipe, and the
-// object assembly is remembered for pack). Interpreted mode has no assembly
-// meaning and stays unsupported with its recorded reason.
+// object assembly is remembered for pack). A builddir root only builds: in
+// interpreted mode its Go files are checked by Bash++ (check-only) and its
+// assembly is the same native, unchanged upstream assembler phase, since
+// nothing is executed (Sprint 270, G5). A buildrundir root executes the
+// program, and an interpreter has no meaning for the companion's bodies:
+// interpreted buildrundir stays unsupported with its recorded reason.
 func (t test) backendAssemble(step *planStep, mode, action, phase string, compileInputs, programArgv, recipeFlags, nativeArgv, deviations []string) {
-	if mode == "interpreted" {
+	if mode == "interpreted" && action != "builddir" {
 		step.backendErr = fmt.Errorf("Bash++ backend unsupported %s phase: compile input %q is not a Go source file", phase, compileInputs[0])
 		t.backendEvent(mode, action, phase, "unsupported", compileInputs, programArgv, recipeFlags, nativeArgv, nil, nil,
 			append(deviations, "assembly is a compiler artifact; an interpreter has no assembly meaning and the companion's Go declarations have no body to run"))
@@ -591,10 +596,14 @@ func (t test) backendAssemble(step *planStep, mode, action, phase string, compil
 			append(deviations, "assembly sources have a meaning only as upstream's own go tool asm invocation"))
 		return
 	}
-	if mode != "compiled" {
+	if mode != "compiled" && mode != "interpreted" {
 		step.backendErr = fmt.Errorf("unsupported Bash++ backend mode %q", mode)
 		t.backendEvent(mode, action, phase, "configuration-error", compileInputs, programArgv, recipeFlags, nativeArgv, nil, nil, deviations)
 		return
+	}
+	if mode == "interpreted" {
+		deviations = append(deviations,
+			"builddir executes nothing: the directory's Go files are checked by Bash++ (check-only, no object), and the assembler sees upstream's own empty go_asm.h, as upstream's gensymabis phase does")
 	}
 	output := compilerOutput(nativeArgv, "", step.cmd.Dir)
 	symabis := false

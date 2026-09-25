@@ -743,8 +743,12 @@ func verifyBuildDirRow(row matrixRow, ev evidence, mode, goAction string) (strin
 		return "", fmt.Errorf("unknown backend mode %q", mode)
 	}
 	first := ev.Backends[0]
+	// A builddir root executes nothing, so its assembly has the same native
+	// meaning in both modes (Sprint 270, G5); only interpreted buildrundir
+	// keeps the generate-phase refusal.
+	nativeAssembly := mode == "compiled" || row.Action == "builddir"
 	if mode == "interpreted" && first.Disposition == "unsupported" {
-		if !assemblySources(first.CompileInputs) || first.Phase != "generate" || len(ev.Backends) != 1 || goAction != "fail" {
+		if nativeAssembly || !assemblySources(first.CompileInputs) || first.Phase != "generate" || len(ev.Backends) != 1 || goAction != "fail" {
 			return "", fmt.Errorf("interpreted directory build declared unsupported outside the assembly generate phase: phase=%s inputs=%v action=%s", first.Phase, first.CompileInputs, goAction)
 		}
 		return "UNSUPPORTED", nil
@@ -768,7 +772,7 @@ func verifyBuildDirRow(row matrixRow, ev evidence, mode, goAction string) (strin
 		}
 		switch {
 		case backend.Phase == "generate" && assemblySources(backend.CompileInputs):
-			if stage != "start" || mode != "compiled" {
+			if stage != "start" || !nativeAssembly {
 				return "", fmt.Errorf("phase %d: assembly generate phase after %s in %s mode", i, stage, mode)
 			}
 			if err := checkAssembleNative(backend, true); err != nil {
@@ -776,7 +780,7 @@ func verifyBuildDirRow(row matrixRow, ev evidence, mode, goAction string) (strin
 			}
 			assembly, stage = true, "symabis"
 		case backend.Phase == "compile" && assemblySources(backend.CompileInputs):
-			if stage != "compile" || !assembly || mode != "compiled" {
+			if stage != "compile" || !assembly || !nativeAssembly {
 				return "", fmt.Errorf("phase %d: object assembly after %s (assembly=%v) in %s mode", i, stage, assembly, mode)
 			}
 			if err := checkAssembleNative(backend, false); err != nil {
