@@ -58,7 +58,7 @@ func bashppTypesCheck(t *testing.T, filenames []string, srcs [][]byte, lang stri
 	if lang != "" {
 		args = append(args, "--go-version", lang)
 	}
-	args = append(args, "--go-test-builtins", "--go-checker-branch-errors", "--go-check-after-syntax-errors")
+	args = append(args, "--go-test-builtins", "--go-checker-branch-errors", "--go-check-after-syntax-errors", "--go-types-parser-diagnostics")
 	for _, name := range filenames {
 		args = append(args, "--go-file", name)
 	}
@@ -95,6 +95,7 @@ func bashppTypesCheck(t *testing.T, filenames []string, srcs [][]byte, lang stri
 		"secondary go/types diagnostics are filtered with upstream's own `if !strings.Contains(err.Error(), \": \\t\")` rule after Bash++ diagnostic reconstruction",
 		"the check interface is passed --go-test-builtins to mirror upstream's in-process types.DefPredeclaredTestFuncs setup",
 		"the check interface is passed --go-checker-branch-errors (this runner's parser runs no branch checks, so label/goto/break errors are go/types') and --go-check-after-syntax-errors (this runner type-checks the partial AST after parse errors and expects both)",
+		"the go/types runner passes --go-types-parser-diagnostics because its error positions come from go/parser; the types2 runner retains gc parser positions",
 	}
 	if fakeImportC {
 		deviations = append(deviations, "the check interface has no -fakeImportC; import \"C\" is checked as an ordinary import and any resulting mismatch is a retained product difference")
