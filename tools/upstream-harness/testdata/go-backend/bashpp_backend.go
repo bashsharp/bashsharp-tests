@@ -218,6 +218,27 @@ func bashppFilePaths(files []bashppPackageFile) []string {
 	return paths
 }
 
+// bashppPackageCompanions returns cmd/go's already host-selected assembly
+// inputs for one package, beside the Go files whose declarations they
+// implement. SFiles has already applied GOOS/GOARCH and build constraints;
+// the backend must not rescan the directory or hand an ignored assembly file
+// to the interpreter.
+func bashppPackageCompanions(imp *load.Package) []string {
+	files := make([]string, 0, len(imp.SFiles))
+	for _, name := range imp.SFiles {
+		files = append(files, filepath.Join(imp.Dir, name))
+	}
+	return files
+}
+
+func bashppPackageAsmArgs(importPath string, companions []string) []string {
+	args := make([]string, 0, len(companions)*2)
+	for _, companion := range companions {
+		args = append(args, "--go-package-asm", importPath+"="+companion)
+	}
+	return args
+}
+
 func bashppFileRoles(files []bashppPackageFile) map[string]string {
 	roles := make(map[string]string, len(files))
 	for _, file := range files {
@@ -342,18 +363,20 @@ func bashppTestPlan(p *load.Package, buildAction *work.Action, args []string) []
 		if imp.ImportPath != p.ImportPath && imp.ImportPath != p.ImportPath+"_test" {
 			continue
 		}
-		if len(imp.CgoFiles) != 0 || (mode != "compiled" && len(imp.SFiles) != 0) {
+		if len(imp.CgoFiles) != 0 {
 			record["disposition"] = "unsupported"
-			record["deviations"] = []string{fmt.Sprintf("package %s has non-Go inputs %v; no direct Go-source meaning", imp.ImportPath, append(append([]string(nil), imp.SFiles...), imp.CgoFiles...))}
+			record["deviations"] = []string{fmt.Sprintf("package %s has unsupported cgo non-Go inputs %v; no direct Go-source meaning", imp.ImportPath, imp.CgoFiles)}
 			bashppEmit(record)
-			return []string{"/bin/sh", "-c", "echo 'Bash++ gotest backend: non-Go inputs' >&2; exit 1"}
+			return []string{"/bin/sh", "-c", "echo 'Bash++ gotest backend: cgo inputs' >&2; exit 1"}
 		}
-		assemblyCompanions = append(assemblyCompanions, imp.SFiles...)
 		variant := bashppTestVariantFiles(imp, p.ImportPath)
 		classified = append(classified, variant...)
 		files := bashppFilePaths(variant)
+		companions := bashppPackageCompanions(imp)
+		assemblyCompanions = append(assemblyCompanions, companions...)
 		mapArgs = append(mapArgs, "--go-package", imp.ImportPath+"="+strings.Join(files, ","))
-		packages = append(packages, map[string]any{"path": imp.ImportPath, "files": files, "roles": bashppFileRoles(variant)})
+		mapArgs = append(mapArgs, bashppPackageAsmArgs(imp.ImportPath, companions)...)
+		packages = append(packages, map[string]any{"path": imp.ImportPath, "files": files, "companions": companions, "roles": bashppFileRoles(variant)})
 	}
 	record["program"] = map[string]any{"path": pmain.ImportPath, "packages": packages, "files": []string{testmain}}
 	testArgs := args[1:]
@@ -384,6 +407,9 @@ func bashppTestPlan(p *load.Package, buildAction *work.Action, args []string) []
 			plan = append(plan, testArgs...)
 		}
 		record["disposition"] = "run-package-map"
+		if len(assemblyCompanions) != 0 {
+			deviations = append(deviations, "cmd/go's host-selected same-package .s companions are carried as separate non-Go package assembly inputs; the Go test bodies remain interpreted")
+		}
 	case "compiled":
 		goTool := os.Getenv("BASHPP_GOTEST_GO")
 		// The overlay directory is evidence (the generated files cmd/go

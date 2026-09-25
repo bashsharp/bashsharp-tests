@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"cmd/go/internal/load"
+	"cmd/go/internal/work"
 )
 
 func TestLibraryOverlayUsesOneInvocationAndAllFileClasses(t *testing.T) {
@@ -140,6 +141,53 @@ func TestTestVariantFilesClassifyEachFileOnce(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// Sprint: #281; Story: #811; Story-ID: aa5c046bb543
+// cmd/go has already selected SFiles for the running host. Interpreted test
+// bodies keep their Go-only package map, and the selected assembly companions
+// travel through the repeatable --go-package-asm channel; ignored
+// wrong-architecture assembly is not rediscovered.
+func TestInterpretedPlanCarriesSelectedAssemblyCompanionsSeparately(t *testing.T) {
+	dir := t.TempDir()
+	pkgDir := filepath.Join(dir, "src", "cmd", "compile", "internal", "ssa")
+	if err := os.MkdirAll(pkgDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	testmain := filepath.Join(dir, "_testmain.go")
+	if err := os.WriteFile(testmain, []byte("package main\nvar tests = []struct{}{}\nvar benchmarks = []struct{}{}\nvar fuzzTargets = []struct{}{}\nvar examples = []struct{}{}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	p := &load.Package{PackagePublic: load.PackagePublic{ImportPath: "cmd/compile/internal/ssa", Dir: pkgDir}}
+	ptest := &load.Package{PackagePublic: load.PackagePublic{
+		ImportPath:        p.ImportPath,
+		Dir:               pkgDir,
+		GoFiles:           []string{"compile.go", "flags_test.go"},
+		TestGoFiles:       []string{"flags_test.go"},
+		SFiles:            []string{"flags_arm64_test.s"},
+		IgnoredOtherFiles: []string{"flags_amd64_test.s"},
+	}}
+	pmain := &load.Package{PackagePublic: load.PackagePublic{ImportPath: p.ImportPath + ".test", Dir: dir}}
+	pmain.Internal.Imports = []*load.Package{ptest}
+
+	t.Setenv("BASHPP_GOTEST_BACKEND", "interpreted")
+	t.Setenv("BASHPP_GOTEST_TOOL", "/pinned/bashsharp")
+	got := bashppTestPlan(p, &work.Action{Package: pmain}, []string{filepath.Join(dir, "ssa.test"), "-test.run", "TestFlags"})
+	want := []string{
+		"/pinned/bashsharp", "--bashpp", "--source=go",
+		"--go-import-path", "cmd/compile/internal/ssa.test", "--go-test-main",
+		"--go-package", p.ImportPath + "=" + filepath.Join(pkgDir, "compile.go") + "," + filepath.Join(pkgDir, "flags_test.go"),
+		"--go-package-asm", p.ImportPath + "=" + filepath.Join(pkgDir, "flags_arm64_test.s"),
+		"--go-file", testmain,
+		"--", "-test.run", "TestFlags",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("argv = %#v, want %#v", got, want)
+	}
+	if strings.Contains(strings.Join(got, "\x00"), "flags_amd64_test.s") {
+		t.Fatalf("argv rediscovered ignored assembly: %v", got)
 	}
 }
 
