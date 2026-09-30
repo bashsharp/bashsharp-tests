@@ -16,6 +16,8 @@
 #                     results under $LEAF_BASE/leaf-<name>/
 #          LEAF_SDK   pinned, authenticated Go SDK root (default /srv/sprint142):
 #                     $LEAF_SDK/authenticated-sdk/bin/go + $LEAF_SDK/sdk-source/go
+#          BASHPP_PREVIOUS_SHA256  optional 16–64 hex digest from a prior
+#                     candidate; a repeated interpreter binary is refused
 #
 # The manifest is any TSV whose first column (after a header line) is the
 # root id (`testdir:…` / `typechecker:…` / `package:…`); the gate derives the
@@ -33,6 +35,7 @@ set -u
 
 base=${LEAF_BASE:-/srv/sprint162}
 sdk=${LEAF_SDK:-/srv/sprint142}
+script_dir=$(cd -- "$(dirname "$0")" && pwd)
 name=${1:?usage: leaf-run.sh <name> <manifest.tsv> [--candidate <cand>] [--harness <ref>|--harness-bundle <file>]}
 manifest=${2:?usage: leaf-run.sh <name> <manifest.tsv> ...}
 shift 2
@@ -90,6 +93,13 @@ else
 	test -x "$tool" || tool=$base/base/bashy/bin/bashy.real
 fi
 test -x "$tool" || { printf 'leaf-run: candidate binary missing: %s (rebuild-candidate.sh)\n' "$tool" >&2; exit 1; }
+if test -n "$cand"; then
+	# The source checkout and binary must both match the rebuild receipt.
+	# BASHPP_PREVIOUS_SHA256 optionally refuses a repeated binary from a prior
+	# candidate, the evidence defect that invalidated Sprint 319 R8–R11.
+	identity=$(bash "$script_dir/candidate-identity.sh" "$base/candidates/$cand" "$tool" "$shrt") || exit 1
+	printf '%s\n' "$identity" >> "$dir/logs/status.txt"
+fi
 
 # The gate pins the shell-runtime commit and the Bash++ version string
 # (backend-pin.tsv: shellrt_commit, bashpp_version) to the published candidate.
