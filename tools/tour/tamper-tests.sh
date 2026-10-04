@@ -138,7 +138,7 @@ inventory_rows() { # appends the well-formed mini inventory to stdout
       esac
       bytes="$(wc -c < "${MINI}/_content/tour/${f}" | tr -d ' ')"
       sha="$(shasum -a 256 "${MINI}/_content/tour/${f}" | awk '{print $1}')"
-      printf '%s\tlesson_play_program\tn/a\t%s\texception:%s\t%s\t%s\t%s\n' "${path}" "${appl}" "${exc}" "${schema}" "${bytes}" "${sha}"
+      printf '%s\tlesson_play_program\tn/a\t%s\texception:%s\t%s\t%s\t%s\n' "${path%.go}.$([ "${appl}" = excluded_fragment ] && echo go || echo bsh)" "${appl}" "${exc}" "${schema}" "${bytes}" "${sha}"
     done
     inline=$'\tInline prose: never executed by the tour.\n'
     bytes="$(printf '%s' "${inline}" | wc -c | tr -d ' ')"
@@ -236,9 +236,9 @@ restore_sources
 
 echo "== probe family 2: byte counts =="
 # Inventory bytes drift off the real file; the sha still matches the file.
-inv_bytes="$(awk -F '\t' '$1 == "_content/tour/alpha.go" { print $7 }' "${INV}")"
+inv_bytes="$(awk -F '\t' '$1 == "_content/tour/alpha.bsh" { print $7 }' "${INV}")"
 bumped=$((inv_bytes + 1))
-awk -F '\t' -v OFS='\t' -v p="_content/tour/alpha.go" -v b="${bumped}" \
+awk -F '\t' -v OFS='\t' -v p="_content/tour/alpha.bsh" -v b="${bumped}" \
   '$1 !~ /^#/ && NF && $1 == p { $7 = b } { print }' "${INV}" > "${INV}.tmp" && mv "${INV}.tmp" "${INV}"
 expect_fail "byte-count tamper" \
   "source byte-count tamper" run_mini "${RESULTS}.probe2" "${BPIN}.probe2"
@@ -251,7 +251,7 @@ expect_fail "writable pinned source (0644)" \
 restore_sources
 cp "${WORK}/results.good.tsv" "${RESULTS}.probe3b"
 cp "${WORK}/bpin.good.tsv"    "${BPIN}.probe3b"
-awk -F '\t' -v OFS='\t' '$1 !~ /^#/ && NF && $1 == "_content/tour/alpha.go" { $5 = "644" } { print }' \
+awk -F '\t' -v OFS='\t' '$1 !~ /^#/ && NF && $1 == "_content/tour/alpha.bsh" { $5 = "644" } { print }' \
   "${RESULTS}.probe3b" > "${RESULTS}.probe3b.tmp" && mv "${RESULTS}.probe3b.tmp" "${RESULTS}.probe3b"
 repin_results "${RESULTS}.probe3b" "${BPIN}.probe3b"
 expect_fail "record claims non-0444 mode (hash-consistent)" \
@@ -260,14 +260,14 @@ expect_fail "record claims non-0444 mode (hash-consistent)" \
 echo "== probe family 4: result records =="
 cp "${WORK}/results.good.tsv" "${RESULTS}.probe4a"
 cp "${WORK}/bpin.good.tsv"    "${BPIN}.probe4a"
-awk -F '\t' -v OFS='\t' '$1 !~ /^#/ && NF && $1 == "_content/tour/alpha.go" { $10 = "deadbeef" $10 } { print }' \
+awk -F '\t' -v OFS='\t' '$1 !~ /^#/ && NF && $1 == "_content/tour/alpha.bsh" { $10 = "deadbeef" $10 } { print }' \
   "${RESULTS}.probe4a" > "${RESULTS}.probe4a.tmp" && mv "${RESULTS}.probe4a.tmp" "${RESULTS}.probe4a"
 expect_fail "stdout sha256 field edit" \
   "records_sha256 mismatch" val_mini "${RESULTS}.probe4a" "${BPIN}.probe4a"
 
 cp "${WORK}/results.good.tsv" "${RESULTS}.probe4b"
 cp "${WORK}/bpin.good.tsv"    "${BPIN}.probe4b"
-awk -F '\t' -v OFS='\t' '$0 ~ /^#/ || NF == 0 || $1 != "_content/tour/alpha.go"' "${RESULTS}.probe4b" > "${RESULTS}.probe4b.tmp" \
+awk -F '\t' -v OFS='\t' '$0 ~ /^#/ || NF == 0 || $1 != "_content/tour/alpha.bsh"' "${RESULTS}.probe4b" > "${RESULTS}.probe4b.tmp" \
   && mv "${RESULTS}.probe4b.tmp" "${RESULTS}.probe4b"
 repin_results "${RESULTS}.probe4b" "${BPIN}.probe4b"
 expect_fail "dropped record (hash-consistent)" \
@@ -275,14 +275,14 @@ expect_fail "dropped record (hash-consistent)" \
 
 cp "${WORK}/results.good.tsv" "${RESULTS}.probe4c"
 cp "${WORK}/bpin.good.tsv"    "${BPIN}.probe4c"
-awk -F '\t' -v OFS='\t' '$1 !~ /^#/ && NF && $1 == "_content/tour/alpha.go" { $14 = "fail:run-exit:1" } { print }' \
+awk -F '\t' -v OFS='\t' '$1 !~ /^#/ && NF && $1 == "_content/tour/alpha.bsh" { $14 = "fail:run-exit:1" } { print }' \
   "${RESULTS}.probe4c" > "${RESULTS}.probe4c.tmp" && mv "${RESULTS}.probe4c.tmp" "${RESULTS}.probe4c"
 repin_results "${RESULTS}.probe4c" "${BPIN}.probe4c"
 expect_fail "outcome flipped to fail (hash-consistent)" \
   "outcome fail:run-exit:1" val_mini "${RESULTS}.probe4c" "${BPIN}.probe4c"
 
 # A record for an excluded/unknown path is unexpected, hash-consistent or not.
-awk -F '\t' -v OFS='\t' '$1 !~ /^#/ && NF && $1 == "_content/tour/alpha.go" { $1 = "_content/tour/gamma.go" } { print }' \
+awk -F '\t' -v OFS='\t' '$1 !~ /^#/ && NF && $1 == "_content/tour/alpha.bsh" { $1 = "_content/tour/gamma.go" } { print }' \
   "${WORK}/results.good.tsv" > "${RESULTS}.probe4d"
 cp "${WORK}/bpin.good.tsv" "${BPIN}.probe4d"
 repin_results "${RESULTS}.probe4d" "${BPIN}.probe4d"
@@ -300,7 +300,7 @@ expect_fail "build-only baseline token flipped to go-run (hash-consistent)" \
 
 cp "${WORK}/results.good.tsv" "${RESULTS}.probe5b"
 cp "${WORK}/bpin.good.tsv"    "${BPIN}.probe5b"
-awk -F '\t' -v OFS='\t' '$1 !~ /^#/ && NF && $1 == "_content/tour/alpha.go" { $8 = "1" } { print }' \
+awk -F '\t' -v OFS='\t' '$1 !~ /^#/ && NF && $1 == "_content/tour/alpha.bsh" { $8 = "1" } { print }' \
   "${RESULTS}.probe5b" > "${RESULTS}.probe5b.tmp" && mv "${RESULTS}.probe5b.tmp" "${RESULTS}.probe5b"
 repin_results "${RESULTS}.probe5b" "${BPIN}.probe5b"
 expect_fail "applicable run_exit flipped to 1 (hash-consistent)" \
@@ -325,7 +325,7 @@ printf '//go:build OMIT\n\npackage main\n\nimport "fmt"\n\nfunc main() { fmt.Pri
 chmod 444 "${MINI}/_content/tour/delta.go"
 d_sha="$(sha_of "${MINI}/_content/tour/delta.go")"
 d_bytes="$(bytes_of "${MINI}/_content/tour/delta.go")"
-{ printf '_content/tour/delta.go\tlesson_play_program\tn/a\tapplicable_go_program\texception:none\tbaseline:go-run;bpp_interpreted:parse-run;bpp_compiled:transpile-build-run\t%s\t%s\n' \
+{ printf '_content/tour/delta.bsh\tlesson_play_program\tn/a\tapplicable_go_program\texception:none\tbaseline:go-run;bpp_interpreted:parse-run;bpp_compiled:transpile-build-run\t%s\t%s\n' \
     "${d_bytes}" "${d_sha}"; } > "${WORK}/delta-row.tsv"
 write_inventory "${INV}" "${WORK}/delta-row.tsv"
 rc=0
@@ -368,7 +368,7 @@ EOF
 o_sha="$(sha_of "${MINI}/_content/tour/omega.go")"
 o_bytes="$(bytes_of "${MINI}/_content/tour/omega.go")"
 chmod 444 "${MINI}/_content/tour/omega.go"
-{ printf '_content/tour/omega.go\tlesson_play_program\tn/a\tapplicable_go_program\texception:none\tbaseline:go-run;bpp_interpreted:parse-run;bpp_compiled:transpile-build-run\t%s\t%s\n' \
+{ printf '_content/tour/omega.bsh\tlesson_play_program\tn/a\tapplicable_go_program\texception:none\tbaseline:go-run;bpp_interpreted:parse-run;bpp_compiled:transpile-build-run\t%s\t%s\n' \
     "${o_bytes}" "${o_sha}"; } > "${WORK}/omega-row.tsv"
 write_inventory "${INV}" "${WORK}/omega-row.tsv"
 SECONDS=0

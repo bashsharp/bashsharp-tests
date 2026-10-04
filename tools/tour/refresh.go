@@ -189,6 +189,13 @@ func cmdRefreshInventory(args []string) int {
 		}
 	}
 
+	// Only executable programs are vendored as Bash#; excluded fragments keep upstream paths.
+	for _, row := range rows {
+		if row[3] != "excluded_fragment" {
+			row[0] = strings.TrimSuffix(row[0], ".go") + ".bsh"
+		}
+	}
+
 	var b strings.Builder
 	fmt.Fprintf(&b, "# release\tgolang.org/x/website@%s\n", version)
 	fmt.Fprintf(&b, "# commit\t%s\n", commit)

@@ -97,9 +97,9 @@ chmod 444 "${MINI}"/_content/tour/*.go
 # 0644 (unlike the read-only module-cache materialization they came from) —
 # the gate pins bytes, not host modes.
 cp "${MINI}/LICENSE" "${CORPUS}/LICENSE"
-cp "${MINI}/_content/tour/alpha.go" "${CORPUS}/_content/tour/alpha.go"
-cp "${MINI}/_content/tour/beta.go"  "${CORPUS}/_content/tour/beta.go"
-chmod 644 "${CORPUS}/LICENSE" "${CORPUS}"/_content/tour/*.go
+cp "${MINI}/_content/tour/alpha.go" "${CORPUS}/_content/tour/alpha.bsh"
+cp "${MINI}/_content/tour/beta.go"  "${CORPUS}/_content/tour/beta.bsh"
+chmod 644 "${CORPUS}/LICENSE" "${CORPUS}"/_content/tour/*.bsh
 
 INV="${WORK}/inv.tsv"
 PIN="${WORK}/pin.tsv"
@@ -125,7 +125,7 @@ inventory_rows() { # appends the well-formed mini inventory to stdout
       esac
       bytes="$(wc -c < "${MINI}/_content/tour/${f}" | tr -d ' ')"
       sha="$(shasum -a 256 "${MINI}/_content/tour/${f}" | awk '{print $1}')"
-      printf '%s\tlesson_play_program\tn/a\t%s\texception:%s\t%s\t%s\t%s\n' "${path}" "${appl}" "${exc}" "${schema}" "${bytes}" "${sha}"
+      printf '%s\tlesson_play_program\tn/a\t%s\texception:%s\t%s\t%s\t%s\n' "${path%.go}.$([ "${appl}" = excluded_fragment ] && echo go || echo bsh)" "${appl}" "${exc}" "${schema}" "${bytes}" "${sha}"
     done
     inline=$'\tInline prose: never executed by the tour.\n'
     bytes="$(printf '%s' "${inline}" | wc -c | tr -d ' ')"
@@ -190,38 +190,38 @@ expect_ok "control (TOUR_ROOT proof)"    gate "${MINI}"
 
 echo "== probe family 1: source bytes (same byte count, different bytes) =="
 printf '//go:build OMIT\n\npackage main\n\nimport "fmt"\n\nfunc main() { fmt.Println("alpha KO") }\n' \
-  > "${CORPUS}/_content/tour/alpha.go"
+  > "${CORPUS}/_content/tour/alpha.bsh"
 expect_fail "source-sha tamper (same byte count)" "corpus sha256 mismatch" gate
 restore_corpus
 
 echo "== probe family 2: byte counts =="
-printf '\n' >> "${CORPUS}/_content/tour/alpha.go"
+printf '\n' >> "${CORPUS}/_content/tour/alpha.bsh"
 expect_fail "corpus file byte drift" "corpus byte-count mismatch" gate
 restore_corpus
 
 echo "== probe family 3: path-set integrity (both directions) =="
-mv "${CORPUS}/_content/tour/alpha.go" "${WORK}/alpha.hidden"
+mv "${CORPUS}/_content/tour/alpha.bsh" "${WORK}/alpha.hidden"
 expect_fail "missing corpus source" "corpus file set differs" gate
-mv "${WORK}/alpha.hidden" "${CORPUS}/_content/tour/alpha.go"
+mv "${WORK}/alpha.hidden" "${CORPUS}/_content/tour/alpha.bsh"
 
-printf 'package rogue\n' > "${CORPUS}/_content/tour/rogue.go"
+printf 'package rogue\n' > "${CORPUS}/_content/tour/rogue.bsh"
 expect_fail "extra untracked corpus file" "corpus file set differs" gate
-rm -f "${CORPUS}/_content/tour/rogue.go"
+rm -f "${CORPUS}/_content/tour/rogue.bsh"
 
-mv "${CORPUS}/_content/tour/alpha.go" "${CORPUS}/_content/tour/delta.go"
+mv "${CORPUS}/_content/tour/alpha.bsh" "${CORPUS}/_content/tour/delta.bsh"
 expect_fail "same-count rename (count-only blind spot)" "corpus file set differs" gate
-mv "${CORPUS}/_content/tour/delta.go" "${CORPUS}/_content/tour/alpha.go"
+mv "${CORPUS}/_content/tour/delta.bsh" "${CORPUS}/_content/tour/alpha.bsh"
 
-cp "${MINI}/_content/tour/gamma.go" "${CORPUS}/_content/tour/gamma.go"
+cp "${MINI}/_content/tour/gamma.go" "${CORPUS}/_content/tour/gamma.bsh"
 expect_fail "excluded fragment smuggled into the corpus" "corpus file set differs" gate
-rm -f "${CORPUS}/_content/tour/gamma.go"
+rm -f "${CORPUS}/_content/tour/gamma.bsh"
 
 echo "== probe family 4: file kind =="
-rm "${CORPUS}/_content/tour/alpha.go"
-ln -s beta.go "${CORPUS}/_content/tour/alpha.go"
+rm "${CORPUS}/_content/tour/alpha.bsh"
+ln -s beta.bsh "${CORPUS}/_content/tour/alpha.bsh"
 expect_fail "symlink standing in for a source" "symlink" gate
-rm "${CORPUS}/_content/tour/alpha.go"
-cp "${WORK}/corpus.good/_content/tour/alpha.go" "${CORPUS}/_content/tour/alpha.go"
+rm "${CORPUS}/_content/tour/alpha.bsh"
+cp "${WORK}/corpus.good/_content/tour/alpha.bsh" "${CORPUS}/_content/tour/alpha.bsh"
 
 echo "== probe family 5: LICENSE =="
 printf '\n' >> "${CORPUS}/LICENSE"
@@ -247,7 +247,7 @@ cp "${WORK}/cpin.good" "${CPIN}"
 
 echo "== probe family 7: join denominator is verified first =="
 cp "${INV}" "${WORK}/inv.good"
-awk -F '\t' -v OFS='\t' '$1 !~ /^#/ && NF && $1 == "_content/tour/alpha.go" { $8 = "0" $8 } { print }' \
+awk -F '\t' -v OFS='\t' '$1 !~ /^#/ && NF && $1 == "_content/tour/alpha.bsh" { $8 = "0" $8 } { print }' \
   "${INV}" > "${INV}.tmp" && mv "${INV}.tmp" "${INV}"
 expect_fail "inventory row edit without repinning the pin hash" "inventory data sha256 mismatch" gate
 cp "${WORK}/inv.good" "${INV}"
@@ -259,9 +259,9 @@ echo "== probe family 8: the hash-consistent attacker =="
 # residual (asserted explicitly so a silent regression of the boundary is
 # visible); TOUR_ROOT mode must still catch it against upstream bytes.
 printf '//go:build OMIT\n\npackage main\n\nimport "fmt"\n\nfunc main() { fmt.Println("alpha KO") }\n' \
-  > "${CORPUS}/_content/tour/alpha.go"
-new_sha="$(sha_of "${CORPUS}/_content/tour/alpha.go")"
-awk -F '\t' -v OFS='\t' -v p="_content/tour/alpha.go" -v s="${new_sha}" \
+  > "${CORPUS}/_content/tour/alpha.bsh"
+new_sha="$(sha_of "${CORPUS}/_content/tour/alpha.bsh")"
+awk -F '\t' -v OFS='\t' -v p="_content/tour/alpha.bsh" -v s="${new_sha}" \
   '$1 !~ /^#/ && NF && $1 == p { $8 = s } { print }' "${INV}" > "${INV}.tmp" && mv "${INV}.tmp" "${INV}"
 write_pin
 expect_ok "hash-consistent repin accepted offline (documented trust-anchor residual)" gate

@@ -9,15 +9,13 @@
 //	             binary directly.  Never `go run`: its wrapper reports a child
 //	             `os.Exit(3)` as its own exit 1 plus an "exit status 3" line on
 //	             stderr, which conflates deliberate statuses with panics.
-//	interpreted  bashy --bashpp --source=go <original .go> [argv...], or
-//	             bashy --bashpp --source=go --go-file A --go-file B for an
-//	             explicit multi-file package.
+//	interpreted  bashy <runtime .bsh copy> [argv...]. The testing row uses
+//	             a generated .bsh entry joining its source and test driver.
 //	compiled     bashy transpile --bashpp --source=go <inputs> -o gen.go
 //	             --map gen.go.map, then pinned `go build` of the generated Go,
 //	             then run the resulting native artifact.
 //
-// `--source=go` EXISTS in the tag-enabled candidate, so this gate drives the
-// real front end rather than documenting a missing flag.  Multi-file input uses
+// Compiled multi-file input uses
 // the product's own `--go-file` contract, repeated once per file; a second
 // source file is never passed as a program argument, because the CLI would hand
 // it to the program as argv.  The removed `--bashpp --compile -o` spelling never
@@ -1350,7 +1348,9 @@ func gateMain(args []string) {
 		"modes", MODES,
 		"recipe", Obj(
 			"oracle", "pinned go build (go test -c for test_program) then run the native binary",
-			"interpreted", "bashy --bashpp --source=go <source> [argv...]; explicit multi-file uses repeated --go-file",
+			"interpreted", "bashy <runtime .bsh copy> [argv...]; testing row uses a generated .bsh entry",
+			"interpreted_entry", "plain-bsh",
+			"interpreted_entry_sha256", sha(gbeDir+"/interpreted_entry.go"),
 			"compiled", "bashy transpile --bashpp --source=go <source|--go-file...> -o gen.go --map gen.go.map; pinned go build; run the artifact",
 			"multi_file_input", "--go-file",
 			"multi_file_program_arguments", "-- separator before program argv",
@@ -1527,8 +1527,12 @@ func gateMain(args []string) {
 		sourceArguments := map[string][]string{}
 		for _, mode := range []string{"interpreted", "compiled"} {
 			productSrc := work + "/src/" + mode
-			stageSources(productSrc, row, name)
-			inputs := []string{filepath.Clean(productSrc + "/" + name)}
+			productName := name
+			if mode == "interpreted" {
+				productName = strings.TrimSuffix(name, filepath.Ext(name)) + ".bsh"
+			}
+			stageSources(productSrc, row, productName)
+			inputs := []string{filepath.Join(productSrc, productName)}
 			if testRow {
 				driver := filepath.Clean(productSrc + "/gbe_test_driver.go")
 				source, err := os.ReadFile(ROOT + "/" + path)
@@ -1539,10 +1543,19 @@ func gateMain(args []string) {
 				if err != nil {
 					fatal(err.Error())
 				}
-				os.WriteFile(driver, []byte(text), 0o644)
+				if mode == "interpreted" {
+					driver = filepath.Join(productSrc, "gbe_test_driver.bsh")
+					text, err = interpretedTestEntry(source, text)
+					if err != nil {
+						fatal(err.Error())
+					}
+				}
+				if err := os.WriteFile(driver, []byte(text), 0o644); err != nil {
+					fatal(err.Error())
+				}
 				inputs = append(inputs, driver)
 			}
-			if sha(productSrc+"/"+name) != row[7] {
+			if sha(productSrc+"/"+productName) != row[7] {
 				fatal("staged product source diverged from the pinned bytes: " + path)
 			}
 			bindings = append(bindings, newInputBinding(productSrc, false, mode))
@@ -1551,7 +1564,10 @@ func gateMain(args []string) {
 				records.Set(file, mustFileRecord(file))
 			}
 			productInputs[mode] = records
-			if len(inputs) == 1 {
+			if mode == "interpreted" {
+				// The test entry includes the driver; the unchanged source copy remains bound.
+				sourceArguments[mode] = []string{inputs[len(inputs)-1]}
+			} else if len(inputs) == 1 {
 				sourceArguments[mode] = []string{inputs[0]}
 			} else {
 				var flagged []string
@@ -1656,11 +1672,7 @@ func gateMain(args []string) {
 					command = append([]string{b}, args...)
 				}
 			default:
-				command = append([]string{BASHY, "--bashpp", "--source=go"}, sourceArguments["interpreted"]...)
-				if testRow && len(args) > 0 {
-					command = append(command, "--")
-				}
-				command = append(command, args...)
+				command = interpretedCommand(BASHY, sourceArguments["interpreted"][0], args)
 			}
 			configuration := configureRuntime(tc.goBinary, root, env, deadline, work+"/logs/config-"+mode)
 			before := snapshotListing(root)

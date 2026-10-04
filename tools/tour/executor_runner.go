@@ -136,6 +136,9 @@ func materialize(modDir string, spec materializeSpec) error {
 		if err := os.MkdirAll(filepath.Dir(local), 0o755); err != nil {
 			return err
 		}
+		if err := writeReadOnly(nativeSourcePath(local), bytes); err != nil {
+			return err
+		}
 		if err := writeReadOnly(local, bytes); err != nil {
 			return err
 		}
@@ -156,7 +159,7 @@ func writeReadOnly(path string, data []byte) error {
 // verifySources re-verifies every original source after a mode has run.
 func verifySources(modDir, corpusRoot string, items []Item) error {
 	for _, item := range items {
-		for _, path := range []string{filepath.Join(modDir, item.Path), filepath.Join(corpusRoot, item.Path)} {
+		for _, path := range []string{filepath.Join(modDir, item.Path), nativeSourcePath(filepath.Join(modDir, item.Path)), filepath.Join(corpusRoot, item.Path)} {
 			if !fileExists(path) {
 				return fmt.Errorf("source disappeared: %s", path)
 			}

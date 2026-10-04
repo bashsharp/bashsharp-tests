@@ -4,7 +4,7 @@
 # (tests/tour/inventory.tsv: every applicable_go_program and
 # build_only_go_program row) plus the upstream LICENSE. Files are copied
 # verbatim from the pinned module materialization (see docs/tour/pin.tsv) at
-# their upstream _content/tour paths. Excluded fragments (nobuild skeletons),
+# their _content/tour paths with the .bsh extension. Excluded fragments (nobuild skeletons),
 # article inline prose, and static web assets are NOT vendored.
 #
 # Per-source bytes and SHA-256 live in the inventory rows themselves, which
@@ -13,4 +13,4 @@
 # counts the gate re-derives.
 #
 # root	license_path	license_bytes	license_sha256	source_rows	corpus_files	provenance
-tour	tour/LICENSE	1453	911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad	97	98	executable denominator (93 applicable + 4 build-only rows) of tests/tour/inventory.tsv plus the upstream LICENSE, copied verbatim from the pinned module materialization at upstream _content/tour paths; BSD redistribution requires the license to travel with the code it covers
+tour	tour/LICENSE	1453	911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad	97	98	executable denominator (93 applicable + 4 build-only rows) of tests/tour/inventory.tsv plus the upstream LICENSE, copied verbatim from the pinned module materialization at _content/tour paths renamed .bsh (source bytes unchanged); BSD redistribution requires the license to travel with the code it covers

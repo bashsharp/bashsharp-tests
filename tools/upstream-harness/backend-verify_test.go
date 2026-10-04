@@ -6,8 +6,13 @@ package main
 
 import (
 	"encoding/json"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -990,5 +995,42 @@ func TestS243DirectoryMapImportClosureEvidence(t *testing.T) {
 	m.Packages = []mappedPackage{{Path: "test/bad", Files: good.Files}, via}
 	if err := verifyDirectoryMap(m, []string{main}, available); err == nil {
 		t.Fatal("accepted substituted imported source")
+	}
+}
+
+// Interpreter selection must stay explicit when .go defaults to compile/run.
+// Check the argument builders themselves, including package plans retained
+// for non-gating diagnostics. Upstream source names must not be changed.
+func TestInterpretedBuildersOverrideGoExtension(t *testing.T) {
+	_, here, _, _ := runtime.Caller(0)
+	count := 0
+	for _, name := range []string{"testdata/backend/bashpp_backend_test.go", "testdata/go-backend/bashpp_backend.go"} {
+		file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(filepath.Dir(here), name), nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ast.Inspect(file, func(n ast.Node) bool {
+			literal, ok := n.(*ast.CompositeLit)
+			if !ok {
+				return true
+			}
+			var args []string
+			for _, elt := range literal.Elts {
+				if str, ok := elt.(*ast.BasicLit); ok && str.Kind == token.STRING {
+					value, _ := strconv.Unquote(str.Value)
+					args = append(args, value)
+				}
+			}
+			if contains(args, "--source=go") && !contains(args, "transpile") {
+				count++
+				if !contains(args, "--bashpp") && !contains(args, "--bashsharp") {
+					t.Errorf("%s: interpreted arguments omit the interpreter override: %v", name, args)
+				}
+			}
+			return true
+		})
+	}
+	if count != 5 {
+		t.Fatalf("audited %d interpreted argument builders, want 5; review new/removed sites", count)
 	}
 }

@@ -41,10 +41,10 @@ var schemaFor = map[string]string{
 
 func fixturePaths() (applicable, norun []string) {
 	for i := 0; i < applicableRows; i++ {
-		applicable = append(applicable, fmt.Sprintf("_content/tour/fixture/prog-%03d.go", i))
+		applicable = append(applicable, fmt.Sprintf("_content/tour/fixture/prog-%03d.bsh", i))
 	}
 	for i := 0; i < buildOnlyRows; i++ {
-		norun = append(norun, fmt.Sprintf("_content/tour/fixture/norun-%d.go", i))
+		norun = append(norun, fmt.Sprintf("_content/tour/fixture/norun-%d.bsh", i))
 	}
 	return
 }
@@ -62,7 +62,7 @@ func fixtureItems() []Item {
 }
 
 func fixtureStdout(path string) []byte {
-	return []byte(strings.TrimSuffix(filepath.Base(path), ".go") + " output\n")
+	return []byte(strings.TrimSuffix(filepath.Base(path), filepath.Ext(path)) + " output\n")
 }
 
 func fixtureSource(path string) []byte {
@@ -510,9 +510,9 @@ func cmdExecutorSelftests(root string) int {
 		}
 		return expect(len(missing) == 0, "missing "+inspect(missing))
 	})
-	suite.check("contract: interpreted mode carries --bashpp --source=go (not bare shell dispatch)", func() any {
+	suite.check("contract: interpreted mode uses plain bashy on the .bsh source", func() any {
 		argv := contract[modeKey{"applicable_go_program", "interpreted"}].Stages[0].ArgvTemplate
-		return expect(containsString(argv, "--bashpp") && containsString(argv, "--source=go"), inspect(argv))
+		return expect(equalStrings(argv, []string{"{BASHY}", "{SRC}"}), inspect(argv))
 	})
 	suite.check("contract: transpile carries --bashpp (transpile.go rejects it otherwise) and --source=go", func() any {
 		argv := contract[modeKey{"applicable_go_program", "compiled"}].Stages[0].ArgvTemplate
@@ -929,9 +929,9 @@ func cmdExecutorSelftests(root string) int {
 			argv[len(argv)-1] = applicablePaths[1]
 			return records
 		}},
-		{"gate: dropping --source=go from the recorded command is rejected", "argv_literal:", func(records []map[string]any) []map[string]any {
+		{"gate: replacing the .bsh operand with a mode flag is rejected", "argv_src:", func(records []map[string]any) []map[string]any {
 			observation := findRecord(records, isObs("interpreted", "applicable_go_program"))
-			asList(stageAt(observation, 0)["command"])[2] = "--posix"
+			asList(stageAt(observation, 0)["command"])[1] = "--source=go"
 			return records
 		}},
 		{"gate: a missing transpiler source map is rejected", "source_map_missing:", func(records []map[string]any) []map[string]any {

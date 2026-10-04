@@ -165,9 +165,9 @@ func evidenceCommandFor(mode string, applicability string, bashy, goBin, local s
 		if applicability == "build_only_go_program" {
 			verb = "build"
 		}
-		return []string{goBin, verb, local}
+		return []string{goBin, verb, nativeSourcePath(local)}
 	case "interpreted":
-		argv := []string{bashy, "--bashpp"}
+		argv := []string{bashy}
 		if applicability == "build_only_go_program" {
 			argv = append(argv, "-n")
 		}
@@ -188,13 +188,13 @@ type EvidencePipeline struct {
 // Go, execute the resulting binary. The recorded raw/state/exit belong to
 // whichever stage is authoritative.
 func evidenceCompiledPipeline(bashy, goBin, source, moduleDir, workdir string, timeout float64, env map[string]string) EvidencePipeline {
-	base := strings.TrimSuffix(filepath.Base(source), ".go")
+	base := strings.TrimSuffix(filepath.Base(source), filepath.Ext(source))
 	transpiled := filepath.Join(workdir, base+".transpiled.go")
 	binary := filepath.Join(workdir, base+".bin")
 	os.Remove(transpiled)
 	os.Remove(binary)
 	command := map[string]any{
-		"transpile": anyList([]string{bashy, "transpile", source, "-o", transpiled}),
+		"transpile": anyList([]string{bashy, "transpile", "--bashpp", "--source=go", source, "-o", transpiled}),
 		"build":     anyList([]string{goBin, "build", "-o", binary, transpiled}),
 		"run":       anyList([]string{binary}),
 	}
@@ -240,6 +240,10 @@ func evidenceMaterializeModule(modDir, tourRoot string, inventory []Item, goVers
 	}
 	for _, item := range inventory {
 		source := filepath.Join(tourRoot, item.Path)
+		// Legacy evidence replay reads the pinned upstream module cache (.go).
+		if !fileExists(source) {
+			source = nativeSourcePath(source)
+		}
 		st, err := os.Stat(source)
 		if err != nil || !st.Mode().IsRegular() {
 			return fmt.Errorf("missing source %s", source)
@@ -253,6 +257,9 @@ func evidenceMaterializeModule(modDir, tourRoot string, inventory []Item, goVers
 		}
 		local := filepath.Join(modDir, item.Path)
 		if err := os.MkdirAll(filepath.Dir(local), 0o755); err != nil {
+			return err
+		}
+		if err := writeReadOnly(nativeSourcePath(local), bytes); err != nil {
 			return err
 		}
 		if err := writeReadOnly(local, bytes); err != nil {

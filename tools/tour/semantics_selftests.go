@@ -104,7 +104,7 @@ func cmdSemanticsSelftests(root string) int {
 	}
 
 	// ============================================================ packages
-	const PACKAGES = "_content/tour/basics/packages.go"
+	const PACKAGES = "_content/tour/basics/packages.bsh"
 	packagesLine := func(value any) Observation { return obs(fmt.Sprintf("My favorite number is %v\n", value)) }
 	packagesOracle := []Observation{}
 	for _, v := range []int{2, 7, 0, 9, 4, 7, 1} {
@@ -125,7 +125,7 @@ func cmdSemanticsSelftests(root string) int {
 	rejects("rand_intn_line: an oracle observation outside support fails the comparator itself", PACKAGES, packagesLine(3), append(append([]Observation{}, packagesOracle[:6]...), packagesLine(11)), "oracle:invariant_violation")
 
 	// ========================================================== goroutines
-	const GOROUTINES = "_content/tour/concurrency/goroutines.go"
+	const GOROUTINES = "_content/tour/concurrency/goroutines.bsh"
 	say := func(words ...string) Observation {
 		var b strings.Builder
 		for _, w := range words {
@@ -184,7 +184,7 @@ func cmdSemanticsSelftests(root string) int {
 		repeat(7, say("hello", "world", "hello", "world", "hello", "world", "hello", "world", "hello", "world")))
 
 	// ============================================================== channels
-	const CHANNELS = "_content/tour/concurrency/channels.go"
+	const CHANNELS = "_content/tour/concurrency/channels.bsh"
 	channelsLine := func(order string) Observation { return obs(order + "\n") }
 	minusFirst := channelsLine("-5 17 12")
 	seventeenFirst := channelsLine("17 -5 12")
@@ -207,7 +207,7 @@ func cmdSemanticsSelftests(root string) int {
 	rejects("channel_sum_order: an oracle observation with a wrong sum fails the comparator itself", CHANNELS, minusFirst, append(append([]Observation{}, channelsOracle[:6]...), channelsLine("-5 17 13")), "oracle:invariant_violation")
 
 	// ==================================================== default-selection
-	const SELECT = "_content/tour/concurrency/default-selection.go"
+	const SELECT = "_content/tour/concurrency/default-selection.bsh"
 	type ev struct {
 		ms   int
 		kind string
@@ -253,7 +253,7 @@ func cmdSemanticsSelftests(root string) int {
 	rejects("tick_boom_sequence: rejects an unparseable line", SELECT, obs(tickRun(selectGood).Stdout+"surprise\n"), selectOracle, "unparsed_line")
 
 	// ============================================================ weekday
-	const WEEKDAY = "_content/tour/flowcontrol/switch-evaluation-order.go"
+	const WEEKDAY = "_content/tour/flowcontrol/switch-evaluation-order.bsh"
 	weekday := func(answer string) Observation { return obs("When's Saturday?\n" + answer + "\n") }
 	weekdayOracle := repeat(7, weekday("Too far away."))
 	accepts("weekday_switch: the answer the recorded run clock implies", WEEKDAY, weekday("Too far away."), weekdayOracle)
@@ -271,7 +271,7 @@ func cmdSemanticsSelftests(root string) int {
 	})
 
 	// ============================================================ greeting
-	const GREETING = "_content/tour/flowcontrol/switch-with-no-condition.go"
+	const GREETING = "_content/tour/flowcontrol/switch-with-no-condition.bsh"
 	greeting := func(text string) Observation { return obs(text + "\n") }
 	greetingOracle := repeat(7, greeting("Good evening."))
 	accepts("hour_greeting: the greeting the recorded run clock implies", GREETING, greeting("Good evening."), greetingOracle)
@@ -287,7 +287,7 @@ func cmdSemanticsSelftests(root string) int {
 	})
 
 	// ============================================================== errors
-	const ERRORS = "_content/tour/methods/errors.go"
+	const ERRORS = "_content/tour/methods/errors.bsh"
 	errorLine := func(stamp string) Observation { return obs("at " + stamp + ", it didn't work\n") }
 	errorsOracle := []Observation{}
 	for i := 0; i < 7; i++ {
@@ -302,7 +302,7 @@ func cmdSemanticsSelftests(root string) int {
 	rejects("go_time_error_line: rejects an extra line", ERRORS, obs("at "+goStamp(2.0, "0.000073835")+", it didn't work\nand again\n"), errorsOracle, "line_count")
 
 	// ============================================================= sandbox
-	const SANDBOX = "_content/tour/welcome/sandbox.go"
+	const SANDBOX = "_content/tour/welcome/sandbox.bsh"
 	sandbox := func(stamp, greetingText string) Observation {
 		return obs(greetingText + "\nThe time is " + stamp + "\n")
 	}
@@ -317,8 +317,8 @@ func cmdSemanticsSelftests(root string) int {
 	rejects("sandbox_time: rejects a non-timestamp", SANDBOX, sandbox("now", playground), sandboxOracle, "not_a_go_timestamp")
 
 	// ============================================================ line_set
-	const STRINGER = "_content/tour/methods/exercise-stringer.go"
-	const STRINGERS = "_content/tour/solutions/stringers.go"
+	const STRINGER = "_content/tour/methods/exercise-stringer.bsh"
+	const STRINGERS = "_content/tour/solutions/stringers.bsh"
 	const LOOPBACK = "loopback: [127 0 0 1]"
 	const GOOGLE = "googleDNS: [8 8 8 8]"
 	two := func(lines ...string) Observation {
@@ -347,7 +347,7 @@ func cmdSemanticsSelftests(root string) int {
 	})
 
 	// ========================================================== webcrawler
-	const CRAWLER = "_content/tour/solutions/webcrawler.go"
+	const CRAWLER = "_content/tour/solutions/webcrawler.bsh"
 	crawlSample := `Found: https://golang.org/ "The Go Programming Language"
 -> Crawling child 0/2 of https://golang.org/ : https://golang.org/pkg/.
 -> Crawling child 1/2 of https://golang.org/ : https://golang.org/cmd/.

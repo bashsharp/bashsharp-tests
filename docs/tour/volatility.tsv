@@ -78,14 +78,14 @@
 # against the requirement.
 #
 # path	volatile_element	comparator_needed
-_content/tour/basics/packages.go	rand.Intn draw from the randomly seeded global PRNG	seeded PRNG control, or range check 0 <= n < 10
-_content/tour/concurrency/goroutines.go	unsynchronized interleaving of two goroutines printing to stdout	event multiplicity per value, not line order
-_content/tour/concurrency/default-selection.go	goroutine/timer interleaving under a 50ms tick and a 100ms boom	event multiplicity and causal order, not byte identity
-_content/tour/concurrency/channels.go	arrival order of two independently computed sums received from one unbuffered channel	exact two-member output-set comparison: the whole triple must be one of the two legal arrival orders, with the exact sum, exit 0 and empty stderr
-_content/tour/flowcontrol/switch-evaluation-order.go	weekday arithmetic against time.Now()	fake clock, or the day-name value set
-_content/tour/flowcontrol/switch-with-no-condition.go	time.Now().Hour() greeting branch	fake clock, or the greeting value set
-_content/tour/methods/errors.go	time.Now() embedded in the error string	fake clock, or timestamp-shaped field comparison
-_content/tour/methods/exercise-stringer.go	Go's randomized iteration order over a two-entry map	line set comparison, not line order
-_content/tour/solutions/stringers.go	Go's randomized iteration order over a two-entry map	line set comparison, not line order
-_content/tour/solutions/webcrawler.go	concurrent crawl ordering across goroutines	crawled-URL set and depth invariants, not line order
-_content/tour/welcome/sandbox.go	time.Now() printed by the playground sandbox	fake clock, or timestamp-shaped field comparison
+_content/tour/basics/packages.bsh	rand.Intn draw from the randomly seeded global PRNG	seeded PRNG control, or range check 0 <= n < 10
+_content/tour/concurrency/goroutines.bsh	unsynchronized interleaving of two goroutines printing to stdout	event multiplicity per value, not line order
+_content/tour/concurrency/default-selection.bsh	goroutine/timer interleaving under a 50ms tick and a 100ms boom	event multiplicity and causal order, not byte identity
+_content/tour/concurrency/channels.bsh	arrival order of two independently computed sums received from one unbuffered channel	exact two-member output-set comparison: the whole triple must be one of the two legal arrival orders, with the exact sum, exit 0 and empty stderr
+_content/tour/flowcontrol/switch-evaluation-order.bsh	weekday arithmetic against time.Now()	fake clock, or the day-name value set
+_content/tour/flowcontrol/switch-with-no-condition.bsh	time.Now().Hour() greeting branch	fake clock, or the greeting value set
+_content/tour/methods/errors.bsh	time.Now() embedded in the error string	fake clock, or timestamp-shaped field comparison
+_content/tour/methods/exercise-stringer.bsh	Go's randomized iteration order over a two-entry map	line set comparison, not line order
+_content/tour/solutions/stringers.bsh	Go's randomized iteration order over a two-entry map	line set comparison, not line order
+_content/tour/solutions/webcrawler.bsh	concurrent crawl ordering across goroutines	crawled-URL set and depth invariants, not line order
+_content/tour/welcome/sandbox.bsh	time.Now() printed by the playground sandbox	fake clock, or timestamp-shaped field comparison

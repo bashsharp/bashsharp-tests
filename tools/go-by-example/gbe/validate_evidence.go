@@ -389,10 +389,13 @@ func validateEvidenceMain(args []string) {
 	if !strings.Contains(recipe.Str("oracle"), "go build") || strings.Contains(recipe.Str("oracle"), "go run") {
 		die("oracle recipe must build and run a native binary, never `go run`")
 	}
-	if !strings.Contains(recipe.Str("interpreted"), "--source=go") || !strings.Contains(recipe.Str("compiled"), "--source=go") {
+	if (recipe.Str("interpreted_entry") != "plain-bsh" && !strings.Contains(recipe.Str("interpreted"), "--source=go")) || !strings.Contains(recipe.Str("compiled"), "--source=go") {
 		die("product recipes must use the unchanged-Go-source selector")
 	}
-	// Explicit multi-file input must use the product's own repeated --go-file.
+	if recipe.Str("interpreted_entry") == "plain-bsh" && !deepEqual(recipe.Get("interpreted_entry_sha256"), sha(gbeDir+"/interpreted_entry.go")) {
+		die("interpreted entry helper is not anchored to production")
+	}
+	// Explicit compiled multi-file input must use the product's own repeated --go-file.
 	// The alternative -- appending the second file as an operand -- makes the
 	// CLI hand it to the program as argv, so a one-file build would be compared
 	// against the oracle's two-file one and the divergence would be invisible.
@@ -634,6 +637,13 @@ func validateEvidenceMain(args []string) {
 		}
 
 		// --- the recorded input spelling, not just the recipe prose ---
+		if recipe.Str("interpreted_entry") == "plain-bsh" && attempt.Str("mode") == "interpreted" && runStage.Bool("spawned") {
+			argv := strSlice(runStage.Get("argv"))
+			if len(argv) < 2 || strings.HasPrefix(argv[1], "-") || !strings.HasSuffix(argv[1], ".bsh") {
+				die("interpreted run must use plain bashy entry.bsh: " + label)
+			}
+		}
+
 		// A product stage that names more than one .go input must have named
 		// each of them with --go-file. Appending the extra file as an operand
 		// would make the CLI hand it to the program as argv, so a one-file build

@@ -16,9 +16,9 @@
 #
 #   1. `bashy transpile` invoked WITHOUT `--bashpp` — rejected by
 #      bashy/internal/agentos/transpile.go ("transpile: --bashpp is required").
-#      Both Bash++ modes now carry the explicit Go-source selector
-#      `--source=go` from the sprint-118 plan §2.7, so an original .go file is
-#      ingested as Go and never as shell.
+#      Sprint 378: interpreted programs run as plain `bashy x.bsh`.
+#      Transpile keeps `--bashpp --source=go`: the explicit content selector
+#      overrides the .bsh extension. Native builds use temporary .go copies.
 #   2. Build-only rows were driven with `-n` (parse only) in interpreted mode
 #      and their compiled pipeline unconditionally executed the artifact.
 #      Parsing cannot establish buildability and a `norun` row must not have
@@ -73,7 +73,8 @@
 # Placeholders, substituted by the executor:
 #   {GO}       absolute path to the pinned Go 1.27.0 binary (docs/tour/toolchain.tsv)
 #   {BASHY}    absolute path to the candidate bashy launcher (docs/tour/candidate.tsv)
-#   {SRC}      module-relative path of the original, unmodified upstream .go file
+#   {SRC}      module-relative .bsh path, byte-identical to upstream
+#   {NATIVE_SRC} temporary .go copy for the native oracle
 #   {OUT_GO}   transpiled Go artifact, in the per-mode artifact directory
 #   {OUT_MAP}  transpiler source map artifact, in the per-mode artifact directory
 #   {BIN}      built native artifact, in the per-mode artifact directory
@@ -85,13 +86,13 @@
 # stage produced any program output.
 #
 # applicability	mode	phase	stage_index	stage	argv	produces	execute_body
-applicable_go_program	baseline	go-run	0	build	{GO}|build|-o|{BIN}|{SRC}	bin	no
+applicable_go_program	baseline	go-run	0	build	{GO}|build|-o|{BIN}|{NATIVE_SRC}	bin	no
 applicable_go_program	baseline	go-run	1	run	{BIN}	-	yes
-applicable_go_program	interpreted	parse-run	0	run	{BASHY}|--bashpp|--source=go|{SRC}	-	yes
+applicable_go_program	interpreted	parse-run	0	run	{BASHY}|{SRC}	-	yes
 applicable_go_program	compiled	transpile-build-run	0	transpile	{BASHY}|transpile|--bashpp|--source=go|{SRC}|-o|{OUT_GO}|--map|{OUT_MAP}	go,map	no
 applicable_go_program	compiled	transpile-build-run	1	build	{GO}|build|-o|{BIN}|{OUT_GO}	bin	no
 applicable_go_program	compiled	transpile-build-run	2	run	{BIN}	-	yes
-build_only_go_program	baseline	build-no-run	0	build	{GO}|build|-o|{BIN}|{SRC}	bin	no
-build_only_go_program	interpreted	check-no-run	0	check	{BASHY}|--bashpp|--source=go|--check|{SRC}	-	no
+build_only_go_program	baseline	build-no-run	0	build	{GO}|build|-o|{BIN}|{NATIVE_SRC}	bin	no
+build_only_go_program	interpreted	check-no-run	0	check	{BASHY}|--check|{SRC}	-	no
 build_only_go_program	compiled	transpile-build-no-run	0	transpile	{BASHY}|transpile|--bashpp|--source=go|{SRC}|-o|{OUT_GO}|--map|{OUT_MAP}	go,map	no
 build_only_go_program	compiled	transpile-build-no-run	1	build	{GO}|build|-o|{BIN}|{OUT_GO}	bin	no

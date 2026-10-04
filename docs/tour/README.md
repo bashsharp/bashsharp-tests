@@ -1,5 +1,12 @@
 # go.dev/tour Inventory — golang.org/x/website pin
 
+Sprint 378: the 97 committed executable programs use `.bsh`; their bytes and
+per-source hashes are unchanged. Interpreted execution is `bashy x.bsh` (the
+four build-only rows retain `--check`). The native oracle builds temporary
+`.go` copies; compiled mode uses `bashy transpile --bashpp --source=go x.bsh`.
+Upstream acquisition and excluded fragment paths retain `.go`.
+
+
 Sprint 98 Story #1 pins the official go.dev/tour source as a bounded
 denominator for tour example/page programs. This is provenance and inventory
 metadata only; it is not a Bash++ parity claim.
@@ -129,7 +136,7 @@ the license to travel with the code it covers.
 
 [`tour/`](../../tour) now vendors the **executable denominator** verbatim:
 
-- **97 `.go` programs** — every `applicable_go_program` (93) and
+- **97 `.bsh` programs** — every `applicable_go_program` (93) and
   `build_only_go_program` (4) inventory row — at their upstream
   `_content/tour/...` paths, copied byte-exact from the pinned module
   materialization.

@@ -122,7 +122,7 @@ awk -F '\t' \
       if ($4 != "excluded_fragment") { printf "FATAL: inline block must be excluded_fragment at row %d\n", NR > "/dev/stderr"; bad=1 }
     } else {
       if ($3 != "n/a") { printf "FATAL: program row must use n/a start_line at row %d: %s\n", NR, $3 > "/dev/stderr"; bad=1 }
-      if ($1 !~ /^_content\/tour\/[^#]+\.go$/) { printf "FATAL: program row path must be a .go file at row %d: %s\n", NR, $1 > "/dev/stderr"; bad=1 }
+      if (($4 == "excluded_fragment" && $1 !~ /^_content\/tour\/[^#]+\.go$/) || ($4 != "excluded_fragment" && $1 !~ /^_content\/tour\/[^#]+\.bsh$/)) { printf "FATAL: program row extension must match its applicability at row %d: %s\n", NR, $1 > "/dev/stderr"; bad=1 }
     }
   }
   !($4 in couple) { printf "FATAL: applicability not defined by differential schema coupling at row %d: %s\n", NR, $4 > "/dev/stderr"; bad=1 }

@@ -326,8 +326,9 @@ for executable_row in "${executable_rows[@]}"; do
   work="${RUN_ROOT}/work/${path}"
   mkdir -p "${work}"
 
-  src="${TOUR_ROOT}/${path}"
-  dst="${SRC_DIR}/${path}"
+  native_path="${path%.bsh}.go"
+  src="${TOUR_ROOT}/${native_path}"
+  dst="${SRC_DIR}/${native_path}"
   [ -f "${src}" ] || die "missing pinned source for ${path}: ${src}"
   [ "$(file_bytes "${src}")" = "${inv_bytes}" ] \
     || die "source byte-count tamper for ${path}: inventory ${inv_bytes}, file $(file_bytes "${src}")"
@@ -354,7 +355,7 @@ for executable_row in "${executable_rows[@]}"; do
   build_exit=0
   bin="${work}/bin${BASELINE_EXE_SUFFIX}"
   if ( cd "${SRC_DIR}" && bounded_run "${BUILD_TIMEOUT}" "${KILL_GRACE}" \
-         env GOTOOLCHAIN=local "${GO_BIN}" build -o "${bin}" "${path}" \
+         env GOTOOLCHAIN=local "${GO_BIN}" build -o "${bin}" "${native_path}" \
          > "${work}/build.stdout" 2> "${work}/build.stderr" ); then
     build_exit=0
   else

@@ -391,9 +391,9 @@ func mustRenderArgv(template []string, subs map[string]string) []string {
 
 // substitutions is the concrete substitution map for one (row, mode).
 func substitutions(path string, bashy, goBin, artifactDir string) map[string]string {
-	base := strings.TrimSuffix(filepath.Base(path), ".go")
+	base := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 	return map[string]string{
-		"GO": goBin, "BASHY": bashy, "SRC": path,
+		"GO": goBin, "BASHY": bashy, "SRC": path, "NATIVE_SRC": nativeSourcePath(path),
 		"OUT_GO":  filepath.Join(artifactDir, base+".transpiled.go"),
 		"OUT_MAP": filepath.Join(artifactDir, base+".transpiled.go.map"),
 		"BIN":     filepath.Join(artifactDir, base+".bin"),
@@ -1178,4 +1178,9 @@ func strictB64(s string) ([]byte, bool) {
 		return nil, false
 	}
 	return out, true
+}
+
+// nativeSourcePath names the temporary Go-toolchain copy of a Bash# source.
+func nativeSourcePath(path string) string {
+	return strings.TrimSuffix(path, filepath.Ext(path)) + ".go"
 }

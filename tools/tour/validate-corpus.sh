@@ -86,8 +86,8 @@ awk -F '\t' '$1 !~ /^#/ && NF && ($4 == "applicable_go_program" || $4 == "build_
   "${INV}" > "${TMP}/exec.tsv"
 while IFS=$'\t' read -r e_path _b _s; do
   case "${e_path}" in
-    _content/tour/*.go) ;;
-    *) die "executable inventory row is not an _content/tour .go path: ${e_path}" ;;
+    _content/tour/*.bsh) ;;
+    *) die "executable inventory row is not an _content/tour .bsh path: ${e_path}" ;;
   esac
 done < "${TMP}/exec.tsv"
 cut -f1 "${TMP}/exec.tsv" | sort > "${TMP}/exec-paths.txt"
@@ -144,9 +144,9 @@ if [ -n "${TOUR_ROOT:-}" ]; then
   cmp -s "${TOUR_ROOT}/LICENSE" "${CORPUS}/LICENSE" \
     || die "corpus LICENSE is not byte-identical to the pinned source materialization: ${TOUR_ROOT}/LICENSE"
   while IFS= read -r p_path; do
-    [ -f "${TOUR_ROOT}/${p_path}" ] \
+    [ -f "${TOUR_ROOT}/${p_path%.bsh}.go" ] \
       || die "pinned source materialization is missing executable inventory row: ${p_path}"
-    cmp -s "${TOUR_ROOT}/${p_path}" "${CORPUS}/${p_path}" \
+    cmp -s "${TOUR_ROOT}/${p_path%.bsh}.go" "${CORPUS}/${p_path}" \
       || die "corpus file is not byte-identical to the pinned source materialization: ${p_path}"
   done < "${TMP}/exec-paths.txt"
 fi
