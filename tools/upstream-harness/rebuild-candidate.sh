@@ -30,6 +30,9 @@
 # $LEAF_BASE/candidates/<name>/bashsharp/bin/bashsharp (what BASHPP_TOOL names) and
 # $LEAF_BASE/candidates/<name>/candidate.txt (sibling SHAs + both digests).
 set -eu
+script_dir=$(cd -- "$(dirname "$0")" && pwd)
+# shellcheck source=tools/upstream-harness/rebuild-candidate-lib.sh
+. "$script_dir/rebuild-candidate-lib.sh"
 
 base=${LEAF_BASE:-/srv/sprint162}
 sdk=${LEAF_SDK:-/srv/sprint142}
@@ -96,12 +99,8 @@ test -f "$cand/ycode/examples/genie/go.mod"
 
 cd "$cand/bashy"
 export PATH=$sdk/authenticated-sdk/bin:$PATH GOTOOLCHAIN=local GOFLAGS=-mod=mod
-cmd=$(make -n build-bashy 2>/dev/null | grep -Eo 'go build -trimpath -ldflags "[^"]*" -o ("?\$\$tmp"?|"?\$out"?|[^ ]+) ./cmd/bashy' | head -1)
+cmd=$(derive_bashy_real_build_command "$(make -n build-bashy 2>/dev/null)" || true)
 test -n "$cmd" || { printf 'rebuild-candidate: could not derive the bashy build command from make -n build-bashy\n' >&2; exit 1; }
-cmd=${cmd//'"$$tmp"'/bin/bashy.real}
-cmd=${cmd//'$$tmp'/bin/bashy.real}
-cmd=${cmd//'"$out"'/bin/bashy.real}
-cmd=${cmd//'$out'/bin/bashy.real}
 mkdir -p bin
 eval "$cmd"
 # The language's own binary, built from the same sibling set: the corpus
