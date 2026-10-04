@@ -15,7 +15,8 @@
 #          leaf-submit.sh chain-x     -- bash -c 'rebuild-candidate.sh x … && leaf-run.sh x-r1 …'
 #
 #   env:   LEAF_BASE (default /srv/sprint162); commands are resolved on PATH
-#          and in $LEAF_BASE/bin.
+#          and in $LEAF_BASE/bin. Install/use the whole tools/upstream-harness
+#          directory; leaf-run.sh depends on sibling helper scripts.
 set -eu
 base=${LEAF_BASE:-/srv/sprint162}
 name=${1:?usage: leaf-submit.sh <job-name> -- <command> [args...]}

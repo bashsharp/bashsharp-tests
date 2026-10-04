@@ -3,10 +3,10 @@
 #
 # rebuild-candidate.sh — build one named Bash++ candidate (bashy.real AND the
 # language's own binary, bashsharp, over a chosen sh / bashsharp / coreutils / yoke
-# / bashy / ycode commit set) on a leaf or certification host, WITHOUT touching the
+# / bashy / ycode / outpost commit set) on a leaf or certification host, WITHOUT touching the
 # base trees. Every candidate lives in its own flat sibling set so bashy's
 # `../sh` / `../bashsharp` / `../coreutils` / `../yoke` / `../readline` /
-# `../filebrowser` replaces resolve inside it, and several candidates coexist.
+# `../filebrowser` / `../outpost` replaces resolve inside it, and several candidates coexist.
 # (yoke is the agentic userland split out of coreutils in Sprint 208; bashsharp
 # is the Bash# front door split out of bashy in Sprint 211; base trees at
 # $LEAF_BASE/base/{yoke,bashsharp} are required from those sprints on.)
@@ -17,6 +17,7 @@
 #                                      [--yoke <ref>] [--yoke-bundle <file>]
 #                                      [--bashy <ref>] [--bashy-bundle <file>]
 #                                      [--ycode <ref>] [--ycode-bundle <file>]
+#                                      [--outpost <ref>] [--outpost-bundle <file>]
 #
 #   env:   LEAF_BASE  root of this host's sprint tree (default /srv/sprint162);
 #                     base trees at $LEAF_BASE/base/<repo> (the published pins)
@@ -32,10 +33,10 @@ set -eu
 
 base=${LEAF_BASE:-/srv/sprint162}
 sdk=${LEAF_SDK:-/srv/sprint142}
-name=${1:?usage: rebuild-candidate.sh <name> [--sh <ref>] [--sh-bundle <file>] ...}
+name=${1:?usage: rebuild-candidate.sh <name> [--sh <ref>] [--sh-bundle <file>] ... [--outpost <ref>] [--outpost-bundle <file>]}
 shift
-declare -A ref=([sh]= [bashsharp]= [coreutils]= [yoke]= [bashy]= [ycode]=)
-declare -A bundle=([sh]= [bashsharp]= [coreutils]= [yoke]= [bashy]= [ycode]=)
+declare -A ref=([sh]= [bashsharp]= [coreutils]= [yoke]= [bashy]= [ycode]= [outpost]=)
+declare -A bundle=([sh]= [bashsharp]= [coreutils]= [yoke]= [bashy]= [ycode]= [outpost]=)
 while test $# -gt 0; do
 	case $1 in
 	--sh) ref[sh]=$2; shift 2 ;;
@@ -50,6 +51,8 @@ while test $# -gt 0; do
 	--bashy-bundle) bundle[bashy]=$2; shift 2 ;;
 	--ycode) ref[ycode]=$2; shift 2 ;;
 	--ycode-bundle) bundle[ycode]=$2; shift 2 ;;
+	--outpost) ref[outpost]=$2; shift 2 ;;
+	--outpost-bundle) bundle[outpost]=$2; shift 2 ;;
 	*) printf 'rebuild-candidate: unknown argument %s\n' "$1" >&2; exit 2 ;;
 	esac
 done
@@ -59,7 +62,7 @@ cand=$base/candidates/$name
 mkdir -p "$base/candidates"
 mkdir -p "$cand/gocache"
 export GOCACHE=${GOCACHE:-$cand/gocache}
-for r in bashy sh bashsharp coreutils yoke ycode readline filebrowser; do
+for r in bashy sh bashsharp coreutils yoke ycode outpost readline filebrowser; do
 	test -d "$base/base/$r/.git" || { printf 'rebuild-candidate: base tree missing: %s\n' "$base/base/$r" >&2; exit 1; }
 	if ! test -d "$cand/$r/.git"; then
 		git clone -q "$base/base/$r" "$cand/$r"
@@ -86,15 +89,19 @@ done
 
 # yoke replaces two pinned source submodules; an ordinary Git clone leaves
 # their directories empty. Bashy also replaces ycode and its nested genie
-# module, which are both supplied by the ycode sibling above.
+# module, which are both supplied by the ycode sibling above; bashy also replaces
+# outpost from the adjacent outpost sibling.
 git -C "$cand/yoke" submodule update --init --depth 1 external/ollama/src external/podman/src
 test -f "$cand/ycode/examples/genie/go.mod"
 
 cd "$cand/bashy"
 export PATH=$sdk/authenticated-sdk/bin:$PATH GOTOOLCHAIN=local GOFLAGS=-mod=mod
-cmd=$(make -n build-bashy 2>/dev/null | grep -o 'go build -trimpath -ldflags "[^"]*" -o [^ ]* ./cmd/bashy' | head -1)
+cmd=$(make -n build-bashy 2>/dev/null | grep -Eo 'go build -trimpath -ldflags "[^"]*" -o ("?\$\$tmp"?|"?\$out"?|[^ ]+) ./cmd/bashy' | head -1)
 test -n "$cmd" || { printf 'rebuild-candidate: could not derive the bashy build command from make -n build-bashy\n' >&2; exit 1; }
-cmd=${cmd//\$out/bin/bashy.real}
+cmd=${cmd//'"$$tmp"'/bin/bashy.real}
+cmd=${cmd//'$$tmp'/bin/bashy.real}
+cmd=${cmd//'"$out"'/bin/bashy.real}
+cmd=${cmd//'$out'/bin/bashy.real}
 mkdir -p bin
 eval "$cmd"
 # The language's own binary, built from the same sibling set: the corpus
@@ -103,7 +110,7 @@ mkdir -p "$cand/bashsharp/bin"
 (cd "$cand/bashsharp" && go build -trimpath -o bin/bashsharp ./cmd/bashsharp)
 {
 	printf 'candidate=%s built=%s\n' "$name" "$(date -u +%FT%TZ)"
-	for r in bashy sh bashsharp coreutils yoke ycode readline filebrowser; do
+	for r in bashy sh bashsharp coreutils yoke ycode outpost readline filebrowser; do
 		printf '%-12s %s\n' "$r" "$(git -C "$cand/$r" rev-parse HEAD)"
 	done
 	printf 'go           %s\n' "$(sha256sum "$sdk/authenticated-sdk/bin/go" | cut -c1-64)"

@@ -30,12 +30,16 @@
 # ONE COORDINATOR PER HOST: the run holds $LEAF_BASE/leaf.lock for its whole
 # duration (flock; --nowait fails instead of queueing; --unlocked is for the
 # certification host's single full run only). Heavy ad-hoc work on a leaf host
-# must take the same lock: `flock $LEAF_BASE/leaf.lock <cmd>`.
+# must take the same lock: `flock $LEAF_BASE/leaf.lock <cmd>`. Install/use the
+# whole tools/upstream-harness directory (not a copied subset in $LEAF_BASE/bin):
+# leaf-run.sh calls candidate-identity.sh and the harness gates by sibling path.
 set -u
 
 base=${LEAF_BASE:-/srv/sprint162}
 sdk=${LEAF_SDK:-/srv/sprint142}
 script_dir=$(cd -- "$(dirname "$0")" && pwd)
+identity_helper=$script_dir/candidate-identity.sh
+test -r "$identity_helper" || { printf 'leaf-run: missing helper: %s (use the whole tools/upstream-harness directory)\n' "$identity_helper" >&2; exit 2; }
 name=${1:?usage: leaf-run.sh <name> <manifest.tsv> [--candidate <cand>] [--harness <ref>|--harness-bundle <file>]}
 manifest=${2:?usage: leaf-run.sh <name> <manifest.tsv> ...}
 shift 2
@@ -97,7 +101,7 @@ if test -n "$cand"; then
 	# The source checkout and binary must both match the rebuild receipt.
 	# BASHPP_PREVIOUS_SHA256 optionally refuses a repeated binary from a prior
 	# candidate, the evidence defect that invalidated Sprint 319 R8–R11.
-	identity=$(bash "$script_dir/candidate-identity.sh" "$base/candidates/$cand" "$tool" "$shrt") || exit 1
+	identity=$(bash "$identity_helper" "$base/candidates/$cand" "$tool" "$shrt") || exit 1
 	printf '%s\n' "$identity" >> "$dir/logs/status.txt"
 fi
 
