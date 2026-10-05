@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Product-level gate for Bash++ Python, TypeScript, Rust, C, C++, Go, and
-# embedded Bash/POSIX sh fences.
+# Product-level gate for Bash++ Python, TypeScript, Rust, C, C++, Go,
+# PowerShell, C#, and embedded Bash/POSIX sh fences.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -208,6 +208,67 @@ if "$BASHY" --bashpp "$scratch/goproj/go-error.bpp" >"$scratch/go-error.out" 2>"
 fi
 grep -q 'negative' "$scratch/go-error.err"
 
+# PowerShell and C# islands (S358). The S358.11 tour owns the fixture files;
+# this gate runs those committed examples and diffs byte-exact output against
+# their committed transcripts — one source of truth, no duplicated
+# expectations. bashy provisions the pinned PowerShell runtime both fences
+# share. The lanes run through that provisioned runtime: no host pwsh is
+# consulted, and a fence that cannot reach it fails the gate — nothing is
+# skipped when the runtime is absent.
+TOUR="${BASHSHARP_TOUR:-${here}/../../bashsharp-tour}"
+[ -d "$TOUR/04-islands" ] || { echo "polyglot-gate: tour checkout not found: $TOUR (set BASHSHARP_TOUR=)" >&2; exit 1; }
+for case in 04-islands/powershell.bsh 04-islands/csharp.bsh 10-windows/workflow.bsh; do
+	base="$(basename "$case")"
+	dir="$(dirname "$case")"
+	name="${base%.bsh}"
+	want="$TOUR/${case%.bsh}.expected"
+	[ -f "$TOUR/$case" ] || { echo "polyglot-gate: tour fixture missing: $TOUR/$case" >&2; exit 1; }
+	[ -f "$want" ] || { echo "polyglot-gate: tour transcript missing: $want" >&2; exit 1; }
+	want_rc="$(sed -n '1s/^# rc=//p' "$want")"
+	[ -n "$want_rc" ] || { echo "polyglot-gate: tour transcript has no rc line: $want" >&2; exit 1; }
+	rc=0
+	(cd "$TOUR/$dir" && BASHY_HINTS=off "$BASHY" --bashpp "$base" >"$scratch/tour-$name.out" 2>"$scratch/tour-$name.err") || rc=$?
+	[ "$rc" = "$want_rc" ] || { printf 'polyglot-gate: tour %s rc=%s want rc=%s\n' "$case" "$rc" "$want_rc" >&2; exit 1; }
+	[ ! -s "$scratch/tour-$name.err" ] || { printf 'polyglot-gate: tour %s wrote to stderr:\n' "$case" >&2; cat "$scratch/tour-$name.err" >&2; exit 1; }
+	tail -n +2 "$want" >"$scratch/tour-$name.want"
+	if ! diff -u "$scratch/tour-$name.want" "$scratch/tour-$name.out" >&2; then
+		printf 'polyglot-gate: tour %s output differs from %s\n' "$case" "$want" >&2
+		exit 1
+	fi
+done
+
+# The alias spellings are registered fence languages too
+# (powershell: pwsh/ps1; csharp: cs). One alias per fence per file.
+cat >"$scratch/pwsh-alias.bpp" <<'BPP'
+~~~pwsh as ps
+function Hi([string]$s) { return "hi "+$s }
+~~~
+v, verr := ps.Hi(x)
+echo "$v"
+BPP
+got="$(BASHY_HINTS=off "$BASHY" --bashpp "$scratch/pwsh-alias.bpp")"
+[ "$got" = 'hi x' ] || { printf 'polyglot-gate: pwsh alias output = %q\n' "$got" >&2; exit 1; }
+
+cat >"$scratch/ps1-alias.bpp" <<'BPP'
+~~~ps1 as ps
+function Hi([string]$s) { return "hi "+$s }
+~~~
+v, verr := ps.Hi(x)
+echo "$v"
+BPP
+got="$(BASHY_HINTS=off "$BASHY" --bashpp "$scratch/ps1-alias.bpp")"
+[ "$got" = 'hi x' ] || { printf 'polyglot-gate: ps1 alias output = %q\n' "$got" >&2; exit 1; }
+
+cat >"$scratch/cs-alias.bpp" <<'BPP'
+~~~cs as cs
+public static string Hi(string s) => "hi "+s;
+~~~
+v := cs.Hi(x)
+echo "$v"
+BPP
+got="$(BASHY_HINTS=off "$BASHY" --bashpp "$scratch/cs-alias.bpp")"
+[ "$got" = 'hi x' ] || { printf 'polyglot-gate: cs alias output = %q\n' "$got" >&2; exit 1; }
+
 cat >"$scratch/shell-islands.bpp" <<'BPP'
 ~~~bash as bash
 var() { printf '%s:%s:%s' "$1" "$2" "$3"; }
@@ -261,9 +322,13 @@ printf '%s\n' '~~~cpp' | "$BASHY" --no-bashpp -n
 printf '%s\n' '~~~cpp' | "$BASHY" --posix -n
 printf '%s\n' '~~~go' | "$BASHY" --no-bashpp -n
 printf '%s\n' '~~~go' | "$BASHY" --posix -n
+printf '%s\n' '~~~powershell' | "$BASHY" --no-bashpp -n
+printf '%s\n' '~~~powershell' | "$BASHY" --posix -n
+printf '%s\n' '~~~csharp' | "$BASHY" --no-bashpp -n
+printf '%s\n' '~~~csharp' | "$BASHY" --posix -n
 printf '%s\n' '~~~bash' | "$BASHY" --no-bashpp -n
 printf '%s\n' '~~~bash' | "$BASHY" --posix -n
 printf '%s\n' '~~~sh' | "$BASHY" --no-bashpp -n
 printf '%s\n' '~~~sh' | "$BASHY" --posix -n
 
-echo "polyglot-gate: OK — Python/TypeScript/Rust/C/C++/Go and embedded Bash/POSIX sh direct, qualified, errors, isolation, lazy-runtime and mode-isolation cases passed"
+echo "polyglot-gate: OK — Python/TypeScript/Rust/C/C++/Go, PowerShell/C# tour fixtures and alias spellings, and embedded Bash/POSIX sh direct, qualified, errors, isolation, lazy-runtime and mode-isolation cases passed"

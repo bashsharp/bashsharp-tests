@@ -265,6 +265,16 @@ text-fence-runner-prefix	S234	fence	~~~tf as iac !my-tofu
 text-fence-runner-short-prefix	S234	fence	~~~tf as !tofu
 text-fence-runner-noalias-prefix	S234	fence	~~~dockerfile !img-runner
 text-fence-dashed-type-prefix	S234	fence	~~~my-config as cfg !my-runner
+# Sprint 358: PowerShell and C# island openers. Every registered spelling —
+# canonical plus aliases (powershell: pwsh/ps1; csharp: cs) — is a start site
+# the contextual parser might have to commit on.
+powershell-fence-prefix	S358	fence	~~~powershell
+powershell-fence-alias-prefix	S358	fence	~~~powershell as ps
+pwsh-fence-prefix	S358	fence	~~~pwsh
+ps1-fence-prefix	S358	fence	~~~ps1
+csharp-fence-prefix	S358	fence	~~~csharp
+csharp-fence-alias-prefix	S358	fence	~~~csharp as cs
+cs-fence-prefix	S358	fence	~~~cs
 # Sprint 197: decorator admission and attachment boundaries.  These are all
 # parser commit candidates; classifier output, rather than this file, records
 # their compatibility class.

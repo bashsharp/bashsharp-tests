@@ -20,7 +20,7 @@ suite. A claim about Bash# that is not a result from this repo is not a claim
 | **Go Tour · Go by Example** | all 291 / 255 programs, pinned upstream sources committed verbatim under `tour/` and `examples/` | `tools/tour/`, `tools/go-by-example/` | same dual-mode rule |
 | **Sharp tier** | keyword/default arguments, exhaustive enums, deep `readonly`, null-safety | `tools/bashsharp/acceptance.sh` over `tests/bashsharp/*/cases.tsv` | exact transcript + status, interpreted; lowering parity in `lowering.tsv`; a near-miss must behave exactly as plain bash |
 | **Decorators · contracts · agentic** | `tests/decorators/`, `tests/agentic/` (+ `bashy/test/contracts/`) | `tools/decorators/`, `tools/agentic/` | exact transcript + status; the yield status 6 is asserted, never inferred |
-| **Polyglot islands** | python · typescript · rust · c/c++ · go · bash/sh fixtures | `tools/polyglot-gate.sh`, `tools/python-package-gate.sh`, `tools/sprint184-typescript-gate.sh` | callables with typed values crossing the boundary, on the host's toolchain |
+| **Polyglot islands** | python · typescript · rust · c/c++ · go · powershell · csharp · bash/sh fixtures | `tools/polyglot-gate.sh`, `tools/python-package-gate.sh`, `tools/sprint184-typescript-gate.sh` | callables with typed values crossing the boundary, on the host's toolchain (powershell/csharp through the S358.11 tour fixtures on the provisioned runtime) |
 | **Lowering** | `tests/lowering/` | `tools/lowering/` | interpreted and compiled outputs byte-identical |
 
 Fixture status is declared, never inferred: `tests/manifest.tsv` marks each
