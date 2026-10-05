@@ -299,14 +299,20 @@ grep -q 'shell-detail' "$scratch/shell-error.err"
 grep -q 'status 7' "$scratch/shell-error.err"
 
 # The runtime is discovered only when a foreign block is prepared. A plain
-# Bash++ script succeeds with an empty PATH; a Python fence fails explicitly.
-PATH=/nonexistent "$BASHY" --bashpp -c 'echo lazy' >"$scratch/lazy.out"
+# Bash++ script must not provision Python. A Python fence can still run with
+# an empty PATH: bashy provisions its managed runtime on demand.
+PATH=/nonexistent BASHY_BIN_CACHE="$scratch/lazy-bin" UV_PYTHON_INSTALL_DIR="$scratch/lazy-python" UV_CACHE_DIR="$scratch/lazy-uv" "$BASHY" --bashpp -c 'echo lazy' >"$scratch/lazy.out"
 [ "$(<"$scratch/lazy.out")" = lazy ] || exit 1
-if PATH=/nonexistent "$BASHY" --bashpp "$scratch/direct.bpp" >"$scratch/missing.out" 2>"$scratch/missing.err"; then
-	echo "polyglot-gate: missing Python unexpectedly succeeded" >&2
+[ ! -e "$scratch/lazy-bin" ] && [ ! -e "$scratch/lazy-python" ] && [ ! -e "$scratch/lazy-uv" ] || {
+	echo "polyglot-gate: plain Bash++ script unexpectedly provisioned Python" >&2
 	exit 1
-fi
-grep -q 'Python runtime unavailable' "$scratch/missing.err"
+}
+PATH=/nonexistent "$BASHY" --bashpp "$scratch/direct.bpp" >"$scratch/managed-python.out" 2>"$scratch/managed-python.err"
+[ ! -s "$scratch/managed-python.err" ] || { cat "$scratch/managed-python.err" >&2; exit 1; }
+[ "$(<"$scratch/managed-python.out")" = $'worker-out\n42:42' ] || {
+	echo "polyglot-gate: managed Python output differs with empty PATH" >&2
+	exit 1
+}
 
 # Other language modes retain the ordinary shell interpretation of the Class-E
 # opening line. Parse-only avoids trying to execute that ordinary command.

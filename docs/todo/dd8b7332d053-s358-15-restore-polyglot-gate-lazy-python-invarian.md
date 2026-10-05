@@ -3,11 +3,13 @@ id: dd8b7332d053
 kind: bug
 title: S358.15 Restore polyglot gate lazy Python invariant under provisioning
 seq: 106
-status: todo
+status: assigned
 priority: p1
 labels:
     - bashsharp
 created: 2026-10-05T05:40:26.990206Z
+weave: 1
+assignee: codex-gpt6-sol
 sprint: 358
 sprint_id: 59941ed8-d6fb-50fb-8ad3-4ffb362c155e
 sprint_title: 'PowerShell and C# fences: Windows users at home on every OS'
