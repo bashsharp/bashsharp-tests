@@ -457,3 +457,22 @@ Every earlier replay in this directory ran on a weekday. VERSION 8 accepts the
 program's actual rendering (`It's (?:the weekend|a weekday)`); the day class and
 the noon class are still the only two lines cancelled, one token each, and
 nothing else about the comparison changed.
+
+## Oracle source identity after the Bash# migration (Sprint 376)
+
+The native Go compiler requires a staged `.go` name for the committed `.bsh`
+bytes. The oracle build now supplies an exact-file compiler `-trimpath` rewrite
+back to the committed basename, including the resolved staging-directory
+spelling where the host uses symlinks. This preserves runtime/logging source
+identity without editing the fixture or changing line numbers. It applies to
+every staged program/test source, not just the logging example. Other files
+remain untouched. Product execution and output normalizations are unchanged.
+
+The evidence recipe binds `oracle_entry.go`; the verifier checks the complete
+recorded native build command against the declared source, staging directory
+and output. Missing, additional, directory-wide or wrong-name rewrites are
+rejected. The regression builds a real native program from unchanged bytes,
+checks its exact original line and committed `.bsh` name, and verifies that a
+second source still reports its own `.go` name. This fixes the oracle-side
+extension mismatch observed in both product modes without accepting wrong
+source locations such as `main.go:24`.

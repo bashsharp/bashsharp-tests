@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -395,6 +396,9 @@ func validateEvidenceMain(args []string) {
 	if recipe.Str("interpreted_entry") == "plain-bsh" && !deepEqual(recipe.Get("interpreted_entry_sha256"), sha(gbeDir+"/interpreted_entry.go")) {
 		die("interpreted entry helper is not anchored to production")
 	}
+	if recipe.Str("interpreted_entry") == "plain-bsh" && (recipe.Str("oracle_entry") != "bsh-source-identity-v1" || !deepEqual(recipe.Get("oracle_entry_sha256"), sha(gbeDir+"/oracle_entry.go"))) {
+		die("oracle source identity helper is not anchored to production")
+	}
 	// Explicit compiled multi-file input must use the product's own repeated --go-file.
 	// The alternative -- appending the second file as an operand -- makes the
 	// CLI hand it to the program as argv, so a one-file build would be compared
@@ -634,6 +638,13 @@ func validateEvidenceMain(args []string) {
 		runStage := stages[len(stages)-1]
 		if !deepEqual(runStage.Get("spawned"), attempt.Get("spawned")) || runStage.Str("state") != attempt.Str("state") || !deepEqual(runStage.Get("exit"), attempt.Get("exit")) {
 			die("run stage disagrees with the attempt: " + label)
+		}
+
+		if recipe.Str("oracle_entry") == "bsh-source-identity-v1" && attempt.Str("mode") == "oracle" {
+			build := stages[0].Obj("capture")
+			if build == nil || !validOracleBuildCommand(strSlice(build.Get("argv")), build.Str("cwd"), filepath.Base(attempt.Str("path")), attempt.Str("kind") == "test_program") {
+				die("oracle build must preserve exact committed source identity: " + label)
+			}
 		}
 
 		// --- the recorded input spelling, not just the recipe prose ---

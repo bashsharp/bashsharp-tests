@@ -1347,7 +1347,9 @@ func gateMain(args []string) {
 		"denominator", Obj("rows", Int(int64(len(rows))), "modes_per_row", Int(int64(len(MODES))), "attempts", Int(int64(denominator))),
 		"modes", MODES,
 		"recipe", Obj(
-			"oracle", "pinned go build (go test -c for test_program) then run the native binary",
+			"oracle", "pinned go build (go test -c for test_program), exact staged-file debug identity mapped to committed .bsh name, then run the native binary",
+			"oracle_entry", "bsh-source-identity-v1",
+			"oracle_entry_sha256", sha(gbeDir+"/oracle_entry.go"),
 			"interpreted", "bashy <committed .bsh source> [argv...]; testing row uses a generated .bsh entry",
 			"interpreted_entry", "plain-bsh",
 			"interpreted_entry_sha256", sha(gbeDir+"/interpreted_entry.go"),
@@ -1505,10 +1507,7 @@ func gateMain(args []string) {
 			oracleBin += ".exe"
 		}
 		os.MkdirAll(work+"/bin", 0o755)
-		oracleCmd := []string{tc.goBinary, "build", "-o", oracleBin, "."}
-		if testRow {
-			oracleCmd = []string{tc.goBinary, "test", "-c", "-o", oracleBin, "."}
-		}
+		oracleCmd := oracleBuildCommand(tc.goBinary, oracleSrc, name, oracleBin, testRow)
 		oracleBuild := g.run(oracleCmd, oracleSrc, benv, "", deadline, buildLimit, path, nil, work+"/stage/oracle-build", work+"/logs/oracle-build", false)
 		enforceRun(oracleBuild, bindings, []string{"shared", "oracle"})
 		oracleStage := "oracle-build"
