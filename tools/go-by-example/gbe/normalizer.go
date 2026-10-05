@@ -75,7 +75,7 @@ import (
 const NormalizerVersion = 12
 
 func effectiveNormalizations(goos, path string, declared []string) []string {
-	if goos != "windows" || path != "examples/execing-processes/execing-processes.go" {
+	if goos != "windows" || path != "examples/execing-processes/execing-processes.bsh" {
 		return declared
 	}
 	names := append([]string(nil), declared...)

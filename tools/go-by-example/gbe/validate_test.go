@@ -95,7 +95,7 @@ func TestValidateRejectsDefectClasses(t *testing.T) {
 	// same-count path substitution: only a set comparison sees it
 	rewrite(t, inv, tmp+"/subst.tsv", func(lines []string) []string {
 		for i, l := range lines {
-			lines[i] = strings.Replace(l, "examples/arrays/arrays.go", "examples/arrays/arrayz.go", 1)
+			lines[i] = strings.Replace(l, "examples/arrays/arrays.bsh", "examples/arrays/arrayz.bsh", 1)
 		}
 		return lines
 	})
@@ -107,10 +107,10 @@ func TestValidateRejectsDefectClasses(t *testing.T) {
 	rewrite(t, inv, tmp+"/swap.tsv", func(lines []string) []string {
 		var a, b int
 		for i, l := range lines {
-			if strings.HasPrefix(l, "examples/for/for.go\t") {
+			if strings.HasPrefix(l, "examples/for/for.bsh\t") {
 				a = i
 			}
-			if strings.HasPrefix(l, "examples/functions/functions.go\t") {
+			if strings.HasPrefix(l, "examples/functions/functions.bsh\t") {
 				b = i
 			}
 		}
@@ -121,13 +121,13 @@ func TestValidateRejectsDefectClasses(t *testing.T) {
 		return lines
 	})
 	repin(t, tmp+"/swap.tsv", tmp+"/swap.pin")
-	if code, out := runValidate(t, map[string]string{"GBE_INVENTORY": tmp + "/swap.tsv", "GBE_PIN": tmp + "/swap.pin"}); code == 0 || !strings.Contains(out, "drift on examples/for/for.go") {
+	if code, out := runValidate(t, map[string]string{"GBE_INVENTORY": tmp + "/swap.tsv", "GBE_PIN": tmp + "/swap.pin"}); code == 0 || !strings.Contains(out, "drift on examples/for/for.bsh") {
 		t.Fatalf("transposition accepted: %d %s", code, out)
 	}
 	// deterministic row acquiring a volatile-value licence
 	rewrite(t, cls, tmp+"/detnorm.cls", func(lines []string) []string {
 		for i, l := range lines {
-			if strings.HasPrefix(l, "examples/arrays/arrays.go\t") {
+			if strings.HasPrefix(l, "examples/arrays/arrays.bsh\t") {
 				lines[i] = strings.Replace(l, "\tdeterministic\tnone\tnone\t", "\tdeterministic\twallclock\tnone\t", 1)
 			}
 		}
@@ -139,7 +139,7 @@ func TestValidateRejectsDefectClasses(t *testing.T) {
 	// unlicensed normalization (the json row switched to wallclock)
 	rewrite(t, cls, tmp+"/unlic.cls", func(lines []string) []string {
 		for i, l := range lines {
-			lines[i] = strings.Replace(l, "examples/json/json.go\tprogram\tmap_iteration\tmap_order\tnone\tnone", "examples/json/json.go\tprogram\tmap_iteration\twallclock\tnone\tnone", 1)
+			lines[i] = strings.Replace(l, "examples/json/json.bsh\tprogram\tmap_iteration\tmap_order\tnone\tnone", "examples/json/json.bsh\tprogram\tmap_iteration\twallclock\tnone\tnone", 1)
 		}
 		return lines
 	})
@@ -150,7 +150,7 @@ func TestValidateRejectsDefectClasses(t *testing.T) {
 	for _, token := range []string{"n/a", "planned", "skipped", "unsupported", "exception"} {
 		rewrite(t, cls, tmp+"/na.cls", func(lines []string) []string {
 			for i, l := range lines {
-				if strings.HasPrefix(l, "examples/arrays/arrays.go\t") {
+				if strings.HasPrefix(l, "examples/arrays/arrays.bsh\t") {
 					f := strings.Split(l, "\t")
 					f[2] = token
 					lines[i] = strings.Join(f, "\t")
@@ -167,13 +167,13 @@ func TestValidateRejectsDefectClasses(t *testing.T) {
 	if err := copyTree(ROOT+"/examples", link+"/examples"); err != nil {
 		t.Fatal(err)
 	}
-	os.Remove(link + "/examples/xml/xml.go")
-	os.Symlink(ROOT+"/examples/xml/xml.go", link+"/examples/xml/xml.go")
+	os.Remove(link + "/examples/xml/xml.bsh")
+	os.Symlink(ROOT+"/examples/xml/xml.bsh", link+"/examples/xml/xml.bsh")
 	if code, out := runValidate(t, map[string]string{"GBE_CORPUS": link + "/examples"}); code == 0 || !strings.Contains(out, "present in inventory.tsv but not in the corpus tree") {
 		t.Fatalf("symlink accepted: %d %s", code, out)
 	}
-	os.Remove(link + "/examples/xml/xml.go")
-	copyFile(ROOT+"/examples/xml/xml.go", link+"/examples/xml/xml.go")
+	os.Remove(link + "/examples/xml/xml.bsh")
+	copyFile(ROOT+"/examples/xml/xml.bsh", link+"/examples/xml/xml.bsh")
 	os.WriteFile(link+"/examples/stray.txt", []byte("not reviewed\n"), 0o644)
 	if code, out := runValidate(t, map[string]string{"GBE_CORPUS": link + "/examples"}); code == 0 || !strings.Contains(out, "present in the corpus tree but not in inventory.tsv") {
 		t.Fatalf("stray file accepted: %d %s", code, out)
@@ -246,5 +246,19 @@ func TestCorpusPrimitives(t *testing.T) {
 	}
 	if !strings.Contains(driver, "\t\t\t{Name: \"TestA\", F: TestA},\n") || !strings.Contains(driver, "\t\t\t{Name: \"BenchmarkB\", F: BenchmarkB},\n") {
 		t.Fatalf("driver: %s", driver)
+	}
+}
+
+func TestValidateRejectsLegacyGoProgramPaths(t *testing.T) {
+	withRoot(t)
+	path := filepath.Join(t.TempDir(), "classification.tsv")
+	rewrite(t, DOCS+"/classification.tsv", path, func(lines []string) []string {
+		for i, line := range lines {
+			lines[i] = strings.ReplaceAll(line, "examples/arrays/arrays.bsh", "examples/arrays/arrays.go")
+		}
+		return lines
+	})
+	if code, out := runValidate(t, map[string]string{"GBE_CLASSIFICATION": path}); code == 0 || !strings.Contains(out, "program row must be a .bsh file") {
+		t.Fatalf("legacy .go path accepted or wrong diagnosis: %s", out)
 	}
 }

@@ -204,7 +204,9 @@ func validateBoundedEvidenceMain(args []string) {
 		if row[6] != fmt.Sprint(expected.bytes) || row[7] != expected.sha256 {
 			die("bounded inventory source binding changed: " + path)
 		}
-		source := checkedFile(ROOT+"/"+path, "bounded source "+path)
+		// Retained evidence keeps its historical .go label; only the local
+		// storage extension changed, and the same pinned bytes must still match.
+		source := checkedFile(ROOT+"/"+strings.TrimSuffix(path, ".go")+".bsh", "bounded source "+path)
 		if fileSize(source) != expected.bytes || sha(source) != expected.sha256 {
 			die("bounded source changed: " + path)
 		}

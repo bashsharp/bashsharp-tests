@@ -639,8 +639,8 @@ func validateEvidenceMain(args []string) {
 		// --- the recorded input spelling, not just the recipe prose ---
 		if recipe.Str("interpreted_entry") == "plain-bsh" && attempt.Str("mode") == "interpreted" && runStage.Bool("spawned") {
 			argv := strSlice(runStage.Get("argv"))
-			if len(argv) < 2 || strings.HasPrefix(argv[1], "-") || !strings.HasSuffix(argv[1], ".bsh") {
-				die("interpreted run must use plain bashy entry.bsh: " + label)
+			if !validInterpretedEntry(argv, attempt.Str("path"), attempt.Str("kind")) {
+				die("interpreted run must use plain bashy with the committed .bsh source (or generated test entry): " + label)
 			}
 		}
 
@@ -663,7 +663,7 @@ func validateEvidenceMain(args []string) {
 					} else if len(argv) > 0 {
 						prev = argv[len(argv)-1] // argv[-1] in Ruby
 					}
-					if strings.HasSuffix(token, ".go") && prev != "-o" && prev != "--map" {
+					if isProductSource(token) && prev != "-o" && prev != "--map" {
 						goInputs++
 					}
 				}
@@ -689,7 +689,7 @@ func validateEvidenceMain(args []string) {
 				}
 				flagged := 0
 				for i := 0; i+1 < len(argv); i++ {
-					if argv[i] == "--go-file" && strings.HasSuffix(argv[i+1], ".go") {
+					if argv[i] == "--go-file" && isProductSource(argv[i+1]) {
 						flagged++
 					}
 				}
@@ -939,4 +939,20 @@ func uniqueStrings(values []string) bool {
 		seen[v] = true
 	}
 	return true
+}
+
+func isProductSource(path string) bool {
+	return strings.HasSuffix(path, ".go") || strings.HasSuffix(path, ".bsh")
+}
+
+// Evidence must name the committed input, not an arbitrary staged .bsh copy.
+func validInterpretedEntry(argv []string, path, kind string) bool {
+	if len(argv) < 2 || strings.HasPrefix(argv[1], "-") {
+		return false
+	}
+	entry := strings.ReplaceAll(argv[1], `\`, "/")
+	if kind == "test_program" {
+		return strings.HasPrefix(entry, "${WORK}/") && strings.HasSuffix(entry, "/src/interpreted/gbe_test_driver.bsh")
+	}
+	return entry == "${ROOT}/"+path && strings.HasSuffix(path, ".bsh")
 }

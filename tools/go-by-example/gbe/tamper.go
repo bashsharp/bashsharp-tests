@@ -234,7 +234,7 @@ func (t *tamperSuite) phaseA(gateEnv []string) {
 	inventory := mustRead(t.root + "/docs/go-by-example/inventory.tsv")
 	var count []string
 	for _, line := range rubyLinesChomp(inventory) {
-		if strings.HasPrefix(line, "examples/arrays/arrays.go\t") {
+		if strings.HasPrefix(line, "examples/arrays/arrays.bsh\t") {
 			continue
 		}
 		count = append(count, line)
@@ -257,7 +257,7 @@ func (t *tamperSuite) phaseA(gateEnv []string) {
 	permissive := func(text string) string {
 		var out []string
 		for _, line := range rubyLinesChomp(text) {
-			if strings.Contains(line, "examples/arrays/arrays.go") {
+			if strings.Contains(line, "examples/arrays/arrays.bsh") {
 				line = strings.Replace(line, "\tdeterministic\tnone\tnone\t", "\tdeterministic\twallclock\tnone\t", 1)
 			}
 			out = append(out, line)
@@ -398,7 +398,7 @@ func (t *tamperSuite) phaseA(gateEnv []string) {
 			"\t{\n\t\tvar kept [][]string\n\t\tfor _, r := range rows {\n\t\t\tif strings.Contains(r[0], "+rubyInspect(row)+") {\n\t\t\t\tkept = append(kept, r)\n\t\t\t}\n\t\t}\n\t\tif len(kept) == 0 {\n\t\t\tfatal(\"mutation selected no row\")\n\t\t}\n\t\trows = kept\n\t}\n\tdenominator := len(rows) * len(MODES)")
 		replaceOnce(&s, "\tif len(rows) != 85 {\n\t\tfatal(fmt.Sprintf(\"expected exactly 85 program rows, got %d\", len(rows)))\n\t}\n", "")
 		compiled := "\t\t\t\tif b, ok := binaries[\"compiled\"]; ok {\n\t\t\t\t\tcommand = append([]string{b}, args...)\n\t\t\t\t}"
-		interpreted := "\t\t\t\tcommand = append([]string{BASHY, \"--bashpp\", \"--source=go\"}, sourceArguments[\"interpreted\"]...)"
+		interpreted := "\t\t\t\tcommand = interpretedCommand(BASHY, sourceArguments[\"interpreted\"][0], args)"
 		switch mutation {
 		case "spawn_error":
 			replaceOnce(&s, compiled, "\t\t\t\tcommand = append([]string{ROOT + \"/definitely-missing-executable\"}, args...)")
@@ -667,7 +667,9 @@ func (t *tamperSuite) phaseB() {
 
 	// Raw bytes changed, stale normalized bytes retained (and the reverse).
 	arraysOracle := func(rows []*Object) *Object {
-		r := findAttempt(rows, func(x *Object) bool { return x.Str("path") == "examples/arrays/arrays.go" && x.Str("mode") == "oracle" })
+		r := findAttempt(rows, func(x *Object) bool {
+			return x.Str("path") == "examples/arrays/arrays.bsh" && x.Str("mode") == "oracle"
+		})
 		if r == nil {
 			t.fail("arrays oracle absent")
 		}
@@ -685,7 +687,7 @@ func (t *tamperSuite) phaseB() {
 		arraysOracle(rows).Set("normalized_stdout_b64", b64([]byte("attacker-preferred comparator input\n")))
 		rebind(rows)
 	})
-	t.expectFail("arrays_stale_raw_for_normalized", "stored normalized output differs from independently recomputed bytes: examples/arrays/arrays.go:oracle", nil, nil, run(PROD, d)...)
+	t.expectFail("arrays_stale_raw_for_normalized", "stored normalized output differs from independently recomputed bytes: examples/arrays/arrays.bsh:oracle", nil, nil, run(PROD, d)...)
 
 	// A comparator may not wave a mismatch through by rewriting its own verdict
 	// -- nor invent one where the derivation says pass.
@@ -768,7 +770,7 @@ func (t *tamperSuite) phaseB() {
 	// multi-file row. Rewriting it to the operand spelling is refused even
 	// though the recipe prose still claims --go-file.
 	d = mutate("operand-argv", func(rows []*Object) {
-		r := findAttempt(rows, func(x *Object) bool { return x.Str("kind") == "test_program" && x.Str("mode") == "interpreted" })
+		r := findAttempt(rows, func(x *Object) bool { return x.Str("kind") == "test_program" && x.Str("mode") == "compiled" })
 		if r == nil {
 			t.fail("no multi-file product attempt")
 		}
@@ -818,7 +820,7 @@ func (t *tamperSuite) phaseB() {
 	t.expectFail("evidence_drops_runtime_dependency", "candidate runtime dependencies differ from the reviewed set", nil, nil, run(PROD, d)...)
 
 	// Repository mutations checked by the validator's own standalone revalidation.
-	CROW := "examples/atomic-counters/atomic-counters.go"
+	CROW := "examples/atomic-counters/atomic-counters.bsh"
 	couple := func(text string) string {
 		prefix := CROW + "\tprogram\tconcurrency\tnone\tbounded_wait\t"
 		var out []string

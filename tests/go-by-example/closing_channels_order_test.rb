@@ -99,8 +99,8 @@ class ClosingChannelsOrderTest < Minitest::Test
     root = File.expand_path('../..', __dir__)
     Dir.mktmpdir('closing-channel-binding-') do |dir|
       classification = File.read(File.join(root, 'docs/go-by-example/classification.tsv'))
-      classification = classification.sub("examples/atomic-counters/atomic-counters.go\tprogram\tconcurrency\tnone\t",
-                                          "examples/atomic-counters/atomic-counters.go\tprogram\tconcurrency\tclosing_channel_order\t")
+      classification = classification.sub("examples/atomic-counters/atomic-counters.bsh\tprogram\tconcurrency\tnone\t",
+                                          "examples/atomic-counters/atomic-counters.bsh\tprogram\tconcurrency\tclosing_channel_order\t")
       path = File.join(dir, 'classification.tsv')
       File.write(path, classification)
       out, status = Open3.capture2e({'GBE_CLASSIFICATION' => path}, 'bash', File.join(root, 'tools/go-by-example/validate.sh'))
@@ -118,7 +118,7 @@ class ClosingChannelsOrderTest < Minitest::Test
 
   def test_retained_real_native_orders_and_exact_original_source
     root = File.expand_path('../..', __dir__)
-    source = File.join(root, 'examples/closing-channels/closing-channels.go')
+    source = File.join(root, 'examples/closing-channels/closing-channels.bsh')
     assert_equal 'b2ddb4aa5bce6a532fc9bc29e67800e1a31f8da7fb7131f4ee8bde7eecfbe15c', Digest::SHA256.file(source).hexdigest
     dir = File.join(__dir__, 'fixtures/closing-channels')
     provenance = JSON.parse(File.read(File.join(dir, 'provenance.json')))

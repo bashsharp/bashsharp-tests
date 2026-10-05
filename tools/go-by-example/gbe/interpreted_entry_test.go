@@ -39,7 +39,7 @@ func TestInterpretedTestEntryPreservesAssertions(t *testing.T) {
 	}
 }
 
-// Opt-in, bounded execution of three pinned examples through the same staging,
+// Opt-in, bounded execution of three pinned examples through the committed sources,
 // test-driver and command builders as the gate. No full-corpus work is done.
 func TestInterpretedBshSmoke(t *testing.T) {
 	bashy := os.Getenv("S378_BASHY")
@@ -47,22 +47,16 @@ func TestInterpretedBshSmoke(t *testing.T) {
 		t.Skip("set S378_BASHY for focused runtime verification")
 	}
 	withRoot(t)
-	for _, rel := range []string{"examples/hello-world/hello-world.go", "examples/command-line-arguments/command-line-arguments.go", "examples/testing-and-benchmarking/main_test.go"} {
+	for _, rel := range []string{"examples/hello-world/hello-world.bsh", "examples/command-line-arguments/command-line-arguments.bsh", "examples/testing-and-benchmarking/main_test.bsh"} {
 		t.Run(rel, func(t *testing.T) {
 			source, err := os.ReadFile(filepath.Join(ROOT, rel))
 			if err != nil {
 				t.Fatal(err)
 			}
 			dir := t.TempDir()
-			name := strings.TrimSuffix(filepath.Base(rel), ".go") + ".bsh"
-			stageSources(dir, []string{rel, "", "", "", "", "none"}, name)
-			entry := filepath.Join(dir, name)
-			copied, _ := os.ReadFile(entry)
-			if !bytes.Equal(source, copied) {
-				t.Fatal("staged source bytes changed")
-			}
+			entry := filepath.Join(ROOT, rel)
 			args := []string{}
-			if strings.HasSuffix(rel, "main_test.go") {
+			if strings.HasSuffix(rel, "main_test.bsh") {
 				driver, err := testDriver(source, rel)
 				if err != nil {
 					t.Fatal(err)
@@ -105,6 +99,62 @@ func TestInterpretedBshSmoke(t *testing.T) {
 				}
 			}
 			t.Logf("plain .bsh invocation passed: %s", rel)
+		})
+	}
+}
+
+func TestInterpretedEvidenceRejectsStagingAndModeFlags(t *testing.T) {
+	path := "examples/hello-world/hello-world.bsh"
+	for _, tc := range []struct {
+		entry []string
+		kind  string
+		want  bool
+	}{
+		{[]string{"bashy", "${ROOT}/" + path}, "program", true},
+		{[]string{"bashy", "${ROOT}/" + path, "argument"}, "program", true},
+		{[]string{"bashy", "${WORK}/src/interpreted/hello-world.bsh"}, "program", false},
+		{[]string{"bashy", "--source=go", "${ROOT}/" + path}, "program", false},
+		{[]string{"bashy", "${ROOT}/examples/values/values.bsh"}, "program", false},
+		{[]string{"bashy", "${WORK}/row/src/interpreted/gbe_test_driver.bsh", "-test.v"}, "test_program", true},
+		{[]string{"bashy", "${ROOT}/examples/testing-and-benchmarking/main_test.bsh"}, "test_program", false},
+	} {
+		if got := validInterpretedEntry(tc.entry, path, tc.kind); got != tc.want {
+			t.Fatalf("%v (%s): got %v, want %v", tc.entry, tc.kind, got, tc.want)
+		}
+	}
+}
+
+func TestOracleStagesRenamedSourcesWithAssets(t *testing.T) {
+	withRoot(t)
+	rows, err := tsvDataLines(DOCS + "/inventory.tsv")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range rows {
+		if row[1] != "program" && row[1] != "test_program" {
+			continue
+		}
+		t.Run(row[0], func(t *testing.T) {
+			dir := t.TempDir()
+			name := upstreamProgramPath(filepath.Base(row[0]))
+			stageSources(dir, row, name)
+			if sha(filepath.Join(dir, name)) != row[7] {
+				t.Fatal("oracle source bytes changed")
+			}
+			if row[1] == "test_program" && !strings.HasSuffix(name, "_test.go") {
+				t.Fatal("oracle lost the Go test suffix")
+			}
+			if row[5] != "none" {
+				for _, asset := range strings.Split(row[5], ",") {
+					rel, err := filepath.Rel(filepath.Dir(row[0]), asset)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if sha(filepath.Join(dir, rel)) != sha(filepath.Join(ROOT, asset)) {
+						t.Fatalf("oracle asset changed: %s", asset)
+					}
+				}
+			}
 		})
 	}
 }

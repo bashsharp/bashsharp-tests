@@ -17,7 +17,7 @@ suite. A claim about Bash# that is not a result from this repo is not a claim
 | **Classic — GNU Bash 5.3** | Bash's own test suite, every runnable fixture (86) | `tools/classic-gate.sh` (runs `bashy`'s `make test-bash` with the dialect OFF and ON) | OFF 86/86; ON 79 + 7 (the seven name a shell function `func`; listed) |
 | **Classic — POSIX** | the POSIX baseline fixtures under `tests/00_superset_posix2016/`, plus the licensed VSC shell arm and yash's POSIX suite run from the bashy repo | `tests/`, `bashy/scripts/yash-posix-suite.sh` | the dialect is inert under `--posix` |
 | **Go corpus** | the upstream Go 1.27.1 test corpus: 3,497 roots (`test/` dir roots, typechecker roots, package roots), pinned by SHA with the exact upstream runners | `tools/upstream-harness/barrier-run.sh` (≈ 100 min); `barrier-byid.py` compares two runs by root ID | the native Go oracle passes **and** both Bash# modes — interpreted (`--source=go`) and lowered-then-compiled — reproduce it; native PASS alone earns nothing |
-| **Go Tour · Go by Example** | all 291 / 255 programs, pinned upstream sources committed verbatim under `tour/` and `tests/go-by-example/` | `tools/tour/`, `tools/go-by-example/` | same dual-mode rule |
+| **Go Tour · Go by Example** | all 291 / 255 programs, pinned upstream sources committed verbatim under `tour/` and `examples/` | `tools/tour/`, `tools/go-by-example/` | same dual-mode rule |
 | **Sharp tier** | keyword/default arguments, exhaustive enums, deep `readonly`, null-safety | `tools/bashsharp/acceptance.sh` over `tests/bashsharp/*/cases.tsv` | exact transcript + status, interpreted; lowering parity in `lowering.tsv`; a near-miss must behave exactly as plain bash |
 | **Decorators · contracts · agentic** | `tests/decorators/`, `tests/agentic/` (+ `bashy/test/contracts/`) | `tools/decorators/`, `tools/agentic/` | exact transcript + status; the yield status 6 is asserted, never inferred |
 | **Polyglot islands** | python · typescript · rust · c/c++ · go · bash/sh fixtures | `tools/polyglot-gate.sh`, `tools/python-package-gate.sh`, `tools/sprint184-typescript-gate.sh` | callables with typed values crossing the boundary, on the host's toolchain |
@@ -91,5 +91,12 @@ Upstream material keeps its own license: the Go test corpus is fetched from
 the pinned Go source archive at run time (`tools/go-corpus/refresh.sh`
 refuses an archive without its LICENSE) rather than committed; the Go Tour
 programs are committed verbatim under `tour/` with upstream's
-[LICENSE](tour/LICENSE); the Go by Example fixtures are adapted from
-gobyexample.com and attributed in `docs/go-by-example/README.md`.
+[LICENSE](tour/LICENSE).
+
+The Go by Example programs under `examples/` are the upstream files from
+[mmcgrana/gobyexample](https://github.com/mmcgrana/gobyexample) at commit
+`7d705626375ba0263b616865a286e1587d6989c8`, byte for byte, saved with the Bash#
+extension `.bsh`. Credit goes to Mark McGranaghan and the upstream contributors; the
+licence is CC BY 3.0. The unchanged `examples/UPSTREAM-README.md` states: “This work is
+copyright Mark McGranaghan and licensed under a [Creative Commons Attribution 3.0
+Unported License](http://creativecommons.org/licenses/by/3.0/).”

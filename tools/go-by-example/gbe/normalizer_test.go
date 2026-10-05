@@ -10,7 +10,7 @@ import (
 )
 
 func TestWindowsExecPanicTraceLicence(t *testing.T) {
-	path := "examples/execing-processes/execing-processes.go"
+	path := "examples/execing-processes/execing-processes.bsh"
 	declared := []string{"file_metadata"}
 	got := effectiveNormalizations("windows", path, declared)
 	if !reflect.DeepEqual(got, []string{"file_metadata", "panic_trace"}) {
@@ -20,7 +20,7 @@ func TestWindowsExecPanicTraceLicence(t *testing.T) {
 		t.Fatalf("authored classification changed: %v", declared)
 	}
 	for _, control := range []struct{ goos, path string }{
-		{"linux", path}, {"darwin", path}, {"windows", "examples/spawning-processes/spawning-processes.go"},
+		{"linux", path}, {"darwin", path}, {"windows", "examples/spawning-processes/spawning-processes.bsh"},
 	} {
 		if names := effectiveNormalizations(control.goos, control.path, declared); !reflect.DeepEqual(names, declared) {
 			t.Fatalf("unlicensed normalization on %s %s: %v", control.goos, control.path, names)

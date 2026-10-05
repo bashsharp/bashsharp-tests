@@ -1,8 +1,12 @@
 # Go by Example conformance corpus
 
-Every `*.go` program under `examples/` in `mmcgrana/gobyexample` at commit
-`7d705626375ba0263b616865a286e1587d6989c8`, copied verbatim, plus the non-Go
-files those programs need at build or run time.
+The Go by Example programs under `examples/` are the upstream files from
+[mmcgrana/gobyexample](https://github.com/mmcgrana/gobyexample) at commit
+`7d705626375ba0263b616865a286e1587d6989c8`, byte for byte, saved with the Bash#
+extension `.bsh`. Credit goes to Mark McGranaghan and the upstream contributors; the
+licence is CC BY 3.0. The unchanged `examples/UPSTREAM-README.md` states: “This work is
+copyright Mark McGranaghan and licensed under a [Creative Commons Attribution 3.0
+Unported License](http://creativecommons.org/licenses/by/3.0/).”
 
 The upstream README is retained at
 [`examples/UPSTREAM-README.md`](../../examples/UPSTREAM-README.md); it carries
@@ -22,20 +26,25 @@ exact commit is in `pin.tsv`; per-file byte counts and SHA-256 digests are in
 | `evidence-roots.tsv` | the reviewed evidence roots; today's anchor is a real failing run |
 | `prerequisites.md` | the measured product gaps that keep this gate red, and the CLI contract it binds |
 
+The extension rename changes path-bearing table digests, including the inventory
+data digest in `pin.tsv`; all 89 per-file byte counts and SHA-256 digests remain
+unchanged. Historical retained evidence keeps its original `.go` path labels;
+bounded evidence validation maps those labels to the committed `.bsh` files.
+
 `inventory.tsv` is a pure function of the other two plus the corpus tree.
 `tools/go-by-example/refresh.sh` regenerates it, and given a clone at the pinned
 commit it also proves the copy: the upstream `examples/**/*.go` set must equal
-the classified program rows, and every copied file must be byte-identical to its
+the classified program rows after mapping each local `.bsh` suffix to `.go`, and every copied file must be byte-identical to its
 source.
 
-**89 rows: 85 `.go` programs (84 `program` + 1 `test_program`), 3
+**89 rows: 85 `.bsh` programs (84 `program` + 1 `test_program`), 3
 `runtime_asset` files, 1 `provenance` file.** The 85 is the upstream `.go`
 denominator at the pinned commit, recorded in `pin.tsv` and re-derived by the
 validator, not asserted.
 
 ## Runtime assets are part of the corpus
 
-`examples/embed-directive/embed-directive.go` does not compile without the files
+`examples/embed-directive/embed-directive.bsh` does not compile without the files
 its `//go:embed` directives name. Copying only the `.go` files produces a corpus
 whose most-cited example cannot build, so the assets are copied and inventoried
 with the same digests and provenance as the sources:
@@ -146,14 +155,14 @@ upstream bytes, for a denominator of 255 attempts.
 
 | mode | command |
 |---|---|
-| `oracle` | pinned `go build` (`go test -c` for the `test_program` row) into a native binary, then run that binary |
-| `interpreted` | `bashy --bashpp --source=go <source> [argv...]`, or `--go-file A --go-file B` for an explicit multi-file package |
+| `oracle` | pinned `go build` of a temporary `.go` copy (`go test -c` for the `test_program` row) into a native binary, then run that binary |
+| `interpreted` | `bashy examples/<name>/<name>.bsh [argv...]` directly from the committed tree, with no mode flags; the test row uses a generated `.bsh` entry |
 | `compiled` | `bashy transpile --bashpp --source=go <inputs> -o generated.go --map generated.go.map`, then pinned `go build` of the generated Go, then run the artifact |
 
 Six Sprint 118 corrections are load-bearing here.
 
 **The oracle no longer uses `go run`.** `go run` is a wrapper: for
-`examples/exit/exit.go` it exits 1 itself and prints `exit status 3` on *its*
+`examples/exit/exit.bsh` it exits 1 itself and prints `exit status 3` on *its*
 stderr, so a deliberate `os.Exit(3)` and a panic were being compared through a
 `goexit_status` rewrite instead of being observed. The gate now builds and runs
 a native binary, `exit.go` is recorded as exit 3 with empty stderr, and the
@@ -168,18 +177,20 @@ successful `build` stage carrying an artifact digest.
 **Assets keep their original relative paths and every mode gets fresh state.**
 `//go:embed folder/single_file.txt` is resolved by the compiler against the
 directory holding the source file, so the previous basename-flattened copy
-silently changed the program. Each mode now gets its own source staging
-directory and its own freshly built execution root (nothing but `home/`, `tmp/`
+silently changed the program. The oracle and compiled mode get their own source staging
+directories; interpreted mode reads the committed `.bsh` directly. Every mode
+gets its own freshly built execution root (nothing but `home/`, `tmp/`
 and the declared assets), snapshotted before and after. The resulting filesystem
 delta is a compared channel alongside status, stdout and stderr, normalized only
 by the row's declared `tmp_path` where licensed; a mode that agrees on all three
 streams but leaves different files behind fails with `fail_effects`.
 
-**The `_test.go` row really runs its assertions.** The oracle builds the
-unchanged bytes with `go test -c`. The product modes are given the unchanged
-bytes *plus* a separately generated `testing.Main` driver — a new file, never an
-edit — so the tests actually execute instead of the `_test.go` being handed over
-as if it were a script. The two recipes were verified to produce byte-identical
+**The `_test.bsh` row really runs its assertions.** The oracle builds the
+unchanged bytes in a temporary `main_test.go` with `go test -c`. Compiled mode
+receives the unchanged `.bsh` plus a separate generated `testing.Main` driver
+using repeated `--go-file`. Interpreted mode keeps the existing generated
+`.bsh` entry combining the assertions and driver, invoked with `-test.v`.
+The committed source remains unchanged. The two recipes were verified to produce byte-identical
 output and status under `-test.v` on the pinned toolchain.
 
 **Multi-file input uses the product's own `--go-file`, never a second operand.**
@@ -309,8 +320,9 @@ vocabularies, re-checks every behavior/adapter/normalization coupling, requires
 the inventory's classification columns to be exactly the authored table's,
 re-runs `validate.sh` itself, re-derives the whole candidate binding from
 `candidates.tsv`, and enforces the recorded recipe: an evidence chain whose
-oracle reverted to `go run`, whose product modes dropped `--source=go` or the
-`--go-file` multi-file contract, which grants one mode extra environment, which
+oracle reverted to `go run`, whose compiled mode dropped `--source=go` or the
+`--go-file` multi-file contract, whose interpreted mode stopped using the committed
+`.bsh` entry (except the generated test entry), which grants one mode extra environment, which
 renames the shared corpus primitives away, which overstates the isolation the
 harness builds, or which was produced against some other launcher, payload,
 build recipe or runtime dependency set, is refused even when every hash in it

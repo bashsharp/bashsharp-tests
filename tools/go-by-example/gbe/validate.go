@@ -73,8 +73,8 @@ var (
 	reDot        = regexp.MustCompile(`(^|/)\.(/|$)`)
 	reKind       = regexp.MustCompile(`^(program|test_program|runtime_asset|provenance)$`)
 	reDriveQual  = regexp.MustCompile(`^[A-Za-z]:`)
-	reGoSuffix   = regexp.MustCompile(`\.go$`)
-	reTestSuffix = regexp.MustCompile(`_test\.go$`)
+	reBshSuffix  = regexp.MustCompile(`\.bsh$`)
+	reTestSuffix = regexp.MustCompile(`_test\.bsh$`)
 )
 
 func loadSchema(path string) *schemaTables {
@@ -266,18 +266,18 @@ func checkRows(path string, nf int, label string, s *schemaTables) bool {
 			if kind == "provenance" && !strings.HasSuffix(p, ".md") {
 				fail(fnr, "provenance row must be the upstream README: "+p)
 			}
-			if kind == "runtime_asset" && reGoSuffix.MatchString(p) {
-				fail(fnr, "runtime asset must not be a .go file: "+p)
+			if kind == "runtime_asset" && (reBshSuffix.MatchString(p) || strings.HasSuffix(p, ".go")) {
+				fail(fnr, "runtime asset must not be a .bsh or .go file: "+p)
 			}
 		} else {
-			if !reGoSuffix.MatchString(p) {
-				fail(fnr, "program row must be a .go file: "+p)
+			if !reBshSuffix.MatchString(p) {
+				fail(fnr, "program row must be a .bsh file: "+p)
 			}
 			if kind == "test_program" && !reTestSuffix.MatchString(p) {
-				fail(fnr, "test_program row must be a _test.go file: "+p)
+				fail(fnr, "test_program row must be a _test.bsh file: "+p)
 			}
 			if kind == "program" && reTestSuffix.MatchString(p) {
-				fail(fnr, "_test.go file must be kind test_program: "+p)
+				fail(fnr, "_test.bsh file must be kind test_program: "+p)
 			}
 			if strings.Contains(behavior, "not_a_program") || strings.Contains(normalization, "not_a_program") || strings.Contains(adapter, "not_a_program") {
 				fail(fnr, "program row must not use not_a_program: "+p)
@@ -337,7 +337,7 @@ func checkRows(path string, nf int, label string, s *schemaTables) bool {
 					continue
 				}
 				if n == "closing_channel_order" {
-					if p != "examples/closing-channels/closing-channels.go" || normalization != "closing_channel_order" {
+					if p != "examples/closing-channels/closing-channels.bsh" || normalization != "closing_channel_order" {
 						fail(fnr, "closing_channel_order is bound exclusively to the reviewed closing-channels row")
 					}
 					if len(fields) == 8 && fields[7] != "b2ddb4aa5bce6a532fc9bc29e67800e1a31f8da7fb7131f4ee8bde7eecfbe15c" {
@@ -655,7 +655,7 @@ func validateMain(args []string, out io.Writer) (code int) {
 	// 9. Redundant count cross-check against the pin.
 	goFiles := 0
 	for _, p := range invSet {
-		if strings.HasSuffix(p, ".go") {
+		if strings.HasSuffix(p, ".bsh") {
 			goFiles++
 		}
 	}
@@ -666,7 +666,7 @@ func validateMain(args []string, out io.Writer) (code int) {
 		validateDie(fmt.Sprintf("inventory row count %d != pinned %s", len(invSet), wantInvRows))
 	}
 	if strconv.Itoa(goFiles) != wantGoFiles {
-		validateDie(fmt.Sprintf("corpus holds %d .go files, pin says %s", goFiles, wantGoFiles))
+		validateDie(fmt.Sprintf("corpus holds %d .bsh files, pin says %s", goFiles, wantGoFiles))
 	}
 	if verified != len(invSet) {
 		validateDie(fmt.Sprintf("verified %d files but inventory has %d rows", verified, len(invSet)))
@@ -680,7 +680,7 @@ func validateMain(args []string, out io.Writer) (code int) {
 			assets++
 		}
 	}
-	fmt.Fprintf(out, "Go by Example inventory OK: %s — %d/%d files verified (%d programs, %d runtime assets, %d .go)\n", commit, verified, len(invSet), programs, assets, goFiles)
+	fmt.Fprintf(out, "Go by Example inventory OK: %s — %d/%d files verified (%d programs, %d runtime assets, %d .bsh)\n", commit, verified, len(invSet), programs, assets, goFiles)
 	return 0
 }
 
@@ -769,7 +769,7 @@ func refreshMain(args []string) {
 		var classifiedGo []string
 		for _, r := range clsRows {
 			if r[1] == "program" || r[1] == "test_program" {
-				classifiedGo = append(classifiedGo, r[0])
+				classifiedGo = append(classifiedGo, upstreamProgramPath(r[0]))
 			}
 		}
 		if strings.Join(upstreamGo, "\n") != strings.Join(classifiedGo, "\n") {
@@ -785,6 +785,9 @@ func refreshMain(args []string) {
 		for _, r := range clsRows {
 			path, kind := r[0], r[1]
 			src := gbeRoot + "/" + path
+			if kind == "program" || kind == "test_program" {
+				src = gbeRoot + "/" + upstreamProgramPath(path)
+			}
 			if kind == "provenance" {
 				src = gbeRoot + "/README.md"
 			}
@@ -831,4 +834,9 @@ func refreshMain(args []string) {
 		die(err.Error())
 	}
 	fmt.Println("wrote " + DOCS + "/inventory.tsv")
+}
+
+// upstreamProgramPath reverses only the local source-extension rename.
+func upstreamProgramPath(path string) string {
+	return strings.TrimSuffix(path, ".bsh") + ".go"
 }

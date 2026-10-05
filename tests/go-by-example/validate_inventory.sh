@@ -67,22 +67,22 @@ reject "single-dot component in inventory path" "GBE_INVENTORY=${tmp}/dot.tsv" "
 
 # --- set integrity ---------------------------------------------------------
 # 4. duplicate row (row COUNT rises, so a count check catches this one only by luck)
-awk '$1 ~ /^#/ { print; next } { print } /arrays\/arrays\.go/ { print }' "${I}" > "${tmp}/dup.tsv"
+awk '$1 ~ /^#/ { print; next } { print } /arrays\/arrays\.bsh/ { print }' "${I}" > "${tmp}/dup.tsv"
 repin "${tmp}/dup.tsv" "${tmp}/dup.pin"
 reject "duplicate inventory row" "GBE_INVENTORY=${tmp}/dup.tsv" "GBE_PIN=${tmp}/dup.pin"
 
 # 5. same-count SUBSTITUTION: one real path swapped for a fabricated sibling.
-#    Row count, .go count and file count are all unchanged. Only a set
+#    Row count, .bsh count and file count are all unchanged. Only a set
 #    comparison sees this.
-awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } { sub(/examples\/arrays\/arrays\.go/, "examples/arrays/arrayz.go", $1); print }' "${I}" > "${tmp}/subst.tsv"
+awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } { sub(/examples\/arrays\/arrays\.bsh/, "examples/arrays/arrayz.bsh", $1); print }' "${I}" > "${tmp}/subst.tsv"
 repin "${tmp}/subst.tsv" "${tmp}/subst.pin"
 reject "same-count path substitution" "GBE_INVENTORY=${tmp}/subst.tsv" "GBE_PIN=${tmp}/subst.pin"
 
 # 6. same-count TRANSPOSITION: two rows keep their paths but swap digests.
 awk -F '\t' -v OFS='\t' '
   $1 ~ /^#/ { print; next }
-  $1 == "examples/for/for.go" { a = $0; next }
-  $1 == "examples/functions/functions.go" { b = $0; next }
+  $1 == "examples/for/for.bsh" { a = $0; next }
+  $1 == "examples/functions/functions.bsh" { b = $0; next }
   { print }
   END { }
 ' "${I}" > /dev/null
@@ -95,7 +95,7 @@ for i, l in enumerate(lines):
     if l.startswith('#'):
         continue
     idx[l.split('\t')[0]] = i
-a, b = idx['examples/for/for.go'], idx['examples/functions/functions.go']
+a, b = idx['examples/for/for.bsh'], idx['examples/functions/functions.bsh']
 fa, fb = lines[a].split('\t'), lines[b].split('\t')
 fa[6], fb[6] = fb[6], fa[6]
 fa[7], fb[7] = fb[7], fa[7]
@@ -106,28 +106,28 @@ repin "${tmp}/swap.tsv" "${tmp}/swap.pin"
 reject "transposed digests between two rows" "GBE_INVENTORY=${tmp}/swap.tsv" "GBE_PIN=${tmp}/swap.pin"
 
 # 7. missing row: file on disk with no inventory row
-grep -v 'examples/xml/xml\.go' "${I}" > "${tmp}/missing.tsv"
+grep -v 'examples/xml/xml\.bsh' "${I}" > "${tmp}/missing.tsv"
 repin "${tmp}/missing.tsv" "${tmp}/missing.pin"
-grep -v 'examples/xml/xml\.go' "${C}" > "${tmp}/missing.cls"
+grep -v 'examples/xml/xml\.bsh' "${C}" > "${tmp}/missing.cls"
 reject "inventory row missing for an on-disk file" \
   "GBE_INVENTORY=${tmp}/missing.tsv" "GBE_PIN=${tmp}/missing.pin" "GBE_CLASSIFICATION=${tmp}/missing.cls"
 
 # 8. extra file: on-disk file with no inventory row
 cp -R "${ROOT}/examples" "${tmp}/extra-tree"
 mkdir -p "${tmp}/extra"; mv "${tmp}/extra-tree" "${tmp}/extra/examples"
-printf 'package main\n' > "${tmp}/extra/examples/arrays/sneaked.go"
+printf 'package main\n' > "${tmp}/extra/examples/arrays/sneaked.bsh"
 reject "extra on-disk file with no inventory row" "GBE_CORPUS=${tmp}/extra/examples"
 
 # 9. deleted file: inventory row with no on-disk file
 cp -R "${ROOT}/examples" "${tmp}/gone-tree"
 mkdir -p "${tmp}/gone"; mv "${tmp}/gone-tree" "${tmp}/gone/examples"
-rm "${tmp}/gone/examples/xml/xml.go"
+rm "${tmp}/gone/examples/xml/xml.bsh"
 reject "inventory row whose file was deleted" "GBE_CORPUS=${tmp}/gone/examples"
 
 # 10. content drift: same size, different bytes
 cp -R "${ROOT}/examples" "${tmp}/drift-tree"
 mkdir -p "${tmp}/drift"; mv "${tmp}/drift-tree" "${tmp}/drift/examples"
-python3 - "${tmp}/drift/examples/hello-world/hello-world.go" <<'PY'
+python3 - "${tmp}/drift/examples/hello-world/hello-world.bsh" <<'PY'
 import sys
 p = sys.argv[1]
 b = open(p, 'rb').read()
@@ -138,7 +138,7 @@ reject "content drift at unchanged byte count" "GBE_CORPUS=${tmp}/drift/examples
 # 11. byte-count drift
 cp -R "${ROOT}/examples" "${tmp}/grow-tree"
 mkdir -p "${tmp}/grow"; mv "${tmp}/grow-tree" "${tmp}/grow/examples"
-printf '\n' >> "${tmp}/grow/examples/hello-world/hello-world.go"
+printf '\n' >> "${tmp}/grow/examples/hello-world/hello-world.bsh"
 reject "byte-count drift" "GBE_CORPUS=${tmp}/grow/examples"
 
 # 12. runtime asset removed from disk
@@ -150,8 +150,8 @@ reject "embed runtime asset deleted" "GBE_CORPUS=${tmp}/noasset/examples"
 # 13. symlink substituted for a copied source
 cp -R "${ROOT}/examples" "${tmp}/link-tree"
 mkdir -p "${tmp}/link"; mv "${tmp}/link-tree" "${tmp}/link/examples"
-rm "${tmp}/link/examples/values/values.go"
-ln -s /etc/hosts "${tmp}/link/examples/values/values.go"
+rm "${tmp}/link/examples/values/values.bsh"
+ln -s /etc/hosts "${tmp}/link/examples/values/values.bsh"
 reject "symlink standing in for a copied source" "GBE_CORPUS=${tmp}/link/examples"
 
 # 14. unsorted inventory
@@ -168,42 +168,42 @@ reject "inventory order regression" "GBE_INVENTORY=${tmp}/unsorted.tsv" "GBE_PIN
 
 # --- classification integrity ---------------------------------------------
 # 15. normalization not licensed by any declared behavior
-awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 == "examples/arrays/arrays.go" { $3 = "map_iteration"; $4 = "wallclock"; $5 = "none" } { print }' "${C}" > "${tmp}/unlic.cls"
+awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 == "examples/arrays/arrays.bsh" { $3 = "map_iteration"; $4 = "wallclock"; $5 = "none" } { print }' "${C}" > "${tmp}/unlic.cls"
 reject "unlicensed normalization on a row" "GBE_CLASSIFICATION=${tmp}/unlic.cls"
 
 # 16. required adapter missing (line-filters declares stdin, which requires the
 # stdin_fixture adapter; clock rows carry no adapter at all since Sprint 118)
-awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 == "examples/line-filters/line-filters.go" { $5 = "none" } { print }' "${C}" > "${tmp}/noadapter.cls"
+awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 == "examples/line-filters/line-filters.bsh" { $5 = "none" } { print }' "${C}" > "${tmp}/noadapter.cls"
 reject "behavior declared without its required adapter" "GBE_CLASSIFICATION=${tmp}/noadapter.cls"
 
 # 17. adapter not required by any declared behavior
-awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 == "examples/epoch/epoch.go" { $5 = "stdin_fixture" } { print }' "${C}" > "${tmp}/extraadapter.cls"
+awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 == "examples/epoch/epoch.bsh" { $5 = "stdin_fixture" } { print }' "${C}" > "${tmp}/extraadapter.cls"
 reject "unlicensed adapter on a row" "GBE_CLASSIFICATION=${tmp}/extraadapter.cls"
 
 # 18. deterministic combined with another behavior
-awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 == "examples/arrays/arrays.go" { $3 = "clock,deterministic"; $4 = "wallclock"; $5 = "none" } { print }' "${C}" > "${tmp}/detmix.cls"
+awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 == "examples/arrays/arrays.bsh" { $3 = "clock,deterministic"; $4 = "wallclock"; $5 = "none" } { print }' "${C}" > "${tmp}/detmix.cls"
 reject "deterministic combined with another behavior" "GBE_CLASSIFICATION=${tmp}/detmix.cls"
 
 # 19. deterministic row carrying a normalization
-awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 == "examples/arrays/arrays.go" { $4 = "map_order" } { print }' "${C}" > "${tmp}/detnorm.cls"
+awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 == "examples/arrays/arrays.bsh" { $4 = "map_order" } { print }' "${C}" > "${tmp}/detnorm.cls"
 reject "deterministic row carrying a normalization" "GBE_CLASSIFICATION=${tmp}/detnorm.cls"
 
 # 20. failure-derived / deferred state reintroduced
 for token in n/a N/A PLANNED skipped exception; do
-  awk -F '\t' -v OFS='\t' -v t="${token}" '$1 ~ /^#/ { print; next } $1 == "examples/http-client/http-client.go" { $3 = t; $4 = t; $5 = t } { print }' "${C}" > "${tmp}/na.cls"
+  awk -F '\t' -v OFS='\t' -v t="${token}" '$1 ~ /^#/ { print; next } $1 == "examples/http-client/http-client.bsh" { $3 = t; $4 = t; $5 = t } { print }' "${C}" > "${tmp}/na.cls"
   reject "failure-derived state '${token}' as a classification" "GBE_CLASSIFICATION=${tmp}/na.cls"
 done
 
 # 21. undeclared vocabulary term
-awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 == "examples/arrays/arrays.go" { $3 = "quantum" } { print }' "${C}" > "${tmp}/vocab.cls"
+awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 == "examples/arrays/arrays.bsh" { $3 = "quantum" } { print }' "${C}" > "${tmp}/vocab.cls"
 reject "behavior term absent from the schema" "GBE_CLASSIFICATION=${tmp}/vocab.cls"
 
 # 22. behavior set out of order / duplicated
-awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 == "examples/goroutines/goroutines.go" { $3 = "timeout,concurrency" } { print }' "${C}" > "${tmp}/order.cls"
+awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 == "examples/goroutines/goroutines.bsh" { $3 = "timeout,concurrency" } { print }' "${C}" > "${tmp}/order.cls"
 reject "unsorted behavior set" "GBE_CLASSIFICATION=${tmp}/order.cls"
 
 # 23. not_a_program smuggled onto a program row
-awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 == "examples/http-server/http-server.go" { $3 = "not_a_program"; $4 = "not_a_program"; $5 = "not_a_program" } { print }' "${C}" > "${tmp}/nap.cls"
+awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 == "examples/http-server/http-server.bsh" { $3 = "not_a_program"; $4 = "not_a_program"; $5 = "not_a_program" } { print }' "${C}" > "${tmp}/nap.cls"
 reject "not_a_program on a program row" "GBE_CLASSIFICATION=${tmp}/nap.cls"
 
 # 24. runtime asset reclassified as a program
@@ -211,15 +211,15 @@ awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 ~ /single_file\.txt$/ { $2
 reject "runtime asset reclassified as a program" "GBE_CLASSIFICATION=${tmp}/asset.cls"
 
 # 25. required asset dropped from the requires closure -> orphan asset row
-awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 ~ /embed-directive\.go$/ { $6 = "none" } { print }' "${C}" > "${tmp}/orphan.cls"
+awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 ~ /embed-directive\.bsh$/ { $6 = "none" } { print }' "${C}" > "${tmp}/orphan.cls"
 reject "runtime asset required by no program" "GBE_CLASSIFICATION=${tmp}/orphan.cls"
 
 # 26. requires an asset that is not inventoried
-awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 ~ /embed-directive\.go$/ { $6 = "examples/embed-directive/folder/absent.bin" } { print }' "${C}" > "${tmp}/ghost.cls"
+awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 ~ /embed-directive\.bsh$/ { $6 = "examples/embed-directive/folder/absent.bin" } { print }' "${C}" > "${tmp}/ghost.cls"
 reject "program requiring an uninventoried asset" "GBE_CLASSIFICATION=${tmp}/ghost.cls"
 
 # 27. classification and inventory disagree on an axis
-awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 == "examples/select/select.go" { $3 = "concurrency"; $5 = "bounded_wait" } { print }' "${C}" > "${tmp}/diverge.cls"
+awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } $1 == "examples/select/select.bsh" { $3 = "concurrency"; $5 = "bounded_wait" } { print }' "${C}" > "${tmp}/diverge.cls"
 reject "classification diverging from the derived inventory" "GBE_CLASSIFICATION=${tmp}/diverge.cls"
 
 # --- pin integrity ---------------------------------------------------------
@@ -235,7 +235,7 @@ reject "pin commit drift" "GBE_PIN=${tmp}/badcommit.pin"
 awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } NF { $4 = "UNKNOWN"; print }' "${DOCS}/pin.tsv" > "${tmp}/badlicense.pin"
 reject "upstream license provenance stripped" "GBE_PIN=${tmp}/badlicense.pin"
 
-# 31. .go denominator claim changed
+# 31. .bsh denominator claim changed
 awk -F '\t' -v OFS='\t' '$1 ~ /^#/ { print; next } NF { $9 = "84"; print }' "${DOCS}/pin.tsv" > "${tmp}/badcount.pin"
 reject "upstream .go denominator changed" "GBE_PIN=${tmp}/badcount.pin"
 

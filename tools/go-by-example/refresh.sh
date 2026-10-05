@@ -10,7 +10,7 @@
 # With GBE_ROOT — a clone of mmcgrana/gobyexample checked out at the pinned
 # commit — the tool additionally proves the copy against upstream: it derives
 # the upstream `examples/**/*.go` set, checks it against the classification
-# table's program rows, and byte-compares every copied file with its source.
+# table's program rows after mapping local .bsh paths back to .go, and byte-compares every copied file with its source.
 #
 # --inventory-only writes the derived inventory to stdout.
 set -euo pipefail

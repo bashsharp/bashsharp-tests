@@ -37,8 +37,8 @@ class JsonMapOrderTest < Minitest::Test
   end
 
   def test_reviewed_json_row_is_admitted_by_the_schema
-    row = File.readlines(CLASSIFICATION, chomp: true).find { |line| line.start_with?("examples/json/json.go\t") }
-    assert_equal "examples/json/json.go\tprogram\tmap_iteration\tmap_order\tnone\tnone", row
+    row = File.readlines(CLASSIFICATION, chomp: true).find { |line| line.start_with?("examples/json/json.bsh\t") }
+    assert_equal "examples/json/json.bsh\tprogram\tmap_iteration\tmap_order\tnone\tnone", row
     _out, err, status = Open3.capture3('bash', VALIDATOR)
     assert status.success?, err
   end
@@ -60,8 +60,8 @@ class JsonMapOrderTest < Minitest::Test
   def test_schema_rejects_a_json_normalization_not_licensed_by_map_iteration
     Dir.mktmpdir('gbe-json-schema-') do |dir|
       altered = File.read(CLASSIFICATION).sub(
-        "examples/json/json.go\tprogram\tmap_iteration\tmap_order\tnone\tnone",
-        "examples/json/json.go\tprogram\tmap_iteration\twallclock\tnone\tnone"
+        "examples/json/json.bsh\tprogram\tmap_iteration\tmap_order\tnone\tnone",
+        "examples/json/json.bsh\tprogram\tmap_iteration\twallclock\tnone\tnone"
       )
       path = File.join(dir, 'classification.tsv')
       File.write(path, altered)

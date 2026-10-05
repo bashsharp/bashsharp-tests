@@ -9,7 +9,7 @@
 //	             binary directly.  Never `go run`: its wrapper reports a child
 //	             `os.Exit(3)` as its own exit 1 plus an "exit status 3" line on
 //	             stderr, which conflates deliberate statuses with panics.
-//	interpreted  bashy <runtime .bsh copy> [argv...]. The testing row uses
+//	interpreted  bashy <committed .bsh source> [argv...]. The testing row uses
 //	             a generated .bsh entry joining its source and test driver.
 //	compiled     bashy transpile --bashpp --source=go <inputs> -o gen.go
 //	             --map gen.go.map, then pinned `go build` of the generated Go,
@@ -1348,7 +1348,7 @@ func gateMain(args []string) {
 		"modes", MODES,
 		"recipe", Obj(
 			"oracle", "pinned go build (go test -c for test_program) then run the native binary",
-			"interpreted", "bashy <runtime .bsh copy> [argv...]; testing row uses a generated .bsh entry",
+			"interpreted", "bashy <committed .bsh source> [argv...]; testing row uses a generated .bsh entry",
 			"interpreted_entry", "plain-bsh",
 			"interpreted_entry_sha256", sha(gbeDir+"/interpreted_entry.go"),
 			"compiled", "bashy transpile --bashpp --source=go <source|--go-file...> -o gen.go --map gen.go.map; pinned go build; run the artifact",
@@ -1493,7 +1493,7 @@ func gateMain(args []string) {
 
 		// -- oracle: build the pinned bytes natively, then run the binary.
 		oracleSrc := work + "/src/oracle"
-		oracleName := name
+		oracleName := upstreamProgramPath(name)
 		if testRow {
 			oracleName = "main_test.go"
 		}
@@ -1528,8 +1528,13 @@ func gateMain(args []string) {
 		for _, mode := range []string{"interpreted", "compiled"} {
 			productSrc := work + "/src/" + mode
 			productName := name
-			if mode == "interpreted" {
-				productName = strings.TrimSuffix(name, filepath.Ext(name)) + ".bsh"
+			// Ordinary interpreted runs read the committed .bsh directly. Staging
+			// is still needed for compilation assets and the generated test entry.
+			if mode == "interpreted" && !testRow {
+				input := filepath.Join(ROOT, path)
+				productInputs[mode] = Obj(input, mustFileRecord(input))
+				sourceArguments[mode] = []string{input}
+				continue
 			}
 			stageSources(productSrc, row, productName)
 			inputs := []string{filepath.Join(productSrc, productName)}
