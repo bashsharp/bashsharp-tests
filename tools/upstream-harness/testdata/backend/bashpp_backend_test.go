@@ -1686,8 +1686,10 @@ func validCompanionRecords(got []companionFile, paths []string) bool {
 	return true
 }
 
-// Sprint: #249; Story: #715; Story-ID: 90f96d4f4dae
-func TestResolveModuleProgramStillRefusesCgo(t *testing.T) {
+// Sprint: #376; Story: #1557; Story-ID: d36938241862
+// Main-package cgo follows the authenticated companion contract introduced in
+// Sprint 249, just like the dependency-package controls above.
+func TestResolveModuleProgramMainPackageCgoContract(t *testing.T) {
 	goTool := os.Getenv("BASHPP_TESTDIR_GO")
 	if goTool == "" {
 		var err error
@@ -1700,13 +1702,36 @@ func TestResolveModuleProgramStillRefusesCgo(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example.test/cgo\n\ngo 1.20\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte("package main\n\nimport \"C\"\n\nfunc main() {}\n"), 0o600); err != nil {
+	mainFile := filepath.Join(dir, "main.go")
+	source := []byte("package main\n\nimport \"C\"\n\nfunc main() {}\n")
+	if err := os.WriteFile(mainFile, source, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, err := resolveModuleProgram(goTool, dir, append(os.Environ(), "CGO_ENABLED=1"))
-	if err == nil || !strings.Contains(err.Error(), "non-Go inputs [main.go]") {
-		t.Fatalf("resolveModuleProgram cgo error = %v, want existing non-Go refusal", err)
-	}
+	t.Run("enabled-authenticated", func(t *testing.T) {
+		files, mapArgs, record, err := resolveModuleProgram(goTool, dir, append(os.Environ(), "CGO_ENABLED=1"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(files, []string{mainFile}) || len(mapArgs) != 0 {
+			t.Fatalf("main files/map = %v/%v, want main.go with no dependency map", files, mapArgs)
+		}
+		if record["path"] != "example.test/cgo" || record["module"] != "example.test/cgo" || record["cgo_enabled"] != true {
+			t.Fatalf("main module identity/cgo policy = %#v", record)
+		}
+		gotCompanions, _ := record["companions"].([]string)
+		gotProof, _ := record["companion_proof"].([]companionFile)
+		digest := sha256.Sum256(source)
+		wantProof := []companionFile{{Path: mainFile, SHA256: hex.EncodeToString(digest[:]), Role: "cgo"}}
+		if !reflect.DeepEqual(gotCompanions, []string{mainFile}) || !reflect.DeepEqual(gotProof, wantProof) {
+			t.Fatalf("main cgo evidence companions=%#v proof=%#v, want %#v", gotCompanions, gotProof, wantProof)
+		}
+	})
+	t.Run("disabled-refused", func(t *testing.T) {
+		_, _, _, err := resolveModuleProgram(goTool, dir, append(os.Environ(), "CGO_ENABLED=0"))
+		if err == nil || !strings.Contains(err.Error(), "CGO_ENABLED=0") || !strings.Contains(err.Error(), "main.go") {
+			t.Fatalf("main cgo error = %v, want positioned cgo-disabled refusal", err)
+		}
+	})
 }
 
 func TestS243DirectoryImportClosure(t *testing.T) {
