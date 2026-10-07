@@ -84,8 +84,9 @@ EOF
 chmod +x "${tmp}/fake-engine" "${tmp}/fake-bashy"
 BASHSHARP_FAKE_LOG="${fake_log}" BASH_ENGINE_BIN="${tmp}/fake-engine" BASHY_BIN="${tmp}/fake-bashy" \
   "${tmp}/tools/bashsharp/acceptance.sh" >/dev/null
-[ "$(wc -l < "${fake_log}" | tr -d ' ')" -eq 124 ] || {
-  echo "Bash# tamper: Sprint 114 gate did not execute its 124-command oracle" >&2
+# One selector probe + three executions for each of 40 cases + seven checker-off probes.
+[ "$(wc -l < "${fake_log}" | tr -d ' ')" -eq 128 ] || {
+  echo "Bash# tamper: Sprint 114 gate did not execute its 128-command oracle" >&2
   exit 1
 }
 grep -q $'^front-door\ttranspile' "${fake_log}" && {
