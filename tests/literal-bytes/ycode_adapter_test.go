@@ -17,9 +17,9 @@ import (
 // the test traverses the production adapter and its JSON tool Input field.
 func TestSprint381LiteralBytes(t *testing.T) {
 	root := os.Getenv("LITERAL_BYTES_ROOT")
-	bashy := os.Getenv("BASHY_BIN")
-	if root == "" || bashy == "" {
-		t.Fatal("LITERAL_BYTES_ROOT and BASHY_BIN are required")
+	shell := os.Getenv("BASH_SHELL_BIN")
+	if root == "" || shell == "" {
+		t.Fatal("LITERAL_BYTES_ROOT and BASH_SHELL_BIN are required")
 	}
 	data, err := os.ReadFile(filepath.Join(root, "cases.tsv"))
 	if err != nil {
@@ -67,7 +67,7 @@ func TestSprint381LiteralBytes(t *testing.T) {
 				t.Fatalf("tool JSON script differs from model bytes: got %q want %q", script, reply)
 			}
 			out := filepath.Join(t.TempDir(), "result")
-			cmd := exec.Command(bashy, "-c", script)
+			cmd := exec.Command(shell, "-c", script)
 			cmd.Env = append(os.Environ(), "BYTE_PACK_OUT="+out)
 			if output, err := cmd.CombinedOutput(); err != nil {
 				t.Fatalf("execute ycode tool script: %v: %s", err, output)

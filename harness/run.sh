@@ -180,7 +180,7 @@ if [ ! -x "${TEST_DIR}/tests/literal-bytes/gate.sh" ]; then
   echo "FATAL: literal-bytes gate missing" >&2
   exit 2
 fi
-if ! BASHY_BIN="${BASHY_BIN}" "${TEST_DIR}/tests/literal-bytes/gate.sh"; then
+if ! BASH_SHELL_BIN="${BASHY_BIN}" BASHY_AGENTOS_BIN="${BASHY_AGENTOS_BIN:-${TEST_DIR}/../bashy/bin/bashy}" "${TEST_DIR}/tests/literal-bytes/gate.sh"; then
   echo "FATAL: literal-bytes transport gate failed" >&2
   exit 2
 fi

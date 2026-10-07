@@ -18,9 +18,9 @@ import (
 // Overlaid into yoke/mcp to drive the actual MCP server and run_tool handler.
 func TestSprint381LiteralBytesRunTool(t *testing.T) {
 	root := os.Getenv("LITERAL_BYTES_ROOT")
-	bashy := os.Getenv("BASHY_BIN")
-	if root == "" || bashy == "" {
-		t.Fatal("LITERAL_BYTES_ROOT and BASHY_BIN are required")
+	shell := os.Getenv("BASH_SHELL_BIN")
+	if root == "" || shell == "" {
+		t.Fatal("LITERAL_BYTES_ROOT and BASH_SHELL_BIN are required")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
@@ -77,7 +77,7 @@ func TestSprint381LiteralBytesRunTool(t *testing.T) {
 			if string(stored) != string(reply) {
 				t.Fatalf("run_tool reply bytes = %x, want %x", stored, reply)
 			}
-			cmd := exec.Command(bashy, "-c", string(stored))
+			cmd := exec.Command(shell, "-c", string(stored))
 			cmd.Dir = dir
 			cmd.Env = append(os.Environ(), "BYTE_PACK_OUT="+resultPath)
 			if output, err := cmd.CombinedOutput(); err != nil {
