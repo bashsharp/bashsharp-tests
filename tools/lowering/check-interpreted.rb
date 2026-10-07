@@ -12,6 +12,13 @@ module InterpretedFixtureContract
     'profile-additional.tsv' => 'profile-additional'
   }.freeze
 
+  # The lowering manifest records the bare semantic-reject diagnostic (the Go
+  # lower APIs take no source location). File execution renders the source point,
+  # so these exact interpreted bytes are pinned per fixture instead.
+  INTERPRETED_STDERR = {
+    'assert-impossible-neg' => "assertions/assert-impossible-neg.bpp: line 5: BASHPP-EASSERT-IMPOSSIBLE: U cannot be asserted from I\n"
+  }.freeze
+
   def self.contract(file)
     wanted = File.realpath(file)
     matches = []
@@ -29,7 +36,7 @@ module InterpretedFixtureContract
         code = Integer(status, 10)
         streams = [JSON.parse(stdout), JSON.parse(stderr)]
         raise "invalid observation contract: #{id}" unless code.between?(0, 255) && streams.all? { |s| s.is_a?(String) } && !reference.empty?
-        matches << { root: root, fixture: fixture, status: code, stdout: streams[0].b, stderr: streams[1].b }
+        matches << { root: root, fixture: fixture, status: code, stdout: streams[0].b, stderr: INTERPRETED_STDERR.fetch(id, streams[1]).b }
       end
     end
     raise "expected exactly one fixture contract, found #{matches.length}: #{file}" unless matches.length == 1

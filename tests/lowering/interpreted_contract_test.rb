@@ -26,6 +26,20 @@ Dir.mktmpdir('fixture-contract') do |dir|
     _out, err, status = Open3.capture3('ruby', checker, binary, negative)
     abort "FAIL #{label}: #{err}" unless status.success? == pass
   end
+  located = File.join(root, 'tests/lowering/go-profile/assertions/assert-impossible-neg.bpp')
+  located_expected = InterpretedFixtureContract.contract(located)
+  bare = "BASHPP-EASSERT-IMPOSSIBLE: U cannot be asserted from I\n"
+  {
+    'located interpreted diagnostic' => [located_expected[:stderr], true],
+    'bare diagnostic where located is pinned' => [bare, false],
+    'wrong line for pinned diagnostic' => [located_expected[:stderr].sub('line 5:', 'line 4:'), false],
+    'wrong code for pinned diagnostic' => [located_expected[:stderr].sub('EASSERT-IMPOSSIBLE', 'EASSERT-FAIL'), false]
+  }.each do |label, (stderr, pass)|
+    File.write(binary, "#!/usr/bin/env ruby\nSTDERR.write(#{stderr.inspect}); exit 2\n")
+    File.chmod(0o755, binary)
+    _out, err, status = Open3.capture3('ruby', checker, binary, located)
+    abort "FAIL #{label}: #{err}" unless status.success? == pass
+  end
   unknown = File.join(dir, 'unknown.bpp')
   File.write(unknown, 'echo unknown')
   _, _, status = Open3.capture3('ruby', checker, binary, unknown)
