@@ -1,9 +1,11 @@
 package provider
 
 import (
+	"bufio"
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,6 +14,63 @@ import (
 
 	api "github.com/qiangli/ycode/internal/api"
 )
+
+type literalCase struct{ name, wantHex string }
+
+func TestParseLiteralCasesRejectsMalformedInput(t *testing.T) {
+	var rows []string
+	for i := 0; i < 15; i++ {
+		rows = append(rows, fmt.Sprintf("case%d\t00", i))
+	}
+	for name, mutate := range map[string]func([]string){
+		"duplicate":   func(r []string) { r[14] = "case0\t00" },
+		"bad hex":     func(r []string) { r[14] = "case14\tzz" },
+		"extra field": func(r []string) { r[14] += "\textra" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			copyRows := append([]string(nil), rows...)
+			mutate(copyRows)
+			if _, err := parseLiteralCases([]byte(strings.Join(copyRows, "\n"))); err == nil {
+				t.Fatal("accepted malformed cases.tsv")
+			}
+		})
+	}
+}
+
+func parseLiteralCases(data []byte) ([]literalCase, error) {
+	var cases []literalCase
+	seen := map[string]bool{}
+	s := bufio.NewScanner(strings.NewReader(string(data)))
+	for line := 1; s.Scan(); line++ {
+		row := s.Text()
+		if strings.TrimSpace(row) == "" || strings.HasPrefix(row, "#") {
+			continue
+		}
+		fields := strings.Split(row, "\t")
+		if len(fields) != 2 || fields[0] == "" || fields[1] == "" {
+			return nil, fmt.Errorf("line %d: expected name and hex fields", line)
+		}
+		if seen[fields[0]] {
+			return nil, fmt.Errorf("line %d: duplicate case %q", line, fields[0])
+		}
+		fields[1] = strings.TrimSpace(fields[1])
+		if fields[1] == "" {
+			return nil, fmt.Errorf("line %d: empty hex field", line)
+		}
+		if _, err := hex.DecodeString(fields[1]); err != nil {
+			return nil, fmt.Errorf("line %d: invalid hex: %w", line, err)
+		}
+		seen[fields[0]] = true
+		cases = append(cases, literalCase{fields[0], fields[1]})
+	}
+	if err := s.Err(); err != nil {
+		return nil, err
+	}
+	if len(cases) != 15 {
+		return nil, fmt.Errorf("expected 15 cases, got %d", len(cases))
+	}
+	return cases, nil
+}
 
 // This file is overlaid into ycode's provider package by the focused gate, so
 // the test traverses the production adapter and its JSON tool Input field.
@@ -25,12 +84,12 @@ func TestSprint381LiteralBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, row := range strings.Split(string(data), "\n") {
-		fields := strings.Split(row, "\t")
-		if len(fields) != 2 || fields[0] == "" || strings.HasPrefix(fields[0], "#") {
-			continue
-		}
-		name, wantHex := fields[0], strings.TrimSpace(fields[1])
+	cases, err := parseLiteralCases(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range cases {
+		name, wantHex := tc.name, tc.wantHex
 		t.Run(name, func(t *testing.T) {
 			reply, err := os.ReadFile(filepath.Join(root, "cases", name+".bsh"))
 			if err != nil {
@@ -57,7 +116,9 @@ func TestSprint381LiteralBytes(t *testing.T) {
 				if event.ToolCall == nil {
 					continue
 				}
-				var input struct{ Script string `json:"script"` }
+				var input struct {
+					Script string `json:"script"`
+				}
 				if err := json.Unmarshal(event.ToolCall.Input, &input); err != nil {
 					t.Fatal(err)
 				}

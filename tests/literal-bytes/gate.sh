@@ -10,7 +10,11 @@ for adapter in "$ROOT/tests/literal-bytes/ycode_adapter_test.go" "$ROOT/tests/li
 done
 tmp="$(mktemp -d)"
 failed=0
-cleanup() { if (( failed == 0 )); then rm -rf "$tmp"; else echo "literal-bytes: raw failure artifacts retained at $tmp" >&2; fi; }
+cleanup() {
+  rc=$?
+  if (( rc != 0 )); then failed=$((failed + 1)); fi
+  if (( failed == 0 )); then rm -rf "$tmp"; else echo "literal-bytes: raw failure artifacts retained at $tmp" >&2; fi
+}
 trap cleanup EXIT
 shim_home="$tmp/agent-home"
 mkdir -p "$shim_home"
@@ -20,6 +24,43 @@ shim="$shim_home/.bashy/shims/bash"
 passed=0 failed=0
 case_count=0
 declare -A transport_counts=([bashy-c]=0 [install-agent-shim]=0 [ycode-provider]=0 [yoke-mcp]=0)
+# Validate the TSV as a contract before iterating. This also counts unique names,
+# so 15 rows cannot hide a duplicate and a missing fixture.
+validate_cases() {
+  awk -F '\t' '
+    /^#/ || NF == 1 && $1 == "" { next }
+    NF != 2 || $1 == "" || $2 == "" { bad=1; next }
+    { hex=$2; gsub(/^[[:space:]]+|[[:space:]]+$/, "", hex); if (hex !~ /^([0-9a-f][0-9a-f])*$/) { bad=1; next } }
+    seen[$1]++ { bad=1; next }
+    { n++; next }
+    END { if (bad || n != expected) exit 1 }
+  ' expected="${2:-15}" "$1"
+}
+has_output() { [[ -f "$1" ]]; }
+if ! validate_cases "$ROOT/tests/literal-bytes/cases.tsv"; then
+  echo "literal-bytes: malformed, duplicate, or wrong-count cases.tsv" >&2
+  failed=$((failed + 1))
+fi
+# Keep the validator's important rejection modes executable and local.
+negative_rows="$tmp/negative-cases.tsv"
+for i in {1..15}; do printf 'case%s\t00\n' "$i" >> "$negative_rows"; done
+for mode in duplicate hex fields; do
+  cp "$negative_rows" "$tmp/negative-$mode.tsv"
+  case "$mode" in
+    duplicate) sed -i '' '15s/case15/case1/' "$tmp/negative-$mode.tsv" 2>/dev/null || sed -i '15s/case15/case1/' "$tmp/negative-$mode.tsv" ;;
+    hex) sed -i '' '15s/00/zz/' "$tmp/negative-$mode.tsv" 2>/dev/null || sed -i '15s/00/zz/' "$tmp/negative-$mode.tsv" ;;
+    fields) sed -i '' '15s/$/\textra/' "$tmp/negative-$mode.tsv" 2>/dev/null || sed -i '15s/$/\textra/' "$tmp/negative-$mode.tsv" ;;
+  esac
+  if validate_cases "$tmp/negative-$mode.tsv" 15 >/dev/null; then
+    echo "literal-bytes: $mode negative check unexpectedly passed" >&2; failed=$((failed + 1))
+  else echo "PASS $mode rejection"; fi
+done
+missing_output="$tmp/expected-missing-output"
+if BYTE_PACK_OUT="$missing_output" "$SHELL_BIN" -c ':' >/dev/null 2>&1 && ! has_output "$missing_output"; then
+  echo "PASS missing-output rejection"
+else
+  echo "literal-bytes: missing-output negative check unexpectedly passed" >&2; failed=$((failed + 1))
+fi
 while IFS=$'\t' read -r name expected; do
   [[ -z "$name" && -z "${expected:-}" ]] && continue
   [[ "$name" == \#* ]] && continue
@@ -35,9 +76,12 @@ while IFS=$'\t' read -r name expected; do
   for transport in bashy-c install-agent-shim; do
     actual="$tmp/$name.$transport.bin"
     if [[ "$transport" == bashy-c ]]; then runner="$SHELL_BIN"; else runner="$shim"; fi
-    BYTE_PACK_OUT="$actual" "$runner" -c "$reply" >"$tmp/$name.$transport.stdout" 2>"$tmp/$name.$transport.stderr" || {
+    if BYTE_PACK_OUT="$actual" "$runner" -c "$reply" >"$tmp/$name.$transport.stdout" 2>"$tmp/$name.$transport.stderr"; then :; else
       rc=$?; echo "FAIL $transport/$name (exit $rc)" >&2; cat "$tmp/$name.$transport.stdout" "$tmp/$name.$transport.stderr" >&2; failed=$((failed + 1)); continue;
-    }
+    fi
+    if ! has_output "$actual"; then
+      echo "FAIL $transport/$name (missing output file)" >&2; failed=$((failed + 1)); continue
+    fi
     got="$(od -An -tx1 -v "$actual" | tr -d ' \n')"
     if [[ "$got" != "$expected" ]]; then
       echo "FAIL $transport/$name (expected hex $expected, got $got)" >&2; failed=$((failed + 1))
@@ -56,7 +100,7 @@ test_source="$ROOT/tests/literal-bytes/ycode_adapter_test.go"
 test_dest="$YCODE_DIR/internal/harness/provider/literal_bytes_s381_test.go"
 overlay="$tmp/ycode-overlay.json"
 ruby -rjson -e 'puts JSON.generate(Replace: {ARGV[0] => ARGV[1]})' "$test_dest" "$test_source" > "$overlay"
-if ! (cd "$YCODE_DIR" && LITERAL_BYTES_ROOT="$ROOT/tests/literal-bytes" BASH_SHELL_BIN="$SHELL_BIN" go test -v -overlay="$overlay" ./internal/harness/provider -run '^TestSprint381LiteralBytes$' -count=1) >"$tmp/ycode.log" 2>&1; then
+if ! (cd "$YCODE_DIR" && LITERAL_BYTES_ROOT="$ROOT/tests/literal-bytes" BASH_SHELL_BIN="$SHELL_BIN" go test -v -overlay="$overlay" ./internal/harness/provider -run '^(TestSprint381LiteralBytes|TestParseLiteralCasesRejectsMalformedInput)$' -count=1) >"$tmp/ycode.log" 2>&1; then
   cat "$tmp/ycode.log" >&2
   echo "FAIL ycode provider JSON tool adapter" >&2
   failed=$((failed + 1))
@@ -69,7 +113,7 @@ yoke_test_source="$ROOT/tests/literal-bytes/yoke_mcp_test.go"
 yoke_test_dest="$YOKE_DIR/mcp/literal_bytes_s381_test.go"
 yoke_overlay="$tmp/yoke-overlay.json"
 ruby -rjson -e 'puts JSON.generate(Replace: {ARGV[0] => ARGV[1]})' "$yoke_test_dest" "$yoke_test_source" > "$yoke_overlay"
-if ! (cd "$YOKE_DIR" && LITERAL_BYTES_ROOT="$ROOT/tests/literal-bytes" BASH_SHELL_BIN="$SHELL_BIN" go test -v -overlay="$yoke_overlay" ./mcp -run '^TestSprint381LiteralBytesRunTool$' -count=1) >"$tmp/yoke.log" 2>&1; then
+if ! (cd "$YOKE_DIR" && LITERAL_BYTES_ROOT="$ROOT/tests/literal-bytes" BASH_SHELL_BIN="$SHELL_BIN" go test -v -overlay="$yoke_overlay" ./mcp -run '^(TestSprint381LiteralBytesRunTool|TestParseLiteralCasesRejectsMalformedInput)$' -count=1) >"$tmp/yoke.log" 2>&1; then
   cat "$tmp/yoke.log" >&2
   echo "FAIL yoke MCP run_tool adapter" >&2
   failed=$((failed + 1))
