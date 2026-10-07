@@ -1,0 +1,7 @@
+# Go baseline run pin — binds the checked-in results to the pinned
+# inventory revision, the exact toolchain identity+checksum and the
+# official helper module. Written by tools/tour/run-baseline.sh;
+# validated offline by tools/tour/validate-results.sh.
+#
+# release	commit	toolchain_identity	toolchain_sha256	helper_module	records	records_sha256	inventory_data_sha256
+golang.org/x/website@v0.0.0-20260903033311-c4a9d59f9775	c4a9d59f9775d994f1700d18fa37414c3c85fa7b	go version go1.27.1 linux/arm64	1675694ef690db0f18fbe7046a886170904bede1d9db6ec96ae27945c1705c64	golang.org/x/tour@v0.1.0	97	557f0793e500c0c6660ab25df8d616ac790fc324794fa1de2c0fa1c758d6a225	64c086e517d257960328e711a0c9825ce20076793d0dc67616e41c1190390697
