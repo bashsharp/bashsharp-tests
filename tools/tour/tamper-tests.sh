@@ -399,6 +399,39 @@ fi
 rm -f "${MINI}/_content/tour/omega.go"
 write_inventory "${INV}" ""
 
+echo "== platform alias probes: Linux uname aarch64 is canonical arm64 =="
+# Go reports GOARCH arm64 on every ARM64 OS while Linux uname -m says
+# aarch64; the registries key the canonical arm64 name only. Under a stubbed
+# Linux ARM64 uname, the shell bootstrap must select the linux/arm64 pinned
+# toolchain row and the registry-mode validator must select — and fully
+# validate — the committed linux/arm64 accepted observation. No duplicate
+# alias rows, no cross-platform fallback.
+STUB="${WORK}/uname-stub"
+mkdir -p "${STUB}"
+printf '#!/usr/bin/env bash\ncase "${1:-}" in -m) echo aarch64 ;; *) echo Linux ;; esac\n' > "${STUB}/uname"
+chmod 755 "${STUB}/uname"
+want_ver="$(awk -F '\t' '$1 !~ /^#/ && NF && $1 == "linux" && $2 == "arm64" { print $3; exit }' "${ROOT}/docs/tour/toolchain.tsv")"
+alias_rc=0
+alias_sel="$(PATH="${STUB}:${PATH}" bash -c ". '${ROOT}/tools/tour/tour-build.sh' && printf '%s/%s %s' \"\${TOUR_HOST_GOOS}\" \"\${TOUR_HOST_GOARCH}\" \"\$(tour_pinned_version)\"")" || alias_rc=$?
+if [ "${alias_rc}" -eq 0 ] && [ "${alias_sel}" = "linux/arm64 ${want_ver}" ]; then
+  ok "shell bootstrap canonicalizes aarch64 -> linux/arm64 ${want_ver}"
+else
+  bad "shell bootstrap under aarch64 uname selected '${alias_sel}' (exit ${alias_rc}), want 'linux/arm64 ${want_ver}'"
+fi
+expect_ok "registry-mode validator accepts the committed linux/arm64 observation under an aarch64 uname" \
+  env PATH="${STUB}:${PATH}" "${VALIDATOR}"
+if grep -qF "linux/arm64" "${LOG}"; then
+  ok "validator bound the linux/arm64 toolchain identity"
+else
+  bad "validator under aarch64 uname did not report the linux/arm64 toolchain"
+fi
+if awk -F '\t' '$1 !~ /^#/ && NF && $2 == "aarch64" { bad = 1 } END { exit bad }' \
+     "${ROOT}/docs/tour/accepted-observations.tsv" "${ROOT}/docs/tour/toolchain.tsv"; then
+  ok "registries key only canonical goarch names (no aarch64 alias rows)"
+else
+  bad "registry rows must key the canonical arm64 name, found an aarch64 alias row"
+fi
+
 echo
 echo "tamper suite: ${pass} passed, ${fail} failed (${WORK})"
 [ "${fail}" -eq 0 ] || exit 1

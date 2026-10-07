@@ -34,8 +34,12 @@ an input-binding bug in the gate wiring, not evidence tampering.
 Every file here is byte-identical to the seal commit and is additionally
 self-authenticating: the ledger's manifest records `inventory.data_sha256`,
 `baseline.accepted_results_sha256` and `baseline.pin_sha256`, all covered by
-the ledger's canonical root hash, and the sealed lane re-checks each snapshot
-file against those digests. Tampering with a snapshot file or with the ledger
+the ledger's canonical root hash, and the sealed lane re-checks the
+inventory, results and baseline-pin snapshots against those digests. The
+toolchain snapshot carries no whole-file digest in the manifest; it is
+checked indirectly instead: its row for the recorded platform must match the
+manifest's `go.identity` / `go.sha256` / `go.pinned_sha256` fields, which
+the root hash covers. Tampering with a snapshot file or with the ledger
 breaks the chain and fails closed. The ledger digest in `seal.tsv` is in turn
 pinned by a compiled-in constant in the validator
 (`legacySealedEvidenceSHA256`), so mutating the ledger and `seal.tsv`

@@ -17,11 +17,10 @@
 #
 # goos	goarch	version	identity	go_bin_sha256	acquisition	provenance
 darwin	arm64	go1.27.1	go version go1.27.1 darwin/arm64	132b69336a1f809932a8a20b0201dbbb980e86e3a323ae32e893639d83d71598	GOTOOLCHAIN=go1.27.1 (golang.org/toolchain@v0.0.1-go1.27.1.darwin-arm64 via proxy.golang.org)	official Go toolchain module; measured on this host 2026-09-03; exact go version output and SHA-256 of bin/go recorded
-# The shell bootstrap selects with uname -m while the compiled validator
-# selects with Go's runtime.GOARCH. They agree on x86_64 after normalization
-# but Linux ARM reports aarch64 to the shell and arm64 to Go, so both exact
-# host aliases bind the same native SDK identity and checksum.
+# Host keys are canonical and single-rowed: the shell bootstrap normalizes
+# uname -m aarch64 to Go's arm64 (tour_canon_goarch, tools/tour/tour-build.sh)
+# and the compiled harness normalizes runtime.GOARCH amd64 to x86_64
+# (hostGoosGoarch), so every selector resolves the same one row per platform.
 linux	x86_64	go1.27.1	go version go1.27.1 linux/amd64	30969f97169d7f43fe6a085873d75613adc21e30818a8c61d95bd27275df4624	golang.org/toolchain@v0.0.1-go1.27.1.linux-amd64	Sprint 197: same authenticated SDK as docs/go-oracle/toolchain.tsv; official archive SHA-256 and sum.golang.org-attested module origin recorded there; bin/go verified on DO 2026-09-16
-linux	aarch64	go1.27.1	go version go1.27.1 linux/arm64	1675694ef690db0f18fbe7046a886170904bede1d9db6ec96ae27945c1705c64	golang.org/toolchain@v0.0.1-go1.27.1.linux-arm64	Sprint 381: uname -m alias for the shell bootstrap; same official toolchain as the runtime.GOARCH arm64 row below
 linux	arm64	go1.27.1	go version go1.27.1 linux/arm64	1675694ef690db0f18fbe7046a886170904bede1d9db6ec96ae27945c1705c64	golang.org/toolchain@v0.0.1-go1.27.1.linux-arm64	Sprint 381: official go.dev release archive SHA-256 and sum.golang.org-attested module recorded in docs/go-oracle/toolchain.tsv; bin/go verified 2026-10-07
 windows_nt	x86_64	go1.27.1	go version go1.27.1 windows/amd64	d3ccdb604eafa6031133aefe1a3db24f0bb7362b857bc2125ac4e4c178b4b490	golang.org/toolchain@v0.0.1-go1.27.1.windows-amd64	Sprint 250 Story 88: native bin/go.exe measured on Windows 2026-09-23

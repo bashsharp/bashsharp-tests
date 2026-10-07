@@ -62,7 +62,7 @@ HELPERS="${ROOT}/docs/tour/helpers.tsv"
 SCHEMA="${ROOT}/docs/tour/differential-schema.tsv"
 INV="${TOUR_INVENTORY:-${ROOT}/tests/tour/inventory.tsv}"
 PLATFORM_GOOS="$(uname -s | tr '[:upper:]' '[:lower:]')"
-PLATFORM_GOARCH="$(uname -m)"
+PLATFORM_GOARCH="$(tour_canon_goarch "$(uname -m)")"
 WINDOWS_SYSTEM32=""
 BASELINE_EXE_SUFFIX=""
 if [ "${PLATFORM_GOOS}" = windows_nt ]; then
@@ -126,7 +126,7 @@ case "${helper_pkgs:-}" in pic,reader,tree,wc) ;; *) die "helper packages pin mu
 
 toolchain_row="$(awk -F '\t' -v goos="${PLATFORM_GOOS}" -v goarch="${PLATFORM_GOARCH}" '
   $1 !~ /^#/ && NF && $1 == goos && $2 == goarch { print; exit }' "${TOOLCHAIN}")"
-[ -n "${toolchain_row}" ] || die "no pinned Go toolchain row for $(uname -s)/$(uname -m) in docs/tour/toolchain.tsv — the pinned baseline is unsupported here, not degraded"
+[ -n "${toolchain_row}" ] || die "no pinned Go toolchain row for ${PLATFORM_GOOS}/${PLATFORM_GOARCH} in docs/tour/toolchain.tsv — the pinned baseline is unsupported here, not degraded"
 IFS=$'\t' read -r _gos _gar tc_version tc_identity tc_sha _acq _tprov <<<"${toolchain_row}"
 case "${tc_sha:-}" in *[!0-9a-f]*|'') die "pinned toolchain checksum must be lowercase hex" ;; esac
 [ "${#tc_sha}" -eq 64 ] || die "pinned toolchain checksum must be 64 hex characters"

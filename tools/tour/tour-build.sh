@@ -15,7 +15,15 @@ else
   TOUR_ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 fi
 TOUR_HOST_GOOS="$(uname -s | tr '[:upper:]' '[:lower:]')"
-TOUR_HOST_GOARCH="$(uname -m)"
+# Host registry keys are canonical across the shell and the compiled harness:
+# goarch is x86_64 (hostGoosGoarch maps runtime.GOARCH amd64 to it) and arm64
+# (Go's native ARM64 name on every OS). Linux is the one host whose uname -m
+# diverges — it reports aarch64 — so the shell normalizes that alias here and
+# every selector (build, baseline, validator) resolves the same single row.
+tour_canon_goarch() { # <uname -m output> -> canonical registry goarch key
+  case "$1" in aarch64) printf 'arm64\n' ;; *) printf '%s\n' "$1" ;; esac
+}
+TOUR_HOST_GOARCH="$(tour_canon_goarch "$(uname -m)")"
 TOUR_EXE_SUFFIX=""
 [ "${TOUR_HOST_GOOS}" = "windows_nt" ] && TOUR_EXE_SUFFIX=".exe"
 TOUR_BIN="${TOUR_ROOT_DIR}/.cache/tour/bin/tour${TOUR_EXE_SUFFIX}"

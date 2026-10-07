@@ -94,8 +94,8 @@ func cmdEvidenceValidator(root string) int {
 			goos: seal.GOOS, goarch: seal.GOARCH,
 			inventoryFile: filepath.Join(seal.Dir, "inventory.tsv"),
 			resultsPath:   seal.ResultsPath, pinPath: seal.PinPath,
-			resultsFile: filepath.Join(seal.Dir, "results.tsv"),
-			pinFile:     filepath.Join(seal.Dir, "baseline-pin.tsv"),
+			resultsFile:   filepath.Join(seal.Dir, "results.tsv"),
+			pinFile:       filepath.Join(seal.Dir, "baseline-pin.tsv"),
 			toolchainFile: filepath.Join(seal.Dir, "toolchain.tsv"),
 			live:          false, sealed: seal,
 		}
@@ -110,8 +110,8 @@ func cmdEvidenceValidator(root string) int {
 		goos: goos, goarch: goarch,
 		inventoryFile: "", // resolved from the manifest below, as before
 		resultsPath:   acceptedBinding.Results, pinPath: acceptedBinding.Pin,
-		resultsFile: filepath.Join(root, acceptedBinding.Results),
-		pinFile:     filepath.Join(root, acceptedBinding.Pin),
+		resultsFile:   filepath.Join(root, acceptedBinding.Results),
+		pinFile:       filepath.Join(root, acceptedBinding.Pin),
 		toolchainFile: filepath.Join(root, "docs/tour/toolchain.tsv"),
 		live:          true,
 	}

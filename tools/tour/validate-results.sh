@@ -39,7 +39,7 @@ HELPERS="${ROOT}/docs/tour/helpers.tsv"
 SCHEMA="${ROOT}/docs/tour/differential-schema.tsv"
 INV="${TOUR_INVENTORY:-${ROOT}/tests/tour/inventory.tsv}"
 PLATFORM_GOOS="$(uname -s | tr '[:upper:]' '[:lower:]')"
-PLATFORM_GOARCH="$(uname -m)"
+PLATFORM_GOARCH="$(tour_canon_goarch "$(uname -m)")"
 ACCEPTED_INDEX="${ROOT}/docs/tour/accepted-observations.tsv"
 
 die() { echo "FATAL: $*" >&2; exit 2; }
