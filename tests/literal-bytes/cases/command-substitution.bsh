@@ -1,0 +1,1 @@
+printf '%s' '$(printf should-not-run)' > "$BYTE_PACK_OUT"

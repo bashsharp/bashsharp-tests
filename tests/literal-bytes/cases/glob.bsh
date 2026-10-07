@@ -1,0 +1,1 @@
+printf '%s' '* ? [abc] **/*.go' > "$BYTE_PACK_OUT"

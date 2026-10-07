@@ -1,0 +1,1 @@
+printf '%s' '{a,b}{1..3}' > "$BYTE_PACK_OUT"

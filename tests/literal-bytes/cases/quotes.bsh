@@ -1,0 +1,1 @@
+printf '%s' $'single\047 double" mixed' > "$BYTE_PACK_OUT"

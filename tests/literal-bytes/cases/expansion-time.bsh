@@ -1,0 +1,4 @@
+BYTE_PACK_VALUE='$HOME'
+before=$BYTE_PACK_VALUE
+BYTE_PACK_VALUE='changed after assignment'
+printf '%s' "$before" > "$BYTE_PACK_OUT"

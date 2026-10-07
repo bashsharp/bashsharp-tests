@@ -1,0 +1,1 @@
+printf '%s' $'first\nsecond' > "$BYTE_PACK_OUT"

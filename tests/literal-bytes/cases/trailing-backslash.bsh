@@ -1,0 +1,1 @@
+printf '%s' 'ends with slash\\' > "$BYTE_PACK_OUT"

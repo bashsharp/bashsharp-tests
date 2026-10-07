@@ -173,6 +173,18 @@ if [ ! -x "${BASHY_BIN}" ]; then
   exit 2
 fi
 
+# Sprint 381 Story S2: the focused replay pack is part of every harness run.
+# Its byte assertions are unconditional; adapter failures are defects, never
+# converted into planned fixtures or skips.
+if [ ! -x "${TEST_DIR}/tests/literal-bytes/gate.sh" ]; then
+  echo "FATAL: literal-bytes gate missing" >&2
+  exit 2
+fi
+if ! BASHY_BIN="${BASHY_BIN}" "${TEST_DIR}/tests/literal-bytes/gate.sh"; then
+  echo "FATAL: literal-bytes transport gate failed" >&2
+  exit 2
+fi
+
 if [ -x "${TEST_DIR}/tools/bashsharp/acceptance.sh" ]; then
   if ! "${TEST_DIR}/tools/bashsharp/acceptance.sh"; then
     echo "FATAL: Bash# executable acceptance matrix failed" >&2

@@ -1,0 +1,1 @@
+printf '%s' $'tab\tcr\r' > "$BYTE_PACK_OUT"

@@ -1,0 +1,3 @@
+cat > "$BYTE_PACK_OUT" <<'LITERAL_END'
+$HOME `cmd` * [x]
+LITERAL_END

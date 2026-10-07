@@ -1,0 +1,1 @@
+printf '%s' 'before `printf injected` after' > "$BYTE_PACK_OUT"

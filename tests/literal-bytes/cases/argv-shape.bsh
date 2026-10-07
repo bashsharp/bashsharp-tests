@@ -1,0 +1,2 @@
+set -- 'one' '' 'two three'
+printf '%s\0' "$@" > "$BYTE_PACK_OUT"

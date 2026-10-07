@@ -1,0 +1,1 @@
+printf '%s' 'snowman ☃ café' > "$BYTE_PACK_OUT"

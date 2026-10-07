@@ -1,0 +1,1 @@
+printf '%s' 'line1\nline2' > "$BYTE_PACK_OUT"
