@@ -6,7 +6,6 @@ seq: 107
 status: done
 priority: p0
 created: 2026-10-07T04:59:30.841005Z
-weave: 2
 assignee: claude-fable5
 sprint: 381
 sprint_id: 1a8fa6b8-96d8-5f96-bcfa-d01ecbb8005c
