@@ -1,0 +1,6 @@
+# Seal record for the historical tour-evidence/v2 ledger tests/tour/evidence.jsonl.
+# A ledger whose bytes match evidence_sha256 is validated against the seal-time
+# input snapshot in this directory (see README.md); any other bytes take the
+# full current-tree structural+replay lane.
+# evidence_sha256	seal_commit	goos	goarch	results_path	pin_path
+ccaa4c7c44e96859df08efb385e3c9217c8273ad844ce560b6d1a11bcda54174	bb18483377ef8e9b3fd0c8595117c2f374708ec8	darwin	arm64	tests/tour/results.tsv	docs/tour/baseline-pin.tsv
