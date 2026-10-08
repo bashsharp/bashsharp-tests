@@ -1,0 +1,11 @@
+package main
+
+import "fmt"
+
+type Job struct{ ID int }
+
+func (j Job) Key() int { return j.ID }
+
+func main() {
+	fmt.Println(Job{ID: 7}.Key())
+}

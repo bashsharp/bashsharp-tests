@@ -1,0 +1,2 @@
+embed go "./I03-main.go" as g
+echo unreachable

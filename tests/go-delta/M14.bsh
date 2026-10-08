@@ -1,0 +1,4 @@
+echo a //b
+echo http://x
+x := 1 // trailing
+echo $x

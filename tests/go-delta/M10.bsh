@@ -1,0 +1,9 @@
+func total() int {
+    t := 0
+    for _, v := range []int{1, 2, 3} {
+        t += v
+    }
+    return t
+}
+r := total()
+echo "r=$r"

@@ -1,0 +1,5 @@
+x := 1
+done := make(chan bool, 1)
+go func() { x = 9; done <- true }()
+<-done
+echo "x=$x"

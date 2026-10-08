@@ -1,0 +1,4 @@
+m := map[string]int{"ok": 1}
+m["x"] = 2
+n := len(m)
+echo "n=$n"

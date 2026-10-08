@@ -1,0 +1,4 @@
+ch := make(chan int)
+go func() { ch <- 1 }()
+v := <-ch
+echo "v=$v"

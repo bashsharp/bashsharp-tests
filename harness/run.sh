@@ -185,6 +185,17 @@ if ! BASH_SHELL_BIN="${BASHY_BIN}" BASHY_AGENTOS_BIN="${BASHY_AGENTOS_BIN:-${TES
   exit 2
 fi
 
+# Sprint 379 S6: every row of the Go delta table (bashsharp/godelta) is proven by
+# its fixture. Needs the AgentOS bashy (island rows provision the Go toolchain).
+if [ ! -x "${TEST_DIR}/tools/go-delta-gate.sh" ]; then
+  echo "FATAL: go-delta gate missing" >&2
+  exit 2
+fi
+if ! BASHY_BIN="${BASHY_AGENTOS_BIN:-${TEST_DIR}/../bashy/bin/bashy}" "${TEST_DIR}/tools/go-delta-gate.sh"; then
+  echo "FATAL: Go delta table gate failed" >&2
+  exit 2
+fi
+
 if [ -x "${TEST_DIR}/tools/bashsharp/acceptance.sh" ]; then
   if ! "${TEST_DIR}/tools/bashsharp/acceptance.sh"; then
     echo "FATAL: Bash# executable acceptance matrix failed" >&2

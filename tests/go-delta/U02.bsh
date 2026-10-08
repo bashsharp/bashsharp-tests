@@ -1,0 +1,12 @@
+package main
+
+import (
+	"fmt"
+	"unsafe"
+)
+
+func main() {
+	x := uint32(0x01020304)
+	p := (*[4]byte)(unsafe.Pointer(&x))
+	fmt.Println(p[0], unsafe.Sizeof(x))
+}

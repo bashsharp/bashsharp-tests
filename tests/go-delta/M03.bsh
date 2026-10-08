@@ -1,0 +1,3 @@
+func f() (int, error) { return 1, nil }
+q, err := f()
+echo "q=$q err=$err"

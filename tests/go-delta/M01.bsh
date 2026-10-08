@@ -1,0 +1,3 @@
+x := 42
+name := "gopher"
+echo "x=$x name=$name"

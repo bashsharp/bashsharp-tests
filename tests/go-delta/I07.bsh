@@ -1,0 +1,4 @@
+~~~go as g
+func Add(a int, b int) int { return a + b }
+~~~
+echo unreachable
