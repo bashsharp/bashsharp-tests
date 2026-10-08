@@ -9,12 +9,13 @@ Bash# is built from flat siblings. Clone them next to each other:
 
 ```sh
 for r in sh coreutils yoke bashsharp bashy bashsharp-tests; do git clone https://github.com/qiangli/$r; done
-cd bashy && ./scripts/bootstrap-siblings.sh && make build    # bin/bashy, bin/bash
+cd bashy && make build                                     # bin/bashy, bin/bash
 cd ../bashsharp && go build ./cmd/bashsharp                  # the front door the harness measures
 ```
 
-`bashy/.sibling-pins` names the exact sibling commits a bashy commit is built
-against; `bootstrap-siblings.sh` moves a clean sibling to its pin.
+`bashy/go.mod` names the exact sibling versions a bashy commit is built
+against; the go command downloads them (inside the dhnt umbrella the root
+go.work builds the live trees instead).
 
 ## The three suites, locally
 
