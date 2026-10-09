@@ -10,7 +10,7 @@ BASH_ENGINE_BIN="${BASH_ENGINE_BIN:-${BASH_BIN:-${ROOT}/../bashy/bin/bash}}"
 BASHY_BIN="${BASHY_BIN:-${ROOT}/../bashy/bashy}"
 fail() { echo "Bash# Sprint 114: $*" >&2; exit 1; }
 
-"${VALIDATE}" || fail "matrix validation failed"
+"${BASH:-bash}" "${VALIDATE}" || fail "matrix validation failed"
 [ -x "${BASH_ENGINE_BIN}" ] || fail "shell engine is not executable: ${BASH_ENGINE_BIN}"
 [ -x "${BASHY_BIN}" ] || fail "bashy front door is not executable: ${BASHY_BIN}"
 

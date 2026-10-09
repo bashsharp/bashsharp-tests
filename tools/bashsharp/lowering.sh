@@ -11,12 +11,21 @@ BASHY_BIN="${BASHY_BIN:-${ROOT}/../bashy/bashy}"
 GO_BIN="${GO_BIN:-go}"
 fail() { echo "Bash# Sprint 117: $*" >&2; exit 1; }
 
-"${VALIDATE}" || fail "matrix validation failed"
+"${BASH:-bash}" "${VALIDATE}" || fail "matrix validation failed"
 [ -x "${BASH_ENGINE_BIN}" ] || fail "shell engine is not executable: ${BASH_ENGINE_BIN}"
 [ -x "${BASHY_BIN}" ] || fail "bashy front door is not executable: ${BASHY_BIN}"
 command -v "${GO_BIN}" >/dev/null 2>&1 || fail "Go tool is unavailable for lowering"
 
-tmp="$(mktemp -d "${TMPDIR:-/tmp}/bashsharp-117.XXXXXX")"
+goos=$("${GO_BIN}" env GOOS) || fail "cannot resolve Go target OS"
+goexe=$("${GO_BIN}" env GOEXE) || fail "cannot resolve Go executable suffix"
+native_go_path() {
+  local path="$1"
+  if [ "$goos" = windows ] && [[ "$path" == /[a-zA-Z]/* ]]; then
+    path="${path:1:1}:/${path:3}"
+  fi
+  printf '%s\n' "$path"
+}
+tmp="$(mktemp -d "${TMPDIR:-${TEMP:-/tmp}}/bashsharp-117.XXXXXX")"
 trap 'rm -rf "$tmp"' EXIT
 : > "${tmp}/empty"
 cases=0
@@ -60,12 +69,13 @@ while IFS=$'\t' read -r id feature class case_ledger lowering_ledger; do
     [ "${transpile_rc}" -eq 0 ] && [ -s "${stem}.one.go" ] || fail "${id}/${case_id}: transpile did not produce Go"
     [ "${transpile2_rc}" -eq 0 ] && [ -s "${stem}.two.go" ] || fail "${id}/${case_id}: repeated transpile did not produce Go"
     cmp -s "${stem}.one.go" "${stem}.two.go" || fail "${id}/${case_id}: lowering is nondeterministic"
-    "${GO_BIN}" build -o "${stem}.bin" "${stem}.one.go" || fail "${id}/${case_id}: lowered Go did not build"
+    binary="${stem}.bin${goexe}"
+    "${GO_BIN}" build -o "$(native_go_path "$binary")" "$(native_go_path "${stem}.one.go")" || fail "${id}/${case_id}: lowered Go did not build"
 
     interp_rc=0
     (cd "${family_dir}" && "${BASH_ENGINE_BIN}" --bashpp "${fixture}") >"${stem}.interp.out" 2>"${stem}.interp.err" || interp_rc=$?
     lower_rc=0
-    "${stem}.bin" >"${stem}.lower.out" 2>"${stem}.lower.err" || lower_rc=$?
+    "${binary}" >"${stem}.lower.out" 2>"${stem}.lower.err" || lower_rc=$?
     same_result "${stem}.interp.out" "${stem}.lower.out" "${stem}.interp.err" "${stem}.lower.err" "${interp_rc}" "${lower_rc}" ||
       fail "${id}/${case_id}: interpreted/lowered parity mismatch"
     [ "${lower_rc}" -eq "${expected_rc}" ] || fail "${id}/${case_id}: lowered exit ${lower_rc}, expected ${expected_rc}"

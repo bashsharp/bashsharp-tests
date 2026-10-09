@@ -14,7 +14,8 @@ safe_rel() { [[ "$1" != /* && "$1" != *..* && "$1" != *//* ]]; }
 [ -d "${FIXTURE_ROOT}" ] || fail "fixture directory is missing: ${FIXTURE_ROOT}"
 [ -x "${TOOLS_ROOT}/acceptance.sh" ] || fail "Sprint 114 interpreted gate is missing or not executable"
 [ -x "${TOOLS_ROOT}/lowering.sh" ] || fail "Sprint 117 lowering gate is missing or not executable"
-find "${FIXTURE_ROOT}" -type l -print -quit | grep -q . && fail "symlink found in corpus"
+symlinks=$(find "${FIXTURE_ROOT}" -type l -print) || fail "cannot inspect corpus symlinks"
+[ -z "$symlinks" ] || fail "symlink found in corpus"
 grep -Fq '\t' "${MATRIX}" && fail "matrix contains literal \\t escapes; use TSV tabs"
 grep -Eiq '(^|[[:space:]])(planned|skip|skipped|n/a)([[:space:]]|$)' "${MATRIX}" &&
   fail "planned/skip status is not permitted"

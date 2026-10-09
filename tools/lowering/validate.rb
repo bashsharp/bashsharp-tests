@@ -2,6 +2,8 @@
 # Sprint: #117; Story: #8; Story-ID: 65f43d377225
 # The P0 entrypoint is structural. Compiled BASHSHARP33 parity is an explicit,
 # separate attempt because no compiler parity can be established yet.
+require 'rbconfig'
+
 ROOT = File.expand_path('../..', __dir__)
 parity = ARGV.delete('--parity')
 self_test = ARGV.delete('--self-test')
@@ -10,6 +12,7 @@ abort 'usage: ruby tools/lowering/validate.rb [--self-test | --parity]' unless A
 commands = [
   [File.join(ROOT, 'tools/lowering/identity_manifest.rb')],
   [File.join(ROOT, 'tests/lowering/identity_manifest_test.rb')],
+  [RbConfig.ruby, File.join(ROOT, 'tests/lowering/current_ledger_test.rb')],
   [File.join(ROOT, 'tests/lowering/differential_contract_test.rb')]
 ]
 commands.each do |command|
