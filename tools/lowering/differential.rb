@@ -48,7 +48,7 @@ def authenticate_go(go)
   row = data_lines(File.join(ROOT, 'docs/tour/toolchain.tsv')).map { |line| line.split("\t", -1) }.find { |fields| fields[0] == goos && fields[1] == goarch }
   fail!("no Go 1.27.0 authentication row for #{goos}/#{goarch}") unless row && row.length == 7
   _os, _arch, version, identity, expected_sha, = row
-  fail!("toolchain pin version is #{version.inspect}, not go1.27.0") unless version == 'go1.27.0'
+  fail!("toolchain pin version is #{version.inspect}, not go1.27.1") unless version == 'go1.27.1'
   candidate = go.include?(File::SEPARATOR) ? go : ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).map { |dir| File.join(dir, go) }.find { |path| File.executable?(path) }
   real_go = File.realpath(candidate) rescue nil
   fail!("Go executable is missing: #{go}") unless real_go && File.executable?(real_go)
@@ -61,7 +61,7 @@ def authenticate_go(go)
 end
 
 def pinned_default_go
-  out, err, status = Open3.capture3({ 'GOTOOLCHAIN' => 'go1.27.0' }, 'go', 'env', 'GOROOT')
+  out, err, status = Open3.capture3({ 'GOTOOLCHAIN' => 'go1.27.1' }, 'go', 'env', 'GOROOT')
   fail!("GOTOOLCHAIN=go1.27.0 could not resolve Go: #{err.strip}") unless status.success? && !out.strip.empty?
   File.join(out.strip, 'bin', 'go')
 end
@@ -79,10 +79,10 @@ def cases
     end
   end
   fail!('zero BASHSHARP33 lowering cases') if rows.empty?
-  fail!("expected 33 BASHSHARP33 lowering cases, found #{rows.length}") unless rows.length == 33
+  fail!("expected 34 BASHSHARP33 lowering cases, found #{rows.length}") unless rows.length == 34
   fail!('duplicate BASHSHARP33 lowering case identity') unless rows.map { |row| "#{row[:family]}/#{row[:id]}" }.uniq.length == rows.length
   runs, rejects = rows.count { |row| row[:expectation] == 'run' }, rows.count { |row| row[:expectation] == 'reject' }
-  fail!("expected 18 runtime and 15 reject cases, found #{runs} runtime and #{rejects} reject") unless runs == 18 && rejects == 15
+  fail!("expected 18 runtime and 16 reject cases, found #{runs} runtime and #{rejects} reject") unless runs == 18 && rejects == 16
   rows
 end
 

@@ -15,8 +15,8 @@ out, err, status = run({}, RUNNER, '--case', 'does-not-exist')
 abort 'differential contract accepted a nonexistent case filter' if status.success?
 abort "differential contract did not report an honest parity failure:\n#{out}#{err}" unless (out + err).include?('PARITY FAIL')
 
-goroot, go_err, go_status = run({ 'GOTOOLCHAIN' => 'go1.27.0' }, 'go', 'env', 'GOROOT')
-abort "authenticated Go 1.27.0 is unavailable for authenticity contract:\n#{go_err}" unless go_status.success?
+goroot, go_err, go_status = run({ 'GOTOOLCHAIN' => 'go1.27.1' }, 'go', 'env', 'GOROOT')
+abort "authenticated Go 1.27.1 is unavailable for authenticity contract:\n#{go_err}" unless go_status.success?
 go = File.join(goroot.strip, 'bin/go')
 
 Dir.mktmpdir('s117-lowering-contract-') do |dir|

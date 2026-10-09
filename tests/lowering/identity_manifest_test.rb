@@ -21,7 +21,7 @@ Dir.mktmpdir('s117-lowering-manifest-') do |dir|
   baseline = File.binread(MANIFEST)
   mutations = {
     'count mutation' => baseline.sub("\t13\t369d", "\t12\t369d"),
-    'digest mutation' => baseline.sub(/a8bfbba9/, '00000000'),
+    'digest mutation' => baseline.sub(/41e1d0b3/, '00000000'),
     'deferred state' => baseline.sub('agentic-boundary', 'planned'),
     'unapproved source' => baseline.sub('tests/agentic/cases.tsv', 'private/umbrella.tsv'),
     'dropped group' => baseline.lines.reject { |line| line.start_with?("public-go-tour\t") }.join,
