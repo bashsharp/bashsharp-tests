@@ -320,8 +320,8 @@ func validateEvidenceMain(args []string) {
 	}
 	// The candidate anchor is re-derived from candidates.tsv here, independently
 	// of whatever the evidence says about itself, and its declared SDK identity
-	// must be the same reviewed release the oracle used: a pass may never be
-	// assembled from a Go 1.27 oracle plus a candidate some other release built.
+	// may be the explicitly reviewed Go 1.27.2 security build while the
+	// corpus oracle remains anchored to the Go 1.27.1 SDK.
 	recordedCandidate := manifest.Obj("candidate")
 	recordedManifestSHA := ""
 	if recordedCandidate != nil {
@@ -331,8 +331,8 @@ func validateEvidenceMain(args []string) {
 	if err != nil {
 		die(err.Error())
 	}
-	if reviewed.Fields["go_identity"] != toolpin[3] {
-		die("candidate pin was not built by the pinned Go toolchain: " + rubyInspect(reviewed.Fields["go_identity"]) + " != " + rubyInspect(toolpin[3]))
+	if err := authenticateBuildCoordinate(reviewed, &Toolchain{Version: toolpin[2], Identity: toolpin[3], GoSHA256: toolpin[4]}); err != nil {
+		die(err.Error())
 	}
 
 	anchors := Obj(

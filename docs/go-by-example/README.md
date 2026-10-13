@@ -257,9 +257,11 @@ supplied manifest is accepted only when it equals a reviewed row of
 - every declared repository is at its clean exact revision, untracked files
   included, by `Corpus.authenticate_candidate` — with no extra and no missing
   runtime dependency, `filebrowser` included;
-- the front-end version and the SDK identity match the reviewed row, and that
-  identity is the same Go release the oracle uses, so a pass can never be
-  assembled from a Go 1.27 oracle plus a candidate some other release built;
+- the front-end version and build SDK identity match the reviewed row. The
+  real payload's Go build metadata must report that same release. The fixed
+  `toolchain.tsv` Go 1.27.1 SDK remains the oracle and generated-code SDK;
+  a reviewed Go 1.27.2 security build is the sole allowed distinct build
+  coordinate. Other build/oracle pairs are refused;
 - the build recipe exactly matches the reviewed manifest. Historical diagnostic
   builds may use a tag; reviewed default builds are also accepted without
   relaxing the manifest, binary, repository, or SDK identity checks.
@@ -267,7 +269,10 @@ supplied manifest is accepted only when it equals a reviewed row of
 The build recipe is **bound, not inferred**. The manager supplies the
 authenticated manifest; this repository proves these bytes and these revisions
 and records the asserted recipe, and it does not pretend to have observed the
-build. `tools/go-by-example/gbe.sh validate-candidate` re-derives all of the above
+build. The recipe must pin the candidate build release, while the payload's
+embedded Go build metadata independently confirms its compiler release. A
+Go 1.27.2 build passing this gate is reported as **built with Go 1.27.2,
+verified on the Go 1.27.1 corpus**. `tools/go-by-example/gbe.sh validate-candidate` re-derives all of the above
 from `candidates.tsv` alone, sharing no state with a gate run.
 
 The lowering runtime follows from the same authentication: the compiled mode's

@@ -8,8 +8,9 @@
 // It shares no state with a gate run: it re-reads the reviewed table, re-hashes
 // the manifest, re-authenticates the launcher, the .real payload and every
 // declared repository at its clean exact commit, re-resolves the Go SDK and
-// re-checks its identity and digest against the same reviewed toolchain pin the
-// oracle uses. Nothing is taken from an evidence document.
+// re-checks the oracle SDK identity and digest against toolchain.tsv, and the
+// candidate build identity against its reviewed row and payload build metadata.
+// Nothing is taken from an evidence document.
 //
 // What it deliberately does NOT do is assert that the reviewed build recipe was
 // observed. The manager supplies the authenticated manifest; this repository can
@@ -119,7 +120,8 @@ func validateCandidateMain(args []string) {
 	fmt.Printf("  payload    %s %s\n", provenance.Obj("payload").Str("path"), short(provenance.Str("payload_sha256")))
 	fmt.Printf("  frontend   %s\n", provenance.Str("frontend_version"))
 	fmt.Printf("  recipe     %s\n", provenance.Str("build_recipe"))
-	fmt.Printf("  sdk        %s\n", toolchain.Identity)
+	fmt.Printf("  build sdk  %s\n", reviewed.Fields["go_identity"])
+	fmt.Printf("  oracle sdk %s\n", toolchain.Identity)
 	fmt.Printf("  runtime    %s\n", strings.Join(repositories, " "))
 	fmt.Printf("  lowering   %s\n", provenance.Obj("sh_module").Str("path"))
 }

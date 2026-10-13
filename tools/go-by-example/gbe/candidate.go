@@ -18,6 +18,7 @@
 package main
 
 import (
+	"debug/buildinfo"
 	"fmt"
 	"os"
 	"os/exec"
@@ -223,9 +224,8 @@ type Toolchain struct {
 	GoSHA256 string
 }
 
-// toolchainPin is GoByExampleCandidate.toolchain: the toolchain identity is
-// bound to the same reviewed release as the oracle, so a pass can never be
-// assembled from a Go 1.27 oracle plus a candidate some other release built.
+// toolchainPin is the fixed oracle SDK coordinate, independent of the reviewed
+// candidate's build coordinate.
 func toolchainPin(path string) (*Toolchain, error) {
 	goos, goarch := hostIdentity()
 	rows, err := readTSV(path)
@@ -275,8 +275,8 @@ func moduleName(path string) string {
 // manifest against the reviewed table and the bytes on disk. Returns the
 // provenance the gate records; errors on any divergence.
 func authenticateManifest(manifest string, bashy string, row *Reviewed, tool *Toolchain, docs string) (*Object, error) {
-	if row.Fields["go_identity"] != tool.Identity {
-		return nil, candidateErr("reviewed candidate go_identity %s is not the reviewed toolchain %s", rubyInspect(row.Fields["go_identity"]), rubyInspect(tool.Identity))
+	if err := authenticateBuildCoordinate(row, tool); err != nil {
+		return nil, err
 	}
 	sum, err := digest(manifest)
 	if err != nil {
@@ -346,6 +346,9 @@ func authenticateManifest(manifest string, bashy string, row *Reviewed, tool *To
 	if !nativeBinary(candidatePayloadPath(expandPath(bashy))) {
 		return nil, candidateErr("candidate payload is not a native binary")
 	}
+	if err := authenticateBuildPayload(candidatePayloadPath(expandPath(bashy)), row); err != nil {
+		return nil, err
+	}
 	sh := ""
 	for _, path := range declaredPaths {
 		if moduleName(path) == "mvdan.cc/sh/v3" {
@@ -369,6 +372,43 @@ func authenticateManifest(manifest string, bashy string, row *Reviewed, tool *To
 	provenance.Set("go_identity", row.Fields["go_identity"])
 	provenance.Set("candidates_sha256", candidatesSHA)
 	return provenance, nil
+}
+
+// Only the reviewed Go 1.27.2 security build may advance beyond the fixed
+// Go 1.27.1 corpus oracle. The row and manifest must agree on the complete
+// identity and recipe; this exception cannot select an arbitrary SDK.
+func authenticateBuildCoordinate(row *Reviewed, oracle *Toolchain) error {
+	goos, goarch := hostIdentity()
+	identity := row.Fields["go_identity"]
+	words := strings.Fields(identity)
+	if len(words) != 4 || words[0] != "go" || words[1] != "version" || words[3] != goos+"/"+goarch {
+		return candidateErr("invalid reviewed candidate go_identity %s", rubyInspect(identity))
+	}
+	version := words[2]
+	if identity != oracle.Identity && !(oracle.Version == "go1.27.1" && version == "go1.27.2") {
+		return candidateErr("unreviewed candidate build/oracle coordinate: %s against %s", rubyInspect(identity), rubyInspect(oracle.Identity))
+	}
+	// reviewedCandidate checks the recipe's pin too. Repeat the assertion here
+	// so evidence validation and direct authentication use the same contract.
+	explicitRelease := regexp.MustCompile(`(?:\A|\s)GOTOOLCHAIN=` + regexp.QuoteMeta(version) + `(?:\s|;|\z)`).MatchString(row.Fields["build_recipe"])
+	if !explicitRelease &&
+		!strings.Contains(row.Fields["build_recipe"], "/"+strings.TrimPrefix(version, "go")+"/go/bin/go.exe build") &&
+		!strings.Contains(row.Fields["build_recipe"], "golang.org/toolchain@v0.0.1-"+version+"."+goos+"-"+goarch+"/bin") {
+		return candidateErr("reviewed build recipe does not pin candidate %s", version)
+	}
+	return nil
+}
+
+func authenticateBuildPayload(path string, row *Reviewed) error {
+	info, err := buildinfo.ReadFile(path)
+	if err != nil {
+		return candidateErr("candidate payload has no readable Go build metadata: %v", err)
+	}
+	version := strings.Fields(row.Fields["go_identity"])[2]
+	if info.GoVersion != version {
+		return candidateErr("candidate payload Go build version %s differs from reviewed %s", rubyInspect(info.GoVersion), rubyInspect(version))
+	}
+	return nil
 }
 
 type jsonParseError struct{ err error }
