@@ -331,7 +331,12 @@ func validateEvidenceMain(args []string) {
 	if err != nil {
 		die(err.Error())
 	}
-	if err := authenticateBuildCoordinate(reviewed, &Toolchain{Version: toolpin[2], Identity: toolpin[3], GoSHA256: toolpin[4]}); err != nil {
+	oracleToolchain := &Toolchain{Version: toolpin[2], Identity: toolpin[3], GoSHA256: toolpin[4]}
+	if err := authenticateBuildCoordinate(reviewed, oracleToolchain); err != nil {
+		die(err.Error())
+	}
+	buildToolchain, err := reviewedBuildToolchainAt(root+"/docs/go-by-example/build-toolchains.tsv", reviewed, oracleToolchain)
+	if err != nil {
 		die(err.Error())
 	}
 
@@ -423,6 +428,16 @@ func validateEvidenceMain(args []string) {
 		"go_sha256", toolpin[4],
 		"network", "not used for SDK provisioning; authenticated cache prepared before execution",
 	)
+	if buildToolchain.Version != oracleToolchain.Version {
+		wantManaged.Set("candidate_build", Obj(
+			"fast_path", "go/"+strings.TrimPrefix(buildToolchain.Version, "go")+"/go/bin/go",
+			"version", buildToolchain.Version,
+			"go_sha256", buildToolchain.GoSHA256,
+			"distribution", buildToolchain.Distribution,
+			"distribution_sha256", buildToolchain.DistributionSHA256,
+			"checksum_source", buildToolchain.ChecksumSource,
+		))
+	}
 	legacyRuntimeEnv := recipe.Get("runtime_managed_tool_cache") == nil &&
 		deepEqual(recipe.Get("common_runtime_go_env"), []string{"GOROOT", "GOMODCACHE", "GOCACHE"})
 	managedRuntimeEnv := deepEqual(recipe.Get("common_runtime_go_env"), []string{"GOROOT", "GOMODCACHE", "GOCACHE", "BASHY_BIN_CACHE"}) &&

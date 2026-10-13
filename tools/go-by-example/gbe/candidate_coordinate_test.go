@@ -37,6 +37,53 @@ func TestReviewedSecurityBuildCoordinate(t *testing.T) {
 	}
 }
 
+func TestReviewedSecurityBuildUsesIndependentPin(t *testing.T) {
+	goos, goarch := hostIdentity()
+	oracle := &Toolchain{Version: "go1.27.1", Identity: "go version go1.27.1 " + goos + "/" + goarch, GoSHA256: strings.Repeat("1", 64)}
+	row := &Reviewed{Fields: map[string]string{
+		"go_identity":  "go version go1.27.2 " + goos + "/" + goarch,
+		"build_recipe": "GOTOOLCHAIN=go1.27.2 make build-bashy",
+	}}
+	wantGo := strings.Repeat("2", 64)
+	wantArchive := strings.Repeat("3", 64)
+	table := filepath.Join(t.TempDir(), "build-toolchains.tsv")
+	line := strings.Join([]string{goos, goarch, "go1.27.2", row.Fields["go_identity"], wantGo,
+		"go1.27.2." + goos + "-" + goarch + ".archive", wantArchive,
+		"https://go.dev/dl/?mode=json&include=all"}, "\t") + "\n"
+	if err := os.WriteFile(table, []byte(line), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := reviewedBuildToolchainAt(table, row, oracle)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.GoSHA256 != wantGo || got.DistributionSHA256 != wantArchive {
+		t.Fatalf("build SDK pin = %#v, want independently reviewed checksums", got)
+	}
+}
+
+func TestAuthenticatedSDKRejectsSameVersionNativeShapedWrongBytes(t *testing.T) {
+	goroot := filepath.Join(t.TempDir(), "goroot")
+	if err := os.MkdirAll(filepath.Join(goroot, "bin"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	wrong := make([]byte, 64)
+	copy(wrong, []byte("\x7fELF"))
+	wrong[4] = 2
+	goBinary := goExecutable(goroot)
+	if err := os.WriteFile(goBinary, wrong, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(goroot, "VERSION"), []byte("go1.27.2\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pin := &Toolchain{Version: "go1.27.2", GoSHA256: strings.Repeat("a", 64)}
+	err := authenticateToolchainRoot(goroot, pin)
+	if err == nil || !strings.Contains(err.Error(), "checksum mismatch") {
+		t.Fatalf("error = %v, want same-version native-shaped wrong bytes rejected by reviewed checksum", err)
+	}
+}
+
 func TestSecurityBuildPayloadMetadata(t *testing.T) {
 	goos, goarch := hostIdentity()
 	module := filepath.Join(os.Getenv("HOME"), "go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2."+goos+"-"+goarch, "bin", "go")

@@ -17,8 +17,9 @@
 #   * every repository in the manifest is at the clean exact commit named in
 #     `repositories` below, untracked files included, with no extra and no
 #     missing runtime dependency, and
-#   * the Go SDK the gate resolves reports go_identity and the digest in
-#     toolchain.tsv.
+#   * the Go SDK the gate resolves reports go_identity and matches either the
+#     fixed oracle digest in toolchain.tsv or the independently reviewed binary
+#     digest in build-toolchains.tsv.
 # A caller-supplied manifest therefore selects a reviewed candidate; it can
 # never introduce one. tools/go-by-example/validate-candidate.rb re-derives all
 # of the above from this table alone.

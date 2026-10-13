@@ -1,0 +1,9 @@
+# goos	goarch	version	identity	go_bin_sha256	distribution	distribution_sha256	checksum_source
+# Candidate-build SDK pins are independent of candidates.tsv and of the fixed
+# Go 1.27.1 corpus oracle in toolchain.tsv. Each go_bin_sha256 below was derived
+# by extracting bin/go (bin/go.exe on Windows) from the named official archive
+# only after the archive matched the SHA-256 published by checksum_source.
+darwin	arm64	go1.27.2	go version go1.27.2 darwin/arm64	516c1fbb53b5f8f4852f0c3c379d45bcff53a1032e5cd1a9ca1738f03ba07cb1	go1.27.2.darwin-arm64.tar.gz	76812b213b1b2302c978d28fa52fa92d541704b9e7d9d5db8002c50e4018c4c5	https://go.dev/dl/?mode=json&include=all
+linux	amd64	go1.27.2	go version go1.27.2 linux/amd64	548d3c32f83fa81152f543eb1526be7884cfe0526eb5e9ce29d3eca14786e7e0	go1.27.2.linux-amd64.tar.gz	ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5	https://go.dev/dl/?mode=json&include=all
+linux	arm64	go1.27.2	go version go1.27.2 linux/arm64	0e893a1a4ab5d00e64bcd9b22060a53377f90c076434ff0aa1bd2a330b657691	go1.27.2.linux-arm64.tar.gz	94f3e30b8e374bc285e7dadc11e0865726b9bc6e85b841ccceaabc0214c6b7c8	https://go.dev/dl/?mode=json&include=all
+windows	amd64	go1.27.2	go version go1.27.2 windows/amd64	b8cd508a0a7aac883cd750e9e75eb306d219e726bdf1cde29009490729437fbf	go1.27.2.windows-amd64.zip	1314008898bd40df77af4b014f777f08873dbdfbcd3d92308728ee03304fe04f	https://go.dev/dl/?mode=json&include=all

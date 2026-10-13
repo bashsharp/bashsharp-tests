@@ -99,6 +99,24 @@ func validateCandidateMain(args []string) {
 	if len(lines) == 0 || strings.TrimSpace(lines[0]) != toolchain.Version {
 		fatal("resolved GOROOT is not the " + toolchain.Version + " release source")
 	}
+	buildToolchain, err := reviewedBuildToolchain(reviewed, toolchain)
+	if err != nil {
+		fatal(err.Error())
+	}
+	if buildToolchain.Version != toolchain.Version {
+		buildRoot, err := pinnedGoroot(buildToolchain)
+		if err != nil {
+			fatal(err.Error())
+		}
+		// pinnedGoroot performs the independent static checksum, VERSION and
+		// native-shape checks before this first execution of the build SDK.
+		buildVersion := exec.Command(goExecutable(buildRoot), "version")
+		buildVersion.Env = append(envWithout("GOTOOLCHAIN"), "GOTOOLCHAIN=local")
+		actual, err := buildVersion.Output()
+		if err != nil || strings.TrimSpace(string(actual)) != buildToolchain.Identity {
+			fatal("candidate build SDK identity mismatch")
+		}
+	}
 
 	var repositories []string
 	for _, r := range provenance.Arr("repositories") {
@@ -120,7 +138,7 @@ func validateCandidateMain(args []string) {
 	fmt.Printf("  payload    %s %s\n", provenance.Obj("payload").Str("path"), short(provenance.Str("payload_sha256")))
 	fmt.Printf("  frontend   %s\n", provenance.Str("frontend_version"))
 	fmt.Printf("  recipe     %s\n", provenance.Str("build_recipe"))
-	fmt.Printf("  build sdk  %s\n", reviewed.Fields["go_identity"])
+	fmt.Printf("  build sdk  %s %s\n", reviewed.Fields["go_identity"], short(buildToolchain.GoSHA256))
 	fmt.Printf("  oracle sdk %s\n", toolchain.Identity)
 	fmt.Printf("  runtime    %s\n", strings.Join(repositories, " "))
 	fmt.Printf("  lowering   %s\n", provenance.Obj("sh_module").Str("path"))
