@@ -22,7 +22,7 @@ exact commit is in `pin.tsv`; per-file byte counts and SHA-256 digests are in
 | `behavior-schema.tsv` | the vocabularies and coupling for the three classification axes — the validator loads them from here, it does not hardcode them |
 | `classification.tsv` | the authored, human-owned decision for every copied file |
 | `inventory.tsv` | the derived join of `classification.tsv` with the measured bytes of the copied files |
-| `toolchain.tsv` / `candidates.tsv` | the authenticated Go 1.27 release and the reviewed Bash++ candidate manifests |
+| `toolchain.tsv` / `build-toolchains.tsv` / `candidates.tsv` | the fixed authenticated Go 1.27.1 oracle, independently checksummed candidate-build SDKs, and reviewed Bash++ candidate manifests |
 | `evidence-roots.tsv` | the reviewed evidence roots; today's anchor is a real failing run |
 | `prerequisites.md` | the measured product gaps that keep this gate red, and the CLI contract it binds |
 

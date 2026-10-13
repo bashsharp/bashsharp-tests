@@ -219,9 +219,12 @@ func parseRepositories(value string) ([]string, map[string]string, error) {
 
 // Toolchain is the reviewed Go release for this host from toolchain.tsv.
 type Toolchain struct {
-	Version  string
-	Identity string
-	GoSHA256 string
+	Version            string
+	Identity           string
+	GoSHA256           string
+	Distribution       string
+	DistributionSHA256 string
+	ChecksumSource     string
 }
 
 // toolchainPin is the fixed oracle SDK coordinate, independent of the reviewed
@@ -411,6 +414,45 @@ func authenticateBuildPayload(path string, row *Reviewed) error {
 	return nil
 }
 
+// reviewedBuildToolchain selects the independently reviewed SDK pin named by
+// the already-authenticated candidate row. The fixed corpus Toolchain remains
+// the oracle; build-toolchains.tsv is a separate review boundary whose Go
+// binary digest was derived from the named official distribution only after
+// that distribution matched the checksum published by its ChecksumSource.
+func reviewedBuildToolchain(row *Reviewed, oracle *Toolchain) (*Toolchain, error) {
+	return reviewedBuildToolchainAt(filepath.Join(DOCS, "build-toolchains.tsv"), row, oracle)
+}
+
+func reviewedBuildToolchainAt(path string, row *Reviewed, oracle *Toolchain) (*Toolchain, error) {
+	if err := authenticateBuildCoordinate(row, oracle); err != nil {
+		return nil, err
+	}
+	identity := row.Fields["go_identity"]
+	words := strings.Fields(identity)
+	version := words[2]
+	if identity == oracle.Identity {
+		return oracle, nil
+	}
+	goos, goarch := hostIdentity()
+	rows, err := readTSV(path)
+	if err != nil {
+		return nil, candidateErr("cannot read reviewed build toolchain table: %s", path)
+	}
+	for _, r := range rows {
+		if len(r) != 8 || r[0] != goos || r[1] != goarch || r[2] != version {
+			continue
+		}
+		if r[3] != identity || !reHex64.MatchString(r[4]) || reAllZero.MatchString(r[4]) ||
+			r[5] == "" || !reHex64.MatchString(r[6]) || reAllZero.MatchString(r[6]) ||
+			r[7] != "https://go.dev/dl/?mode=json&include=all" {
+			return nil, candidateErr("reviewed candidate build SDK pin is malformed")
+		}
+		return &Toolchain{Version: version, Identity: identity, GoSHA256: r[4],
+			Distribution: r[5], DistributionSHA256: r[6], ChecksumSource: r[7]}, nil
+	}
+	return nil, candidateErr("no independently reviewed candidate build SDK pin for %s/%s %s", goos, goarch, version)
+}
+
 type jsonParseError struct{ err error }
 
 func (e *jsonParseError) Error() string { return e.err.Error() }
@@ -423,25 +465,23 @@ func rubyStringArray(values []string) string {
 	return "[" + strings.Join(parts, ", ") + "]"
 }
 
-// pinnedGoroot resolves the reviewed release the way `go` itself would
-// (`GOTOOLCHAIN=<version> go env GOROOT`) and authenticates its bin/go by the
-// digest in toolchain.tsv. When the go on PATH is a same-version build with
-// another digest (a distribution package), the toolchain module GOTOOLCHAIN
-// would otherwise select -- GOMODCACHE/golang.org/toolchain@v0.0.1-<version>.<os>-<arch>
-// -- is tried next; the digest requirement is never relaxed.
+// pinnedGoroot locates a reviewed SDK without asking that SDK to execute. The
+// local bootstrap may identify its own GOROOT and module cache, but target Go
+// bytes are checked against the independent pin before resolveToolchain runs
+// `go version` or links the SDK into the managed cache.
 func pinnedGoroot(toolpin *Toolchain) (string, error) {
 	bootstrap := os.Getenv("GBE_BOOTSTRAP_GO")
 	if bootstrap == "" {
 		bootstrap = "go"
 	}
 	gorootCmd := exec.Command(bootstrap, "env", "GOROOT")
-	gorootCmd.Env = append(envWithout("GOTOOLCHAIN"), "GOTOOLCHAIN="+toolpin.Version)
+	gorootCmd.Env = append(envWithout("GOTOOLCHAIN"), "GOTOOLCHAIN=local")
 	gorootOut, err := gorootCmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("cannot resolve pinned Go toolchain")
+		return "", fmt.Errorf("cannot resolve bootstrap Go GOROOT")
 	}
 	goroot := strings.TrimSpace(string(gorootOut))
-	if sum, err := sha256File(goExecutable(goroot)); err == nil && sum == toolpin.GoSHA256 {
+	if authenticateToolchainRoot(goroot, toolpin) == nil {
 		return goroot, nil
 	}
 	modcacheCmd := exec.Command(bootstrap, "env", "GOMODCACHE")
@@ -449,8 +489,27 @@ func pinnedGoroot(toolpin *Toolchain) (string, error) {
 	modcacheOut, _ := modcacheCmd.Output()
 	goos, goarch := hostIdentity()
 	module := strings.TrimSpace(string(modcacheOut)) + "/golang.org/toolchain@v0.0.1-" + toolpin.Version + "." + goos + "-" + goarch
-	if sum, err := sha256File(goExecutable(module)); err == nil && sum == toolpin.GoSHA256 {
+	if authenticateToolchainRoot(module, toolpin) == nil {
 		return module, nil
 	}
-	return goroot, nil
+	return "", fmt.Errorf("cannot resolve authenticated Go toolchain %s", toolpin.Version)
+}
+
+// authenticateToolchainRoot is deliberately static: it must reject bytes
+// before any executable from the candidate SDK is started or linked.
+func authenticateToolchainRoot(goroot string, toolpin *Toolchain) error {
+	goBinary := goExecutable(goroot)
+	sum, err := sha256File(goBinary)
+	if err != nil || sum != toolpin.GoSHA256 {
+		return candidateErr("Go binary checksum mismatch")
+	}
+	versionBytes, err := os.ReadFile(filepath.Join(goroot, "VERSION"))
+	lines := rubyLinesChomp(string(versionBytes))
+	if err != nil || len(lines) == 0 || strings.TrimSpace(lines[0]) != toolpin.Version {
+		return candidateErr("Go release source mismatch")
+	}
+	if !nativeBinary(goBinary) {
+		return candidateErr("Go tool is not native")
+	}
+	return nil
 }

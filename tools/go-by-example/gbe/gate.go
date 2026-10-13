@@ -1237,6 +1237,14 @@ func gateMain(args []string) {
 	}
 
 	tc := resolveToolchain(toolpin)
+	buildToolpin, err := reviewedBuildToolchain(reviewed, toolpin)
+	if err != nil {
+		fatal(err.Error())
+	}
+	buildTC := tc
+	if buildToolpin.Version != toolpin.Version {
+		buildTC = resolveToolchain(buildToolpin)
+	}
 	// The SDK the modules were fetched into is part of the same runtime context
 	// the product's import helper reads; it is supplied to every mode identically.
 
@@ -1331,6 +1339,25 @@ func gateMain(args []string) {
 		"device", Int(launcherStat[0]), "inode", Int(launcherStat[1]),
 		"payload_device", Int(payloadStat[0]), "payload_inode", Int(payloadStat[1]),
 	)
+	managedToolCache := Obj(
+		"environment", "BASHY_BIN_CACHE",
+		"root", "${WORK}/managed-tools",
+		"fast_path", "go/"+strings.TrimPrefix(tc.goVersion, "go")+"/go/bin/go",
+		"target", "${GOROOT}/bin/go",
+		"version", tc.goVersion,
+		"go_sha256", tc.goSHA256,
+		"network", "not used for SDK provisioning; authenticated cache prepared before execution",
+	)
+	if buildToolpin.Version != toolpin.Version {
+		managedToolCache.Set("candidate_build", Obj(
+			"fast_path", "go/"+strings.TrimPrefix(buildToolpin.Version, "go")+"/go/bin/go",
+			"version", buildToolpin.Version,
+			"go_sha256", buildToolpin.GoSHA256,
+			"distribution", buildToolpin.Distribution,
+			"distribution_sha256", buildToolpin.DistributionSHA256,
+			"checksum_source", buildToolpin.ChecksumSource,
+		))
+	}
 	var corpusRootText strings.Builder
 	for _, r := range rows {
 		corpusRootText.WriteString(r[0] + "\x00" + r[7] + "\n")
@@ -1358,15 +1385,7 @@ func gateMain(args []string) {
 			"multi_file_program_arguments", "-- separator before program argv",
 			"declared_env_divergence", declaredEnvDivergence,
 			"common_runtime_go_env", []string{"GOROOT", "GOMODCACHE", "GOCACHE", "BASHY_BIN_CACHE"},
-			"runtime_managed_tool_cache", Obj(
-				"environment", "BASHY_BIN_CACHE",
-				"root", "${WORK}/managed-tools",
-				"fast_path", "go/"+strings.TrimPrefix(tc.goVersion, "go")+"/go/bin/go",
-				"target", "${GOROOT}/bin/go",
-				"version", tc.goVersion,
-				"go_sha256", tc.goSHA256,
-				"network", "not used for SDK provisioning; authenticated cache prepared before execution",
-			),
+			"runtime_managed_tool_cache", managedToolCache,
 			"windows_process_tools", Obj(
 				"platform", "windows/amd64",
 				"archive_sha256", windowsMinGitSHA256,
@@ -1402,8 +1421,9 @@ func gateMain(args []string) {
 	}
 	os.MkdirAll(base, 0o755)
 	tc.binCache = base + "/managed-tools"
-	if _, err := provisionManagedToolCache(tc.binCache, tc); err != nil {
-		fatal("cannot provision authenticated runtime SDK: " + err.Error())
+	buildTC.binCache = tc.binCache
+	if err := provisionManagedToolCaches(tc.binCache, tc, buildTC); err != nil {
+		fatal("cannot provision authenticated runtime SDKs: " + err.Error())
 	}
 	if runtime.GOOS == "windows" {
 		tc.processToolsDir, err = provisionWindowsProcessTools(tc.binCache)

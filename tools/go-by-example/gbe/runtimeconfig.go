@@ -52,6 +52,24 @@ func provisionManagedToolCache(cache string, tc *toolchainContext) (string, erro
 	return fastGo, nil
 }
 
+// provisionManagedToolCaches prepares every reviewed SDK coordinate before an
+// execution root is snapshotted. A security-build candidate may differ from
+// the fixed corpus oracle; deduplicate identical versions, but never defer a
+// distinct candidate SDK to the measured interpreter.
+func provisionManagedToolCaches(cache string, toolchains ...*toolchainContext) error {
+	seen := map[string]bool{}
+	for _, tc := range toolchains {
+		if tc == nil || seen[tc.goVersion] {
+			continue
+		}
+		if _, err := provisionManagedToolCache(cache, tc); err != nil {
+			return err
+		}
+		seen[tc.goVersion] = true
+	}
+	return nil
+}
+
 // configureRuntime is GoByExampleRuntimeConfig.configure: `go telemetry off`
 // then `go env -json GOTELEMETRY GOTELEMETRYDIR`, both captured, then the mode
 // file proved to live inside the isolated HOME.
