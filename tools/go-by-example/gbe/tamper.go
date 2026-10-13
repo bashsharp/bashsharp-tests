@@ -299,18 +299,50 @@ func (t *tamperSuite) phaseA(gateEnv []string) {
 	t.expectFail("launcher_is_not_its_own_payload", "launcher and payload digests are identical",
 		skip, nil, gateWrapper(sameRepo), "--candidate", CANDIDATE, "--bashy", BASHY)
 
-	// The candidate and the oracle must come from the SAME reviewed Go release.
-	// The row's recipe pins the release too (either as GOTOOLCHAIN=goX or as the
-	// authenticated toolchain PATH), so the whole row is moved to go1.26.0: the
-	// refusal under test is the identity comparison against toolchain.tsv, not a
-	// recipe that no longer pins the release it names.
+	// Only the reviewed Go 1.27.2 security build may differ from the fixed
+	// Go 1.27.1 oracle. A syntactically consistent row for another release is
+	// still refused before the candidate can run.
 	repo126 := t.copyRepo("repo126")
 	recandidate(repo126, func(f []string) {
-		f[6] = "go version go1.26.0 darwin/arm64"
-		f[7] = strings.ReplaceAll(f[7], "go1.27.1", "go1.26.0")
+		old := strings.Fields(f[6])[2]
+		goos, goarch := hostIdentity()
+		f[6] = "go version go1.26.0 " + goos + "/" + goarch
+		f[7] = strings.ReplaceAll(f[7], old, "go1.26.0")
 	})
-	t.expectFail("go126_candidate_pin_rejected", "is not the reviewed toolchain",
+	t.expectFail("go126_candidate_pin_rejected", "unreviewed candidate build/oracle coordinate",
 		skip, nil, gateWrapper(repo126), "--candidate", CANDIDATE, "--bashy", BASHY)
+	repo1273 := t.copyRepo("repo1273")
+	recandidate(repo1273, func(f []string) {
+		old := strings.Fields(f[6])[2]
+		f[6] = strings.ReplaceAll(f[6], old, "go1.27.3")
+		f[7] = strings.ReplaceAll(f[7], old, "go1.27.3")
+	})
+	t.expectFail("unreviewed_next_patch", "unreviewed candidate build/oracle coordinate",
+		skip, nil, gateWrapper(repo1273), "--candidate", CANDIDATE, "--bashy", BASHY)
+
+	// A forged row and manifest that agree on an allowed coordinate cannot
+	// relabel the real payload's compiler version.
+	stale := t.copyRepo("stale-build-repo")
+	selected, err := reviewedCandidate(stale+"/docs/go-by-example/candidates.tsv", sha(CANDIDATE))
+	if err != nil {
+		t.fail("cannot read selected candidate: %v", err)
+	}
+	oldVersion := strings.Fields(selected.Fields["go_identity"])[2]
+	newVersion := "go1.27.2"
+	if oldVersion == newVersion {
+		newVersion = "go1.27.1"
+	}
+	staleManifest := W + "/stale-build.json"
+	rewriteManifest(stale, CANDIDATE, staleManifest,
+		func(m *Object) {
+			m.Set("build_recipe", strings.ReplaceAll(m.Str("build_recipe"), oldVersion, newVersion))
+		},
+		func(f []string) {
+			f[6] = strings.ReplaceAll(f[6], oldVersion, newVersion)
+			f[7] = strings.ReplaceAll(f[7], oldVersion, newVersion)
+		})
+	t.expectFail("stale_payload_build_metadata", "candidate payload Go build version",
+		skip, nil, gateWrapper(stale), "--candidate", staleManifest, "--bashy", BASHY)
 
 	// A default build is permitted when reviewed, but changing the reviewed
 	// recipe without changing its authenticated manifest remains a mismatch.
@@ -380,7 +412,7 @@ func (t *tamperSuite) phaseA(gateEnv []string) {
 		gbeWrapper(t.root), "validate-candidate", "--candidate", CANDIDATE, "--bashy", BASHY)
 	t.expectFail("candidate_validator_rejects_forgery", "candidate manifest is not the repository-reviewed manifest",
 		nil, nil, gbeWrapper(t.root), "validate-candidate", "--candidate", W+"/forged-candidate.json", "--bashy", BASHY)
-	t.expectFail("go126_candidate_validator_rejected", "is not the reviewed toolchain",
+	t.expectFail("go126_candidate_validator_rejected", "unreviewed candidate build/oracle coordinate",
 		nil, nil, gbeWrapper(repo126), "validate-candidate", "--candidate", CANDIDATE, "--bashy", BASHY)
 
 	// --- gate source mutations ---
