@@ -1,0 +1,31 @@
+# Grammar-oracle frozen inputs (Sprint 384, story #1586, checkpoint 1, frozen 2026-10-18).
+#
+# One row per frozen input. kind:
+#   repo-commit / repo-head  a repository revision (sha256 -)
+#   grammar-file             upstream file, copied unchanged to tools/grammar-oracle/grammar/upstream/<path after golang/>
+#   license-header           bytes 1 through the line holding the first */ of that file (sed -n '1,/\*\//p')
+#   tool-jar                 downloaded and verified at generation only, never committed
+#   go-module                sha256 column holds the go.sum h1: hash (base64 SHA-256 dirhash)
+#   toolchain / jdk / s6-table / vendored-parser   as named
+# manifest_test.go TestPinnedFiles re-hashes every grammar-file, license-header and s6-table row.
+# Sibling paths are repo-qualified (sh:, bashsharp:, bashy:, tests:), never absolute.
+#
+# id	kind	source	revision	sha256	license	notes
+grammars-v4	repo-commit	https://github.com/antlr/grammars-v4	3036ab7a91d7b2ca2282ab6c3c9b945c0a92f8b0	-	BSD-3-Clause	master at freeze (commit date 2026-10-18T00:13:40Z); upstream master is not version-equivalent to Go 1.27: reconcile in checkpoint 2
+grammars-v4:golang/GoLexer.g4	grammar-file	https://raw.githubusercontent.com/antlr/grammars-v4/3036ab7a91d7b2ca2282ab6c3c9b945c0a92f8b0/golang/GoLexer.g4	3036ab7a91d7b2ca2282ab6c3c9b945c0a92f8b0	f97d4dcf1b219cf45788d0be0963ca84a1f57337bbd58dc70f08b152649a29f6	BSD-3-Clause	lexer/parser grammar with semicolon-insertion modes
+grammars-v4:golang/GoParser.g4	grammar-file	https://raw.githubusercontent.com/antlr/grammars-v4/3036ab7a91d7b2ca2282ab6c3c9b945c0a92f8b0/golang/GoParser.g4	3036ab7a91d7b2ca2282ab6c3c9b945c0a92f8b0	b0306f3c9b003dbf503c956aa917a9f574bd3e33a0d90ae6edf1f5bf2951a175	BSD-3-Clause	lexer/parser grammar with semicolon-insertion modes
+grammars-v4:golang/Go/go_parser_base.go	grammar-file	https://raw.githubusercontent.com/antlr/grammars-v4/3036ab7a91d7b2ca2282ab6c3c9b945c0a92f8b0/golang/Go/go_parser_base.go	3036ab7a91d7b2ca2282ab6c3c9b945c0a92f8b0	7202b46e37680481d1fbeecb53952368442b2d41d1b4aa32c5a6e908c27fc3cf	BSD-3-Clause	Go-target parser base: semantic predicates and addImportSpec name tracking (R6 audit list)
+grammars-v4:golang/Go/transformGrammar.py	grammar-file	https://raw.githubusercontent.com/antlr/grammars-v4/3036ab7a91d7b2ca2282ab6c3c9b945c0a92f8b0/golang/Go/transformGrammar.py	3036ab7a91d7b2ca2282ab6c3c9b945c0a92f8b0	8c3a10c275933654897a29c7852235a2f73d1eb889b487af64722b4b497af46c	BSD-3-Clause	Go-target transform: rewrites this. receivers in grammar actions to p.
+grammars-v4:golang/README.md	grammar-file	https://raw.githubusercontent.com/antlr/grammars-v4/3036ab7a91d7b2ca2282ab6c3c9b945c0a92f8b0/golang/README.md	3036ab7a91d7b2ca2282ab6c3c9b945c0a92f8b0	c1e211b08336fcc7da5233e9ceba9bf11abfe983f138b561e42e1565710e7e7a	BSD-3-Clause	states the golang grammar license (BSD-3)
+grammars-v4:golang/GoLexer.g4#license-header	license-header	https://raw.githubusercontent.com/antlr/grammars-v4/3036ab7a91d7b2ca2282ab6c3c9b945c0a92f8b0/golang/GoLexer.g4	3036ab7a91d7b2ca2282ab6c3c9b945c0a92f8b0	5a34fdf74d19047f1fb6a906799060b862b87ea7e0a6962f97b309b581aee970	BSD-3-Clause	[The "BSD licence"] notice; the repository has no top-level LICENSE
+grammars-v4:golang/GoParser.g4#license-header	license-header	https://raw.githubusercontent.com/antlr/grammars-v4/3036ab7a91d7b2ca2282ab6c3c9b945c0a92f8b0/golang/GoParser.g4	3036ab7a91d7b2ca2282ab6c3c9b945c0a92f8b0	b78a73c6b2b03b07f62560ce9afcb6cf947e2a2411e6d1c42f6633cd6c2d63dc	BSD-3-Clause	[The "BSD licence"] notice; the repository has no top-level LICENSE
+antlr-tool	tool-jar	https://www.antlr.org/download/antlr-4.13.2-complete.jar	4.13.2	eae2dfa119a64327444672aff63e9ec35a20180dc5b8090b7a6ab85125df4d76	BSD-3-Clause	latest ANTLR tool release; same bytes at Maven Central org/antlr/antlr4/4.13.2/antlr4-4.13.2-complete.jar; bundles antlr4 4.13.2, antlr4-runtime 4.13.2, antlr-runtime 3.5.3, ST4 4.3.4, org.abego.treelayout.core 1.0.3 (all BSD-3-Clause); needs Java 11+; generated Go is committed
+antlr4-go	go-module	https://github.com/antlr4-go/antlr	v4.13.1	h1:SqQKkuVZ+zWkMMNkjy5FZe5mr5WURWnlpmOuzYWrPrQ=	BSD-3-Clause	github.com/antlr4-go/antlr/v4, newest tag (Go runtime for the 4.13.x tool); go.mod h1:GKmUxMtwp6ZgGwZSva4eWPC5mS6vUAmOABFgjdkM7Nw=; the only direct dependency of tools/grammar-oracle
+x-exp	go-module	https://go.googlesource.com/exp	v0.0.0-20240506185415-9bf2ced13842	h1:vr/HnozRka3pE4EsMEg1lgkXJkTFJCVUX+S/ZT6wYzM=	BSD-3-Clause	golang.org/x/exp, indirect: required by antlr4-go v4.13.1 (slices); go.mod h1:XtvwrStGgqGPLc4cjQfWqZHG1YFdYs6swckp8vpsjnc=
+go-toolchain	toolchain	https://go.dev/dl/	go1.27.2	-	BSD-3-Clause	builds and runs the oracle and reference adapters (go 1.27 / toolchain go1.27.2, GOWORK=off); not the gcsyntax verdict provenance
+gcsyntax	vendored-parser	sh:gosource/internal/gcsyntax/README.md	go1.27.0	090bc13db70d0a68395d819beef236a6c6c1c42b6f5da12ca320474639e574f2	BSD-3-Clause	verbatim cmd/compile/internal/syntax from go1.27.0 (sha256 is of the README); the default Go syntax verdict, distinct from the go1.27.2 build toolchain
+s6	s6-table	bashsharp:godelta/go-delta.tsv	54c7b34bc4a4102fff5d3d0a966f3f53b5a627d0	1cbc58250667661eeac6d5f99c94c8b5afb9d34f3b1c3026e03d30ecc16a3f71	BSD-3-Clause	Sprint 379 S6 Go-delta table, 26 rows; inventory.sh stops on any other hash
+sh	repo-head	https://github.com/qiangli/sh	477b218e535d2d30475728ce8d7e20c39b4df6fd	-	BSD-3-Clause	HEAD at freeze; grammar/testdata, grammar/grammar_test.go and gosource/internal/gcsyntax read from here
+bashsharp	repo-head	https://github.com/bashsharp/bashsharp	54c7b34bc4a4102fff5d3d0a966f3f53b5a627d0	-	BSD-3-Clause	HEAD at freeze; S6 table
+bashsharp-tests	repo-head	https://github.com/bashsharp/bashsharp-tests	1cb9c8c2fd77469712ef65bbfaa18961b913f42c	-	BSD-3-Clause	HEAD at freeze, parent of the checkpoint 1 commit
+jdk	jdk	bashy:examples/runners/java-runner.sh (story #2388)	Temurin LTS; per-platform URL and SHA-256 pinned by #2388 (macOS arm64, Linux x64 only)	-	GPL-2.0-only WITH Classpath-exception-2.0	HotSpot also carries the OpenJDK Assembly Exception; executed at generation only, on a claimed remote host; never linked, shipped or part of the bashy release; explicit JAVA_HOME wins; #2388 lands in parallel and its pins are copied here by the checkpoint 1 feasibility run
