@@ -59,6 +59,7 @@ func TestRejectPositions(t *testing.T) {
 		{"package p\nfunc f() {}}\n", 21, 2, 12, 12},             // extraneous '}' (recovered, still a reject)
 		{"package p\nvar x = 1 +\n", 20, 2, 11, 11},              // no viable alternative from '+'
 		{"package p\r\nvar x = )\r\n", 19, 2, 9, 9},              // CR stays in the line
+		{"package p\nvar s = \"é\nx\"\n", 21, 2, 12, 11},         // lexer: newline in an interpreted string
 	} {
 		r := Recognize("unit", "sourceFile", []byte(c.src))
 		if r.Verdict != Reject || len(r.Diagnostics) == 0 {
@@ -69,6 +70,14 @@ func TestRejectPositions(t *testing.T) {
 		if d.Offset != c.offset || d.Line != c.line || d.Col != c.col || d.Char != c.chr {
 			t.Errorf("%q: first error %+v, want offset %d %d:%d char %d", c.src, d, c.offset, c.line, c.col, c.chr)
 		}
+	}
+}
+
+// An escaped newline and a raw string's newline are not a newline in an
+// interpreted string.
+func TestStringNewlines(t *testing.T) {
+	if r := Recognize("unit", "sourceFile", []byte("package p\nvar s, r = \"a\\nb\", `a\nb`\n")); r.Verdict != Accept {
+		t.Fatalf("%+v", r)
 	}
 }
 

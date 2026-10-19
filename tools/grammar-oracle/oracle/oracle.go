@@ -12,6 +12,7 @@ package oracle
 
 import (
 	"fmt"
+	"strings"
 	"unicode/utf8"
 
 	"bashpp-tests/tools/grammar-oracle/goparser"
@@ -77,7 +78,7 @@ func Recognize(lane, entry string, src []byte) (res Result) {
 	lex := goparser.NewGoLexer(antlr.NewInputStream(string(src)))
 	lex.RemoveErrorListeners()
 	lex.AddErrorListener(l)
-	toks := antlr.NewCommonTokenStream(lex, antlr.TokenDefaultChannel)
+	toks := antlr.NewCommonTokenStream(stringLexer{lex, l}, antlr.TokenDefaultChannel)
 	p := goparser.NewGoParser(toks)
 	p.RemoveErrorListeners()
 	p.AddErrorListener(l)
@@ -89,6 +90,25 @@ func Recognize(lane, entry string, src []byte) (res Result) {
 		return Result{Verdict: Reject, Diagnostics: l.diags}
 	}
 	return Result{Verdict: Accept, Diagnostics: []Diagnostic{}}
+}
+
+// stringLexer reports a newline inside an interpreted string literal as a
+// lexer error, as the Go spec and gc ("newline in string") do. The pinned
+// grammars-v4 INTERPRETED_STRING_LIT, '"' (~["\\] | ESCAPED_VALUE)* '"',
+// admits it; derived mutants found the over-accept (grammar/NOTICE.md).
+type stringLexer struct {
+	*goparser.GoLexer
+	l *listener
+}
+
+func (s stringLexer) NextToken() antlr.Token {
+	t := s.GoLexer.NextToken()
+	if t.GetTokenType() == goparser.GoLexerINTERPRETED_STRING_LIT {
+		if text := t.GetText(); strings.Contains(text, "\n") {
+			s.l.SyntaxError(nil, t, t.GetLine(), t.GetColumn()+utf8.RuneCountInString(text[:strings.IndexByte(text, '\n')]), "newline in string", nil)
+		}
+	}
+	return t
 }
 
 type listener struct {

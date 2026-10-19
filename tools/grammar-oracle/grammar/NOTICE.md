@@ -35,6 +35,19 @@ two steps:
 | `0002-operand-without-import-heuristic.patch` | `primaryExpr` | `{p.isOperand()}?` used `addImportSpec`'s import-name table, which records the last import path element after its last dot (`v2` for `math/rand/v2`, `v3` for `gopkg.in/yaml.v3`), not the package name. For `x.T` with `x` not in the table, only `methodExpr` stayed viable, so `rand.PCG{}` and `yaml.Node{}` were refused. The patch makes `operand` always viable. `methodExpr` and `conversion` keep their predicates, so every input accepted before is still accepted, and ALL(*) prediction chooses among the viable alternatives. | `findings.tsv`: `audit/import-versioned-complit.go`, `audit/import-dotted-complit.go` |
 | `0003-composite-literal-control-clause.patch` | `literalType`, `@members` | The spec's composite-literal parsing ambiguity: in the header of an `if`, `for` or `switch` statement, a composite literal whose type is a bare TypeName (`T{`, `pkg.T{`, `G[int]{`) must be enclosed in parentheses, square brackets or curly braces. gcsyntax tracks this as `xnest < 0`; upstream had no such rule and accepted `if x == T{} {`. The patch guards only the `typeName typeArgs?` alternative of `literalType` with `{compositeLitOK(p.GetParserRuleContext())}?`, defined in `@members`. It walks the rule-context chain: an enclosing block, argument list, index, slice, type-argument list, array length, literal value, conversion, parenthesized operand or case clause admits the literal; an enclosing `ifStmt`, `exprSwitchStmt`, `typeSwitchStmt` or `forStmt` header refuses it. Array, slice, map and struct literal types are untouched. The predicate names only context types, so the same text compiles in every package that imports these productions. | `findings.tsv`: `audit/neg-complit-in-if.go`; audit units `complit-in-headers`, `neg-complit-in-for`, `neg-complit-in-switch`, `neg-complit-in-else-if` |
 
+One defect is fixed in the oracle instead of a patch, because no generation
+host was claimed when it was found. Upstream `INTERPRETED_STRING_LIT`,
+`'"' (~["\\] | ESCAPED_VALUE)* '"'`, admits a raw newline, which the spec
+and gcsyntax refuse (`newline in string`); `RUNE_LIT` already excludes it.
+Derived mutants found the over-accept (`mutant/gbe/pointers/pointers.bsh/4`,
+`mutant/gbe/sha256-hashes/sha256-hashes.bsh/4`,
+`mutant/tour/methods/interface-values-with-nil.bsh/6`). In the unit lane,
+`oracle.stringLexer` reports a lexer error at the newline. `TestRejectPositions`
+and `TestStringNewlines` cover it. The mixed lane is unchanged, because
+`sh/syntax` accepts a newline in a Bash# Go-region string. A later
+regeneration may move the fix into a `go-target` patch
+(`~["\\\r\n]`, unit lane only).
+
 ## Mixed lane (`bashsharp/`, checkpoint 2)
 
 `bashsharp/BashSharpLexer.g4` and `bashsharp/BashSharpParser.g4` are this
