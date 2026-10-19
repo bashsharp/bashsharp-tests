@@ -361,7 +361,7 @@ gate against a fixture, because no honest document existed; it now mutates the
 committed real chain, and Phase A drives the same real candidate.
 
 The suite checks **51 genuine mutations** across two phases (measured by the
-Sprint 155 Go port on novidesign.local; the count below is the Sprint 118
+Sprint 155 Go port on the macOS review host; the count below is the Sprint 118
 description) — the 32 it always
 checked, plus the candidate-binding negatives the manifest contract made
 possible: missing rows, unimplemented adapters, permissive normalization, no
@@ -457,7 +457,7 @@ string the program never prints, so every replay run on a weekend failed that
 row as `fail_normalization` in all three modes (measured on 2026-09-12, a
 Saturday: 254/255 pass, `examples/switch/switch.go` failing identically in
 oracle, interpreted and compiled, retained as
-`~/sprint155/evidence/67bdd9fa/gbe-full-001.jsonl.fail` on novidesign.local).
+`~/sprint155/evidence/67bdd9fa/gbe-full-001.jsonl.fail` on the macOS review host).
 Every earlier replay in this directory ran on a weekday. VERSION 8 accepts the
 program's actual rendering (`It's (?:the weekend|a weekday)`); the day class and
 the noon class are still the only two lines cancelled, one token each, and

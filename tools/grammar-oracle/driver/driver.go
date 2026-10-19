@@ -15,21 +15,26 @@ import (
 	"strings"
 	"time"
 
+	"bashpp-tests/tools/grammar-oracle/mutate"
 	"bashpp-tests/tools/grammar-oracle/oracle"
 )
 
 type Fixture struct {
 	ID, Lane, Source, SHA, Dialect, Policy, Class, Expected, Boundary, Reason string
+	OriginalSource                                                            string
 	Bytes                                                                     []byte
+	Original                                                                  []byte
+	Transform                                                                 *Transform
 	Path                                                                      string
 }
 type Diagnostic struct {
-	Offset  int    `json:"offset"`
-	Line    int    `json:"line"`
-	Col     int    `json:"col"`
-	Char    int    `json:"char"`
-	Msg     string `json:"msg"`
-	Logical *struct {
+	Offset    int    `json:"offset"`
+	Line      int    `json:"line"`
+	Col       int    `json:"col"`
+	Char      int    `json:"char"`
+	Msg       string `json:"msg"`
+	Synthetic bool   `json:"synthetic,omitempty"`
+	Logical   *struct {
 		File string `json:"file"`
 		Line int    `json:"line"`
 		Col  int    `json:"col"`
@@ -48,23 +53,23 @@ type Reference struct {
 	Count       int           `json:"count,omitempty"`
 }
 type Record struct {
-	ID                   string              `json:"fixture_id"`
-	Lane                 string              `json:"lane"`
-	Dialect              string              `json:"dialect"`
-	Policy               string              `json:"policy"`
-	SHA                  string              `json:"input_sha256"`
-	Class                string              `json:"class"`
-	Expected             string              `json:"expected"`
-	Oracle               string              `json:"verdict_oracle"`
-	Reference            string              `json:"verdict_reference"`
-	BoundaryOracle       []oracle.Site       `json:"boundary_oracle"`
-	BoundaryReference    []oracle.Site       `json:"boundary_reference"`
-	DiagnosticsOracle    []oracle.Diagnostic `json:"diagnostics_oracle"`
-	DiagnosticsReference []Diagnostic        `json:"diagnostics_reference"`
-	Production           *string             `json:"production_verdict"`
-	Transform            any                 `json:"transform"`
-	Outcome              string              `json:"outcome"`
-	Category             string              `json:"category"`
+	ID                   string        `json:"fixture_id"`
+	Lane                 string        `json:"lane"`
+	Dialect              string        `json:"dialect"`
+	Policy               string        `json:"policy"`
+	SHA                  string        `json:"input_sha256"`
+	Class                string        `json:"class"`
+	Expected             string        `json:"expected"`
+	Oracle               string        `json:"verdict_oracle"`
+	Reference            string        `json:"verdict_reference"`
+	BoundaryOracle       []oracle.Site `json:"boundary_oracle"`
+	BoundaryReference    []oracle.Site `json:"boundary_reference"`
+	DiagnosticsOracle    []Diagnostic  `json:"diagnostics_oracle"`
+	DiagnosticsReference []Diagnostic  `json:"diagnostics_reference"`
+	Production           *string       `json:"production_verdict"`
+	Transform            *Transform    `json:"transform"`
+	Outcome              string        `json:"outcome"`
+	Category             string        `json:"category"`
 }
 type Options struct {
 	Root, SHRoot, Toolchain               string
@@ -197,12 +202,12 @@ func outer(s []oracle.Site, expected string) bool {
 	return len(s) > 0 && s[0].Kind == expected
 }
 func classify(f Fixture, o oracle.Result, r *Reference) Record {
-	rec := Record{ID: f.ID, Lane: f.Lane, Dialect: f.Dialect, Policy: f.Policy, SHA: f.SHA, Class: f.Class, Expected: f.Expected, Oracle: o.Verdict, BoundaryOracle: o.Boundary, DiagnosticsOracle: o.Diagnostics, BoundaryReference: []oracle.Site{}, DiagnosticsReference: []Diagnostic{}, Transform: nil, Category: "syntax"}
+	rec := Record{ID: f.ID, Lane: f.Lane, Dialect: f.Dialect, Policy: f.Policy, SHA: f.SHA, Class: f.Class, Expected: f.Expected, Oracle: o.Verdict, BoundaryOracle: o.Boundary, DiagnosticsOracle: oracleDiagnostics(o.Diagnostics), BoundaryReference: []oracle.Site{}, DiagnosticsReference: []Diagnostic{}, Transform: f.Transform, Category: "syntax"}
 	if rec.BoundaryOracle == nil {
 		rec.BoundaryOracle = []oracle.Site{}
 	}
 	if rec.DiagnosticsOracle == nil {
-		rec.DiagnosticsOracle = []oracle.Diagnostic{}
+		rec.DiagnosticsOracle = []Diagnostic{}
 	}
 	if f.Class == "not-applicable" {
 		rec.Oracle = ""
@@ -211,6 +216,7 @@ func classify(f Fixture, o oracle.Result, r *Reference) Record {
 	}
 	if r == nil {
 		rec.Outcome = "missing"
+		mapRecord(&rec, f)
 		return rec
 	}
 	rec.Reference = r.Verdict
@@ -225,11 +231,13 @@ func classify(f Fixture, o oracle.Result, r *Reference) Record {
 	}
 	if o.Verdict == "error" || r.Verdict == "error" {
 		rec.Outcome = "error"
+		mapRecord(&rec, f)
 		return rec
 	}
 	if r.Phase == "context" && (r.Verdict == "reject" || r.Production != nil && *r.Production == "reject" && r.Verdict == "accept") {
 		rec.Category = "semantic"
 		rec.Outcome = "agree"
+		mapRecord(&rec, f)
 		return rec
 	}
 	// gcsyntax accepts what the oracle refuses, and the full production
@@ -238,18 +246,22 @@ func classify(f Fixture, o oracle.Result, r *Reference) Record {
 	if f.Dialect == "go-unit" && r.Verdict == "accept" && o.Verdict == "reject" && r.Production != nil && *r.Production == "reject" {
 		rec.Category = "semantic"
 		rec.Outcome = "agree"
+		mapRecord(&rec, f)
 		return rec
 	}
 	if o.Verdict != r.Verdict {
 		rec.Outcome = "disagree"
+		mapRecord(&rec, f)
 		return rec
 	}
 	if o.Verdict == "accept" && !sameSites(o.Boundary, r.Boundary) {
 		rec.Category = "boundary"
 		rec.Outcome = "disagree"
+		mapRecord(&rec, f)
 		return rec
 	}
 	rec.Outcome = "agree"
+	mapRecord(&rec, f)
 	return rec
 }
 
@@ -280,12 +292,13 @@ func (k knownDivergence) holds(r Record) bool {
 // "probe" (derived probes: non-blocking, CONTRACT PASS rules 1 and 3 cover
 // neither), "known-divergence", "planned" or "not-applicable".
 func Kind(f Fixture) string {
+	derived := f.Lane == "derived" || strings.HasPrefix(f.ID, "probe/") || strings.HasPrefix(f.ID, "mutant/")
 	switch {
 	case f.Class == "not-applicable" || f.Class == "planned":
 		return f.Class
-	case f.Lane == "derived" && strings.HasPrefix(f.ID, "probe/"):
+	case derived && strings.HasPrefix(f.ID, "probe/"):
 		return "probe"
-	case f.Lane == "derived":
+	case derived:
 		if _, ok := knownDivergences[f.ID]; ok {
 			return "known-divergence"
 		}
@@ -306,7 +319,7 @@ func valid(f Fixture, r Record) bool {
 	case "known-divergence":
 		return knownDivergences[f.ID].holds(r)
 	}
-	if f.Lane == "derived" {
+	if f.Lane == "derived" || strings.HasPrefix(f.ID, "mutant/") {
 		// A mutant has no authored expectation: the two sides agree, with
 		// equal site lists on accept, or the difference is semantic.
 		return r.Outcome == "agree"
@@ -443,11 +456,15 @@ func Run(opt Options) (Summary, error) {
 		rows = append(rows, extra...)
 	}
 	seen := map[string]bool{}
+	manifest := map[string]Fixture{}
 	for _, f := range rows {
 		if seen[f.ID] {
 			return Summary{}, fmt.Errorf("duplicate fixture %s", f.ID)
 		}
 		seen[f.ID] = true
+		if !isDerived[f.ID] {
+			manifest[f.ID] = f
+		}
 	}
 	tmp, err := os.MkdirTemp("", "grammar-oracle-")
 	if err != nil {
@@ -475,10 +492,62 @@ func Run(opt Options) (Summary, error) {
 			f.Path = ""
 			continue
 		}
+		if isDerived[f.ID] {
+			f.Transform, err = derivedTransform(f.Reason)
+			if err != nil {
+				issues = append(issues, f.ID+": "+err.Error())
+				continue
+			}
+			parentID := strings.TrimPrefix(strings.TrimPrefix(f.ID, "mutant/"), "probe/")
+			parentID = parentID[:strings.LastIndex(parentID, "/")]
+			parent, ok := manifest[parentID]
+			if !ok {
+				issues = append(issues, f.ID+": parent absent")
+				continue
+			}
+			f.Original, _, err = input(parent.Source, root, tmp)
+			if err != nil || digest(f.Original) != parent.SHA {
+				issues = append(issues, f.ID+": parent unavailable or hash mismatch")
+				continue
+			}
+			f.OriginalSource = parent.Source
+		} else {
+			f.Original = f.Bytes
+			f.OriginalSource = f.Source
+		}
 		if f.Dialect == "go-unit" {
 			gosource = append(gosource, *f)
 		} else {
 			syntax = append(syntax, *f)
+		}
+	}
+	// Accepted mixed boundaries define the Go island extents. Each island is
+	// independently sent through both unit recognizers, including embed files.
+	preparsed := map[string]oracle.Result{}
+	parentCount := len(rows)
+	for i := 0; i < parentCount; i++ {
+		f := rows[i]
+		if f.Path == "" || f.Dialect == "go-unit" {
+			continue
+		}
+		o := oracle.Recognize("mixed", f.Dialect, f.Bytes)
+		preparsed[f.ID] = o
+		if o.Verdict != "accept" {
+			continue
+		}
+		ps, e := payloads(f, o.Boundary, tmp)
+		if e != nil {
+			issues = append(issues, e.Error())
+			continue
+		}
+		for _, p := range ps {
+			if seen[p.ID] {
+				issues = append(issues, p.ID+": duplicate payload ID")
+				continue
+			}
+			seen[p.ID] = true
+			rows = append(rows, p)
+			gosource = append(gosource, p)
 		}
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 600*time.Second)
@@ -519,7 +588,11 @@ func Run(opt Options) (Summary, error) {
 			if f.Dialect == "go-unit" {
 				lane, entry = "unit", "sourceFile"
 			}
-			o = oracle.Recognize(lane, entry, f.Bytes)
+			if cached, ok := preparsed[f.ID]; ok {
+				o = cached
+			} else {
+				o = oracle.Recognize(lane, entry, f.Bytes)
+			}
 			if o.Verdict == "accept" && f.Dialect == "go-unit" {
 				o.Boundary = []oracle.Site{{Kind: "go-unit", Start: 0, End: len(f.Bytes)}}
 			}
@@ -636,7 +709,7 @@ func writeReport(opt Options, rows []Fixture, s Summary) error {
 	var additions strings.Builder
 	line := func(f Fixture, r Record) {
 		off, line, col := position(f, r)
-		fmt.Fprintf(&b, "- %s: %s at byte %d (%d:%d); oracle %s %s boundary %v; reference %s %s boundary %v; outcome %s/%s.\n", f.ID, f.Source, off, line, col, r.Oracle, diagOracle(r.DiagnosticsOracle), r.BoundaryOracle, r.Reference, diagReference(r.DiagnosticsReference), r.BoundaryReference, r.Category, r.Outcome)
+		fmt.Fprintf(&b, "- %s: %s at byte %d (%d:%d); oracle %s %s boundary %v; reference %s %s boundary %v; outcome %s/%s.\n", f.ID, sourceFor(f), off, line, col, r.Oracle, diagOracle(r.DiagnosticsOracle), r.BoundaryOracle, r.Reference, diagReference(r.DiagnosticsReference), r.BoundaryReference, r.Category, r.Outcome)
 	}
 	blocking := 0
 	for _, r := range s.Records {
@@ -656,7 +729,7 @@ func writeReport(opt Options, rows []Fixture, s Summary) error {
 		off, line, col := position(f, r)
 		ledgerID := "reference/" + f.ID
 		if r.Outcome == "disagree" && !existing[ledgerID] {
-			fmt.Fprintf(&additions, "%s\t%s\t%d\t%d:%d\topen\t%s\t%s\t%s\treference comparison: %s\n", ledgerID, f.Source, off, line, col, r.Oracle, r.Reference, cleanTSV(diagOracle(r.DiagnosticsOracle)+" "+fmt.Sprint(r.BoundaryOracle)+" | "+diagReference(r.DiagnosticsReference)+" "+fmt.Sprint(r.BoundaryReference)), r.Category)
+			fmt.Fprintf(&additions, "%s\t%s\t%d\t%d:%d\topen\t%s\t%s\t%s\treference comparison: %s\n", ledgerID, sourceFor(f), off, line, col, r.Oracle, r.Reference, cleanTSV(diagOracle(r.DiagnosticsOracle)+" "+fmt.Sprint(r.BoundaryOracle)+" | "+diagReference(r.DiagnosticsReference)+" "+fmt.Sprint(r.BoundaryReference)), r.Category)
 			existing[ledgerID] = true
 		}
 	}
@@ -670,6 +743,9 @@ func writeReport(opt Options, rows []Fixture, s Summary) error {
 		if e != nil {
 			return e
 		}
+	}
+	if err := rewriteDerivedFindings(opt.FindingsPath, fixtures, s.Records); err != nil {
+		return err
 	}
 	t := Count(rows, s.Records)
 	probes := 0
@@ -691,6 +767,14 @@ func writeReport(opt Options, rows []Fixture, s Summary) error {
 			fmt.Fprintf(&b, "- %s: pinned oracle %s, reference %s at byte %d; observed holds=%t.\n", f.ID, k.Oracle, k.Reference, k.Offset, k.holds(r))
 		}
 	}
+	b.WriteString("\n## Production findings\n\n```tsv\n")
+	for _, entry := range strings.Split(string(ledger), "\n") {
+		if strings.HasPrefix(entry, "production/") {
+			b.WriteString(entry)
+			b.WriteByte('\n')
+		}
+	}
+	b.WriteString("```\n")
 	b.WriteString("\n## Semantic cases\n\n")
 	for _, r := range s.Records {
 		if r.Category != "semantic" {
@@ -702,7 +786,7 @@ func writeReport(opt Options, rows []Fixture, s Summary) error {
 		if r.Production != nil {
 			production = *r.Production
 		}
-		fmt.Fprintf(&b, "- %s: %s at byte %d (%d:%d); oracle %s %s; reference %s %s; production %s.\n", f.ID, f.Source, off, line, col, r.Oracle, diagOracle(r.DiagnosticsOracle), r.Reference, diagReference(r.DiagnosticsReference), production)
+		fmt.Fprintf(&b, "- %s: %s at byte %d (%d:%d); oracle %s %s; reference %s %s; production %s.\n", f.ID, sourceFor(f), off, line, col, r.Oracle, diagOracle(r.DiagnosticsOracle), r.Reference, diagReference(r.DiagnosticsReference), production)
 	}
 	if len(s.Issues) > 0 {
 		b.WriteString("\n## Accounting errors\n\n")
@@ -726,6 +810,47 @@ func writeReport(opt Options, rows []Fixture, s Summary) error {
 	}
 	return os.WriteFile(opt.ReportPath, []byte(b.String()), 0644)
 }
+
+func rewriteDerivedFindings(path string, fixtures map[string]Fixture, records []Record) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	byID := map[string]Record{}
+	for _, r := range records {
+		byID[r.ID] = r
+	}
+	lines := strings.Split(string(data), "\n")
+	for i, line := range lines {
+		if !strings.HasPrefix(line, "reference/") {
+			continue
+		}
+		cols := strings.Split(line, "\t")
+		if len(cols) < 9 {
+			continue
+		}
+		id := strings.TrimPrefix(cols[0], "reference/")
+		f, ok := fixtures[id]
+		r, hasRecord := byID[id]
+		if !ok || !hasRecord || f.Lane != "derived" || r.Outcome != "disagree" {
+			continue
+		}
+		off, lineNo, col := position(f, r)
+		cols[1], cols[2], cols[3] = sourceFor(f), strconv.Itoa(off), fmt.Sprintf("%d:%d", lineNo, col)
+		lines[i] = strings.Join(cols, "\t")
+	}
+	updated := []byte(strings.Join(lines, "\n"))
+	if bytes.Equal(data, updated) {
+		return nil
+	}
+	return os.WriteFile(path, updated, 0644)
+}
+func sourceFor(f Fixture) string {
+	if f.OriginalSource != "" {
+		return f.OriginalSource
+	}
+	return f.Source
+}
 func position(f Fixture, r Record) (int, int, int) {
 	if len(r.DiagnosticsOracle) > 0 {
 		d := r.DiagnosticsOracle[0]
@@ -748,21 +873,14 @@ func position(f Fixture, r Record) (int, int, int) {
 	if len(r.BoundaryReference) > len(r.BoundaryOracle) {
 		off = r.BoundaryReference[len(r.BoundaryOracle)].Start
 	}
-	if off > len(f.Bytes) {
-		off = len(f.Bytes)
+	src := f.Original
+	if src == nil {
+		src = f.Bytes
 	}
-	line, col := 1, 1
-	for _, c := range f.Bytes[:off] {
-		if c == '\n' {
-			line++
-			col = 1
-		} else {
-			col++
-		}
-	}
+	line, col, _ := bytePosition(src, off)
 	return off, line, col
 }
-func diagOracle(ds []oracle.Diagnostic) string {
+func diagOracle(ds []Diagnostic) string {
 	if len(ds) == 0 {
 		return "[]"
 	}
@@ -841,12 +959,62 @@ func Verify(root, path string) error {
 		return err
 	}
 	derived := filepath.Join(root, "docs/grammar-oracle/derived.tsv")
+	tmp, err := os.MkdirTemp("", "grammar-oracle-verify-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmp)
+	derivedIDs := map[string]bool{}
 	if _, err := os.Stat(derived); err == nil {
 		extra, e := readRows(derived)
 		if e != nil {
 			return e
 		}
+		parents, e := mutate.Parents(root)
+		if e != nil {
+			return e
+		}
+		generated, e := mutate.Generate(parents)
+		if e != nil {
+			return e
+		}
+		if b, e := os.ReadFile(derived); e != nil || !bytes.Equal(mutate.Render(generated), b) {
+			return fmt.Errorf("derived.tsv is stale")
+		}
+		if e := mutate.Materialize(tmp, generated); e != nil {
+			return e
+		}
+		for _, f := range extra {
+			derivedIDs[f.ID] = true
+		}
 		rows = append(rows, extra...)
+	}
+	parentCount := len(rows)
+	for i := 0; i < parentCount; i++ {
+		f := &rows[i]
+		if f.Class == "not-applicable" {
+			continue
+		}
+		base := root
+		if derivedIDs[f.ID] {
+			base = tmp
+		}
+		f.Bytes, f.Path, err = input(f.Source, base, tmp)
+		if err != nil || digest(f.Bytes) != f.SHA {
+			return fmt.Errorf("%s: input unavailable or hash mismatch", f.ID)
+		}
+		if f.Dialect == "go-unit" {
+			continue
+		}
+		o := oracle.Recognize("mixed", f.Dialect, f.Bytes)
+		if o.Verdict != "accept" {
+			continue
+		}
+		ps, e := payloads(*f, o.Boundary, tmp)
+		if e != nil {
+			return e
+		}
+		rows = append(rows, ps...)
 	}
 	b, err := os.ReadFile(path)
 	if err != nil {

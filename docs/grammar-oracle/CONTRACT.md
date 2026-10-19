@@ -138,8 +138,10 @@ a model, package downloads or program execution.
 
 ## Positions and transforms
 
-- Positions refer to the original input bytes, the ones hashed in the
-  manifest. `offset` is a 0-based byte index. `line` is 1-based and only LF
+- Positions refer to the original source file bytes. For derived rows the
+  `input_sha256` hashes the generated recognizer input, while positions map
+  through `derived.tsv` to the parent source file. For an embed target they
+  refer to that target file. `offset` is a 0-based byte index. `line` is 1-based and only LF
   breaks a line, so in CRLF input the CR stays in the line. `col` is the
   1-based byte column, and `char` is the 1-based code-point column (an invalid
   UTF-8 byte counts as one). Go positions are physical. A `//line` logical
@@ -154,6 +156,12 @@ a model, package downloads or program execution.
   is `{"name":…,"map":[[out_start,orig_start,len],…]}`, and every position is
   mapped back to the original input. A position that falls in synthetic bytes
   is reported at the map anchor with `"synthetic":true`.
+- Every Go fence body and `embed go` target found by an accepted mixed
+  boundary is a separate `island-payload` Go unit. Its ID is the parent ID
+  followed by `#payload-N` in boundary order; its SHA hashes the bytes sent to
+  both unit recognizers. A fence body without a package clause gets a mapped
+  synthetic `package payload` prefix. The payload transform maps positions to
+  its enclosing script or embed target file.
 
 ## Mutations (bounded, deterministic)
 
@@ -244,7 +252,8 @@ Run H applied the manager's decisions on these:
 A candidate PASSes only if all of the following hold:
 
 1. **ID sets match.** The result IDs equal, as a set, the expected IDs: every
-   manifest row that is not not-applicable, plus the frozen mutant set. No ID
+   manifest row that is not not-applicable, plus the frozen mutant set and
+   every Go payload discovered from accepted mixed boundaries. No ID
    is duplicated or unknown, and every record's `input_sha256` matches the
    manifest.
 2. **Every result is complete.** Each record has both verdicts. An `error`,

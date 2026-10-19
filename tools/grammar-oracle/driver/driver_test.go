@@ -3,6 +3,8 @@ package driver
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -46,6 +48,69 @@ func TestGateFailureClasses(t *testing.T) {
 			t.Fatal("gate passed timed out adapter")
 		}
 	})
+}
+
+func TestDerivedProbeMapsToOriginal(t *testing.T) {
+	root := filepath.Join("..", "..", "..")
+	original, err := os.ReadFile(filepath.Join(root, "tour", "_content", "tour", "basics", "functions.bsh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := Fixture{ID: "probe/tour/basics/functions.bsh/1", Lane: "derived", SHA: "probe", Dialect: "bashsharp", Policy: "sh-syntax", Class: "contextual", Expected: "-", Boundary: "-", Original: original,
+		Transform: &Transform{Name: "extract func declaration, lines 7-9", Map: [][3]int{{0, 45, 45}}}}
+	site := oracle.Site{Kind: "typed-func", Start: 0, End: 44}
+	r := classify(f, oracle.Result{Verdict: "accept", Boundary: []oracle.Site{site}}, &Reference{Verdict: "accept", Boundary: []oracle.Site{site}})
+	if len(r.BoundaryOracle) != 1 || r.BoundaryOracle[0].Start != 45 || r.BoundaryOracle[0].End != 89 || r.BoundaryReference[0] != r.BoundaryOracle[0] {
+		t.Fatalf("mapped boundary = %+v / %+v, want [45,89)", r.BoundaryOracle, r.BoundaryReference)
+	}
+}
+
+func TestCorruptedEmbedPayloadFailsGate(t *testing.T) {
+	sh, err := roots("sh", "")
+	if err != nil {
+		t.Skip("sh reference checkout unavailable")
+	}
+	root := t.TempDir()
+	dir := filepath.Join(root, "tests", "go-delta")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	script := []byte("embed go \"./I03-main.go\"\necho done\n")
+	corrupt := []byte("package main\nfunc main( {\n")
+	if err := os.WriteFile(filepath.Join(dir, "I03.bsh"), script, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "I03-main.go"), corrupt, 0644); err != nil {
+		t.Fatal(err)
+	}
+	docs := filepath.Join(root, "docs", "grammar-oracle")
+	if err := os.MkdirAll(filepath.Join(docs, "results"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	manifest := "# fixture_id\tlane\tsource\tsha256\tdialect\tpolicy\tclass\texpected\tboundary\treason\n" +
+		fmt.Sprintf("s6/I03\tisland\ttests:tests/go-delta/I03.bsh\t%s\tbashsharp\tsh-syntax\trequired-positive\taccept\tembed-line\tfixture\n", digest(script))
+	if err := os.WriteFile(filepath.Join(docs, "manifest.tsv"), []byte(manifest), 0644); err != nil {
+		t.Fatal(err)
+	}
+	findings := filepath.Join(docs, "findings.tsv")
+	if err := os.WriteFile(findings, nil, 0644); err != nil {
+		t.Fatal(err)
+	}
+	s, err := Run(Options{Root: root, SHRoot: sh, Toolchain: "go1.27.2", ComparePath: filepath.Join(docs, "results", "compare.jsonl"), ReportPath: filepath.Join(docs, "results", "report.md"), FindingsPath: findings})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Pass || len(s.Records) != 2 {
+		t.Fatalf("corrupted Go payload passed or was not compared: pass=%t records=%d issues=%v", s.Pass, len(s.Records), s.Issues)
+	}
+	p := s.Records[1]
+	if p.ID != "s6/I03#payload-1" || p.Lane != "island-payload" || p.Oracle != "reject" || p.Reference != "reject" || p.Class != "required-positive" {
+		t.Fatalf("payload result = %+v", p)
+	}
+	if err := Evaluate([]Fixture{{ID: "s6/I03", SHA: digest(script), Lane: "island", Dialect: "bashsharp", Policy: "sh-syntax", Class: "required-positive", Expected: "accept", Boundary: "embed-line"},
+		{ID: p.ID, SHA: p.SHA, Lane: p.Lane, Dialect: p.Dialect, Policy: p.Policy, Class: p.Class, Expected: p.Expected, Boundary: "go-unit"}}, s.Records); err == nil {
+		t.Fatal("gate accepted corrupted payload")
+	}
 }
 
 func TestAdapterIDFailures(t *testing.T) {

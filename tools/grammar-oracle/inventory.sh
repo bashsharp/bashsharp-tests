@@ -166,7 +166,10 @@ s6() {
 		b=${f##*/}
 		case $b in
 		*.out) continue ;;
-		I03-main.go) why="embed target of s6/I03; parsed as that row's Go payload" ;;
+		I03-main.go)
+			row "s6-support/$b" island "tests:tests/go-delta/$b" "$(sha "$f")" go-unit gcsyntax required-positive accept go-unit \
+				"embed target of s6/I03; independently parsed as a Go unit"
+			continue ;;
 		I07.nomod) why="empty marker: s6/I07 runs without a go.mod" ;;
 		*) tr '\t' "$US" <"$tsv" | cut -d"$US" -f9 | grep -qx "$b" && continue
 			die "unaccounted tests/go-delta file: $b" ;;

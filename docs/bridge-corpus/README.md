@@ -186,7 +186,7 @@ ruby tools/bridge-corpus/native_test.rb
 ```
 
 The retained first run at
-`/Users/qiangli/.bashy/sprint118/evidence/bridge-native-001` reports
+the retained Sprint 118 `bridge-native-001` evidence reports
 **155 package PASS, 14 FAIL, 9 SKIP**, with 81,263 runtime test starts and
 81,263 terminals, no incomplete events, and intact SDK bytes afterward.
 Its verdict is **FAIL**, and `product_execution_claim` is false. This run
@@ -252,7 +252,7 @@ by the harness. A separate SDK probe records 12 CPUs and GOMAXPROCS 4 on this
 host. Process/RSS samples retain observed child commands and resource use.
 
 The complete repaired run is retained at
-`/Users/qiangli/.bashy/sprint118/evidence/bridge-native-002`.
+the Sprint 118 `bridge-native-002` evidence.
 No source files or original tests were rewritten to repair the environment.
 It reports **169 package PASS, 9 SKIP, and zero FAIL**, with **124,873
 runtime starts and 124,873 terminals**, no incomplete events, and intact SDK
@@ -303,8 +303,8 @@ compares the recomputed counts and verdict to the retained summary.
 
 ```sh
 ruby tools/bridge-corpus/replay.rb \
-  --native /Users/qiangli/.bashy/sprint118/evidence/bridge-native-002 \
-  --sdk-identity /Users/qiangli/.bashy/sprint118/sources/go-full-sdk-identity-relocated.json
+  --native /path/to/bridge-native-002 \
+  --sdk-identity /path/to/go-full-sdk-identity-relocated.json
 ```
 
 Replay validates evidence integrity; `native_verdict` remains distinct from
