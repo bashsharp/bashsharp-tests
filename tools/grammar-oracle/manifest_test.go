@@ -22,7 +22,6 @@ import (
 const (
 	manifestPath = "../../docs/grammar-oracle/manifest.tsv"
 	pinPath      = "../../docs/grammar-oracle/pin.tsv"
-	dhntDefault  = "/Users/qiangli/projects/poc/dhnt"
 	s6SHA256     = "1cbc58250667661eeac6d5f99c94c8b5afb9d34f3b1c3026e03d30ecc16a3f71"
 )
 
@@ -70,7 +69,8 @@ func readManifest(t *testing.T) []entry {
 	return out
 }
 
-// repoRoot resolves a repo qualifier exactly as inventory.sh does.
+// repoRoot resolves a repo qualifier exactly as inventory.sh does: SH_ROOT or
+// BASHSHARP_ROOT, else DHNT_ROOT/<repo>; there is no default.
 func repoRoot(t *testing.T, repo string) string {
 	t.Helper()
 	tests, err := filepath.Abs("../..")
@@ -85,10 +85,10 @@ func repoRoot(t *testing.T, repo string) string {
 		if v := os.Getenv(env[repo]); v != "" {
 			return v
 		}
-		if st, err := os.Stat(filepath.Join(tests, "..", repo)); err == nil && st.IsDir() {
-			return filepath.Join(tests, "..", repo)
+		if v := os.Getenv("DHNT_ROOT"); v != "" {
+			return filepath.Join(v, repo)
 		}
-		return filepath.Join(dhntDefault, repo)
+		t.Fatalf("set %s (the %s checkout) or DHNT_ROOT (the directory holding sh and bashsharp)", env[repo], repo)
 	}
 	t.Fatalf("unknown repo qualifier %q", repo)
 	return ""
@@ -236,7 +236,7 @@ func TestManifestRows(t *testing.T) {
 		if !lanes[e.lane] || !classes[e.class] {
 			t.Errorf("%s: illegal lane %q or class %q", where, e.lane, e.class)
 		}
-		if e.reason == "" || strings.Contains(e.source, "/Users/") {
+		if _, rest, _ := strings.Cut(e.source, ":"); e.reason == "" || strings.HasPrefix(rest, "/") {
 			t.Errorf("%s: missing reason or absolute source", where)
 		}
 		want := map[string]string{"required-positive": "accept", "required-negative": "reject", "not-applicable": "-"}
@@ -350,8 +350,8 @@ func TestPinnedFiles(t *testing.T) {
 		}
 		checked++
 	}
-	if checked != 14 {
-		t.Errorf("checked %d pinned local files, want 14 (5 grammar files, 2 license headers, S6 table, 6 local files)", checked)
+	if checked != 15 {
+		t.Errorf("checked %d pinned local files, want 15 (5 grammar files, 2 license headers, S6 table, 7 local files)", checked)
 	}
 }
 

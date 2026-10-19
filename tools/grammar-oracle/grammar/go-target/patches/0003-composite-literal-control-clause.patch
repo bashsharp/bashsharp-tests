@@ -1,0 +1,52 @@
+--- a/GoParser.g4
++++ b/GoParser.g4
+@@ -39,6 +39,40 @@
+     superClass = GoParserBase;
+ }
+ 
++// Patch 0003: the spec's composite-literal parsing ambiguity (Go spec,
++// "Composite literals"). A composite literal whose type is a bare TypeName
++// (T{, pkg.T{, T[A]{) in the header of an if, for or switch statement must be
++// enclosed in parentheses, square brackets or curly braces; gc tracks this as
++// xnest < 0. The predicate walks the rule-context chain from the current
++// context: an enclosing bracketing construct, case clause or block admits the
++// literal, an enclosing control-statement header refuses it. It uses only the
++// context types, so the same text compiles in every package that imports
++// these productions.
++@members {
++func compositeLitOK(ctx antlr.ParserRuleContext) bool {
++	for ctx != nil {
++		switch c := ctx.(type) {
++		case *BlockContext, *ArgumentsContext, *IndexContext, *Slice_Context, *TypeArgsContext,
++			*ArrayLengthContext, *LiteralValueContext, *ConversionContext,
++			*ExprCaseClauseContext, *TypeCaseClauseContext, *CommClauseContext:
++			return true
++		case *OperandContext:
++			if c.L_PAREN() != nil {
++				return true
++			}
++		case *IfStmtContext, *ExprSwitchStmtContext, *TypeSwitchStmtContext, *ForStmtContext:
++			return false
++		}
++		parent, ok := ctx.GetParent().(antlr.ParserRuleContext)
++		if !ok {
++			return true
++		}
++		ctx = parent
++	}
++	return true
++}
++}
++
+ sourceFile
+     : packageClause eos (importDecl eos)* ((functionDecl | methodDecl | declaration) eos)* EOF
+     ;
+@@ -468,7 +502,7 @@
+     | L_BRACKET ELLIPSIS R_BRACKET elementType
+     | sliceType
+     | mapType
+-    | typeName typeArgs?
++    | {compositeLitOK(p.GetParserRuleContext())}? typeName typeArgs?
+     ;
+ 
+ literalValue

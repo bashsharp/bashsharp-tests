@@ -11,27 +11,30 @@
 # inventories' own checks and are run first, fail-closed.
 #
 # Sibling repositories are read-only. They resolve from SH_ROOT and
-# BASHSHARP_ROOT, else ../sh and ../bashsharp next to this repository, else the
-# dhnt checkout default. Rows name them only repo-qualified (sh:, bashsharp:,
-# tests:), never by absolute path. Columns and classes: docs/grammar-oracle/CONTRACT.md.
+# BASHSHARP_ROOT, or else from DHNT_ROOT (the directory holding the sh and
+# bashsharp checkouts: $DHNT_ROOT/sh, $DHNT_ROOT/bashsharp). There is no
+# default; a missing root is an error. Rows name them only repo-qualified
+# (sh:, bashsharp:, tests:), never by absolute path. Columns and classes: docs/grammar-oracle/CONTRACT.md.
 set -eu
 LC_ALL=C
 export LC_ALL
 
 here=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$here/../.." && pwd)
-DHNT_DEFAULT=/Users/qiangli/projects/poc/dhnt
 S6_SHA256=1cbc58250667661eeac6d5f99c94c8b5afb9d34f3b1c3026e03d30ecc16a3f71
 
 die() { echo "inventory.sh: $*" >&2; exit 1; }
 need() { [ -f "$1" ] || die "missing source: $1"; }
-root_of() { # env-value sibling default
-	if [ -n "$1" ]; then r=$1; elif [ -d "$2" ]; then r=$2; else r=$3; fi
-	[ -d "$r" ] || die "missing sibling repository: $r"
+root_of() { # VAR value repo
+	if [ -n "$2" ]; then r=$2
+	elif [ -n "${DHNT_ROOT:-}" ]; then r=$DHNT_ROOT/$3
+	else die "set $1 (the $3 checkout) or DHNT_ROOT (the directory holding sh and bashsharp)"
+	fi
+	[ -d "$r" ] || die "missing sibling repository $3: $r ($1 / DHNT_ROOT)"
 	(cd "$r" && pwd)
 }
-SH=$(root_of "${SH_ROOT:-}" "$ROOT/../sh" "$DHNT_DEFAULT/sh")
-BS=$(root_of "${BASHSHARP_ROOT:-}" "$ROOT/../bashsharp" "$DHNT_DEFAULT/bashsharp")
+SH=$(root_of SH_ROOT "${SH_ROOT:-}" sh) || exit 1
+BS=$(root_of BASHSHARP_ROOT "${BASHSHARP_ROOT:-}" bashsharp) || exit 1
 
 if command -v sha256sum >/dev/null 2>&1; then
 	sha() { sha256sum <"$1" | cut -c1-64; }

@@ -13,7 +13,10 @@ record is the umbrella `docs/sprint-384-master-execution-plan.md` (R1–R6).
   edit it by hand. `GOWORK=off go test ./...` in `tools/grammar-oracle` checks
   three things: the inputs are re-derived and their hashes match, the generator
   reproduces the committed file byte for byte, and the pinned files match.
-  Sibling repositories resolve from `SH_ROOT` and `BASHSHARP_ROOT`. Sources
+  Sibling repositories resolve from `SH_ROOT` and `BASHSHARP_ROOT`, or else
+  from `DHNT_ROOT` (`$DHNT_ROOT/sh`, `$DHNT_ROOT/bashsharp`). There is no
+  default: inventory.sh and the tests fail with a clear message when neither
+  is set. Sources
   are repo-qualified (`tests:`, `sh:`, `bashsharp:`), with an optional
   `#selector` for an extracted input.
 
@@ -190,11 +193,14 @@ ledger never waives a failure.
 
 ## Generation and regeneration (remote only)
 
-ANTLR runs only on a claimed remote host (macOS arm64 or Linux x64), never on
-Dragon. The default oracle gate needs only Go, because generated Go is
-committed. `tools/grammar-oracle/gen/generate.sh` runs from Dragon and drives
-the host (`GRAMMAR_ORACLE_HOST`, default `novidesign.local`) over passwordless
-ssh, in its `zsh -lc` login environment:
+ANTLR runs only on a claimed remote macOS or Linux host with a JDK path
+through the java runner (macOS arm64 or Linux x64), never on the development
+machine. The default oracle gate needs only Go, because generated Go is
+committed. `tools/grammar-oracle/gen/generate.sh` runs from the development
+machine and drives the host over passwordless ssh, in its `zsh -lc` login
+environment. `GRAMMAR_ORACLE_HOST` names the host and is required: the script
+refuses to run without it, and the name is exported in the operator's shell,
+never written into a tracked file.
 
 1. Stage the inputs into a fresh remote temp dir: the upstream grammars,
    `transformGrammar.py`, `go-target/patches/`, `gen/generate.bsh`, and the
@@ -223,9 +229,10 @@ ssh, in its `zsh -lc` login environment:
    must compile them.
 6. `gen/generate.sh --check` regenerates into an empty temp dir and runs
    `diff -r` against the committed files, and the diff must be empty.
-   `TestGeneratedSums` re-hashes the committed outputs on Dragon. The host, OS
-   and arch, JDK, jar SHA-256, sums and exit statuses are recorded in
-   `grammar/NOTICE.md`.
+   `TestGeneratedSums` re-hashes the committed outputs on the development
+   machine. The evidence in `grammar/NOTICE.md` records OS and arch, tool
+   versions (bashy, Python, JDK), the jar SHA-256, the sums and the exit
+   statuses only; never a host name, user name or path.
 
 Checkpoint 1 feasibility passed on 2026-10-19. The unpatched upstream grammar
 generated a recognizer that compiled and accepted a Tour of Go unit. Two runs
@@ -305,11 +312,16 @@ Outcome:
 - **Negatives.** `neg-method-expr-name`, `neg-conversion-unclosed`,
   `neg-make-empty-arg`, `neg-new-two-types` and
   `neg-generic-qualified-complit` are rejected, as gcsyntax rejects them.
-- **Open: `neg-complit-in-if`.** The grammar over-accepts `if x == T{} {`.
-  It lacks the spec's composite-literal parsing-ambiguity rule, which gc
-  implements with `xnest` control-clause state. Fixing it needs parser state,
-  not a token predicate. It stays `open` in `findings.tsv` and blocks any
-  required-negative or mutant that reaches it.
+- **Composite literals in control headers (`neg-complit-in-if`, fixed by
+  patch 0003).** The grammar over-accepted `if x == T{} {`. It lacked the
+  spec's composite-literal parsing-ambiguity rule, which gc implements with
+  `xnest` control-clause state. Patch 0003 guards the bare-TypeName
+  alternative of `literalType` with the `compositeLitOK` predicate, which
+  reads that state from the rule-context chain (an enclosing bracket, brace,
+  parenthesis or case clause admits the literal; an `if`/`for`/`switch`
+  header refuses it). Units: `complit-in-headers` (accept),
+  `neg-complit-in-if`, `neg-complit-in-for`, `neg-complit-in-switch`,
+  `neg-complit-in-else-if` (reject). `findings.tsv` has no open Go row.
 - `isNotReceive` (`chan<-` versus `chan (<-chan T)`) and `closingBracket`
   (an omitted `;` before `)`/`}`) have no table dependency. They are
   exercised by the 184 unit rows.

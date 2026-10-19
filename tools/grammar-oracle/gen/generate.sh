@@ -4,9 +4,10 @@
 #   tools/grammar-oracle/gen/generate.sh           install into grammar/go-target/ and goparser/
 #   tools/grammar-oracle/gen/generate.sh --check   regenerate into a temp dir; diff -r against the committed files
 #
-# Run from Dragon. ANTLR (Java) runs only on the claimed remote host
-# ($GRAMMAR_ORACLE_HOST, default novidesign.local, passwordless ssh, `zsh -lc`
-# login environment with bashy and python3). The remote side:
+# Run from the development machine. ANTLR (Java) runs only on a claimed remote
+# macOS or Linux host with a JDK path through the java runner, named by
+# GRAMMAR_ORACLE_HOST (required; passwordless ssh, `zsh -lc` login environment
+# with bashy and python3). The remote side:
 #   1. fetches antlr-4.13.2-complete.jar into $BASHY_HOME/custom/antlr/4.13.2/
 #      (once) and refuses it unless its SHA-256 equals docs/grammar-oracle/pin.tsv;
 #   2. applies the Go-target transform by running the pinned upstream
@@ -23,11 +24,13 @@ set -eu
 here=$(CDPATH= cd -- "$(dirname "$0")" && pwd -P)
 root=${here%/gen}
 pin="$root/../../docs/grammar-oracle/pin.tsv"
-host=${GRAMMAR_ORACLE_HOST:-novidesign.local}
 mode=${1:-install}
 case "$mode" in install|--check) ;; *) echo "usage: generate.sh [--check]" >&2; exit 2 ;; esac
 
 die() { echo "generate.sh: $*" >&2; exit 1; }
+
+host=${GRAMMAR_ORACLE_HOST:-}
+[ -n "$host" ] || die "GRAMMAR_ORACLE_HOST is not set: export the ssh name of a claimed remote macOS or Linux host with a JDK path through the java runner (it is never written into a file)"
 
 jar_url=$(awk -F '\t' '$1 == "antlr-tool" { print $3 }' "$pin")
 jar_sha=$(awk -F '\t' '$1 == "antlr-tool" { print $5 }' "$pin")
@@ -49,7 +52,7 @@ for p in "$root"/grammar/go-target/patches/*.patch; do [ -e "$p" ] && cp "$p" "$
 cat >"$lt/stage/run.sh" <<'EOF'
 set -eu
 d=$1 url=$2 want=$3
-echo "host: $(uname -n) $(uname -sm); $(sw_vers -productVersion 2>/dev/null || true); $(bashy --version | head -n 1); $(python3 --version)" >&2
+echo "os: $(uname -sm); $(bashy --version | head -n 1); $(python3 --version)" >&2
 jar_dir=${BASHY_HOME:-$HOME/.bashy}/custom/antlr/4.13.2
 jar=$jar_dir/antlr-4.13.2-complete.jar
 if [ ! -f "$jar" ]; then
@@ -59,7 +62,7 @@ if [ ! -f "$jar" ]; then
 fi
 got=$(shasum -a 256 "$jar" | awk '{ print $1 }')
 [ "$got" = "$want" ] || { echo "run.sh: $jar sha256 $got != pinned $want" >&2; exit 1; }
-echo "jar: $jar sha256 $got (pinned)" >&2
+echo "jar: antlr-4.13.2-complete.jar sha256 $got (pinned)" >&2
 cd "$d"
 python3 transformGrammar.py >&2
 rm -f parser/*.bak

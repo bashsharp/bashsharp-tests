@@ -20,7 +20,7 @@ files and each one is recorded.
 two steps:
 
 1. **Go-target transform.** The pinned upstream `Go/transformGrammar.py` runs
-   unchanged under `python3` (Python 3.9.6 on novidesign.local). It rewrites
+   unchanged under `python3` (Python 3.9.6 on the generation host). It rewrites
    `this.` to `p.` in parser actions and predicates. `GoLexer.g4` has no
    actions, so it stays byte-identical to upstream.
 2. **Local patches.** Each `go-target/patches/*.patch` is applied in name
@@ -33,6 +33,7 @@ two steps:
 |---|---|---|---|
 | `0001-arguments-spec-production.patch` | `arguments` | Upstream admits a type first argument only after `make(`/`new(` (the `isTypeArgument` predicate) and admits an expression list only elsewhere (`isExpressionArgument`). Go 1.26 lets `new` take an expression operand (`new(42)`). The spec production `Arguments = "(" [ ( ExpressionList \| Type [ "," ExpressionList ] ) [ "..." ] [ "," ] ] ")"` admits a Type first argument in any call, and gcsyntax accepts `f([]int)`, which only type checking refuses. Both predicates key on the token text, so a method named `make` or `new` was also misparsed. The patch is the spec production with the predicates removed. | `docs/grammar-oracle/findings.tsv`: `gbe/pointers/pointers.bsh` (offset 1261, 45:11), `audit/builtin-new-make.go`, `audit/type-first-arg.go` |
 | `0002-operand-without-import-heuristic.patch` | `primaryExpr` | `{p.isOperand()}?` used `addImportSpec`'s import-name table, which records the last import path element after its last dot (`v2` for `math/rand/v2`, `v3` for `gopkg.in/yaml.v3`), not the package name. For `x.T` with `x` not in the table, only `methodExpr` stayed viable, so `rand.PCG{}` and `yaml.Node{}` were refused. The patch makes `operand` always viable. `methodExpr` and `conversion` keep their predicates, so every input accepted before is still accepted, and ALL(*) prediction chooses among the viable alternatives. | `findings.tsv`: `audit/import-versioned-complit.go`, `audit/import-dotted-complit.go` |
+| `0003-composite-literal-control-clause.patch` | `literalType`, `@members` | The spec's composite-literal parsing ambiguity: in the header of an `if`, `for` or `switch` statement, a composite literal whose type is a bare TypeName (`T{`, `pkg.T{`, `G[int]{`) must be enclosed in parentheses, square brackets or curly braces. gcsyntax tracks this as `xnest < 0`; upstream had no such rule and accepted `if x == T{} {`. The patch guards only the `typeName typeArgs?` alternative of `literalType` with `{compositeLitOK(p.GetParserRuleContext())}?`, defined in `@members`. It walks the rule-context chain: an enclosing block, argument list, index, slice, type-argument list, array length, literal value, conversion, parenthesized operand or case clause admits the literal; an enclosing `ifStmt`, `exprSwitchStmt`, `typeSwitchStmt` or `forStmt` header refuses it. Array, slice, map and struct literal types are untouched. The predicate names only context types, so the same text compiles in every package that imports these productions. | `findings.tsv`: `audit/neg-complit-in-if.go`; audit units `complit-in-headers`, `neg-complit-in-for`, `neg-complit-in-switch`, `neg-complit-in-else-if` |
 
 ## Generated recognizer (`../goparser/`)
 
@@ -45,21 +46,23 @@ grammars-v4 provenance. `generated.sha256` lists all five outputs. `go vet` repo
 generator's `unreachable code` (a `goto errorExit` after `return`). That
 code is never edited.
 
-Checkpoint 2 evidence: novidesign.local, Darwin arm64, macOS 26.3, bashy
-5.3.0(1)-bashy-dev (e8a4355), Temurin 21.0.12.1+1 (Eclipse Adoptium, cached at
-`~/.bashy/custom/java/21.0.12.1+1`), and `antlr-4.13.2-complete.jar` with
-SHA-256 `eae2dfa1…4d76`, equal to the pin. Run 1 was `gen/generate.sh` and
-run 2 was `gen/generate.sh --check`, a fresh remote temp dir with `diff -r`
-against the committed files. Both exited 0 with identical outputs:
+Checkpoint 2 evidence (development machine driving a claimed remote host):
+Darwin arm64, bashy 5.3.0(1)-bashy-dev (e8a4355), Python 3.9.6, Temurin
+21.0.12.1+1 (Eclipse Adoptium, cached under `$BASHY_HOME/custom/java/`), and
+`antlr-4.13.2-complete.jar` with SHA-256 `eae2dfa1…4d76`, equal to the pin.
+Run 1 was `gen/generate.sh` and run 2 was `gen/generate.sh --check`, a fresh
+remote temp dir with `diff -r` against the committed files. Both exited 0
+with identical outputs (patches 0001–0003):
 
 ```
 f97d4dcf1b219cf45788d0be0963ca84a1f57337bbd58dc70f08b152649a29f6  grammar/go-target/GoLexer.g4
-90e96bf5e3573b339273d4ced6bc3b82960d92fa3c9d524b4daf3568ecaddea8  grammar/go-target/GoParser.g4
+2f31a8a3918b460b8981f3c55a4569676ed2159e1f08dc9674e66fe31526edf1  grammar/go-target/GoParser.g4
 00af36106b0502fc0a739307c93905940c0791fce157d358ae335205b74a77e4  goparser/go_lexer.go
-31f39a1242c0aaa8a6190ffc37649ce3ba70d068ec5ea20eeda72359a0947e2a  goparser/go_parser.go
+38c8ef71130b2dd4ce8a0221129ea4614e133b7d45d8dec78ffbdb5bea7feb73  goparser/go_parser.go
 64b1ed3a05cd86db66d6e79ed0345b9a7945eb8dd2f1e2a34e0dc9c0dd66dcbb  goparser/go_parser_base.go
 ```
 
-The unpatched feasibility runs (two runs, identical) gave
-`GoParser.g4` 9dd31bd9…1a0 and `go_parser.go` ad9dec41…13e4. The other three
-files were unchanged.
+Before patch 0003 the outputs were `GoParser.g4` 90e96bf5…eea8 and
+`go_parser.go` 31f39a12…7e2a. The unpatched feasibility runs (two runs,
+identical) gave `GoParser.g4` 9dd31bd9…1a0 and `go_parser.go` ad9dec41…13e4.
+The other three files were unchanged.

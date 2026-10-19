@@ -1,6 +1,6 @@
 #!/usr/bin/env -S bashy --bashsharp
 # Grammar-oracle generation unit (Sprint 384, #1586). Runs only on the claimed
-# remote host, driven by gen/generate.sh; never on Dragon.
+# remote host, driven by gen/generate.sh; never on the development machine.
 #
 #   generate.bsh OUT     (cwd: the go-target grammar directory)
 #
@@ -15,7 +15,6 @@ public class Gen {
     public static void main(String[] args) {
         System.err.println("gen: java.version=" + System.getProperty("java.version")
             + " java.vendor=" + System.getProperty("java.vendor")
-            + " java.home=" + System.getProperty("java.home")
             + " antlr=" + org.antlr.v4.Tool.VERSION);
         org.antlr.v4.Tool.main(args);
     }
