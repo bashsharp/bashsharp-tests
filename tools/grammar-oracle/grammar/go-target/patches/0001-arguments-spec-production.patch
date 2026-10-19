@@ -1,0 +1,11 @@
+--- a/GoParser.g4
++++ b/GoParser.g4
+@@ -527,7 +527,7 @@
+     ;
+ 
+ arguments
+-    : L_PAREN (({p.isTypeArgument()}? type_ (COMMA expressionList)? | {p.isExpressionArgument()}? expressionList) ELLIPSIS? COMMA?)? R_PAREN
++    : L_PAREN ((type_ (COMMA expressionList)? | expressionList) ELLIPSIS? COMMA?)? R_PAREN
+     ;
+ 
+ methodExpr

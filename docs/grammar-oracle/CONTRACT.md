@@ -192,28 +192,124 @@ ledger never waives a failure.
 
 ANTLR runs only on a claimed remote host (macOS arm64 or Linux x64), never on
 Dragon. The default oracle gate needs only Go, because generated Go is
-committed.
+committed. `tools/grammar-oracle/gen/generate.sh` runs from Dragon and drives
+the host (`GRAMMAR_ORACLE_HOST`, default `novidesign.local`) over passwordless
+ssh, in its `zsh -lc` login environment:
 
-1. Register the #2388 runner as `examples/runners/README.md` registers
-   awk-runner:
-   `bashy commands register java-runner --set exec.0=$BASHY_ROOT/examples/runners/java-runner.sh --set effects.0=exec`.
-2. If `JAVA_HOME` is set explicitly, it wins. Otherwise the runner fetches the
-   pinned Temurin LTS (per-platform URL and SHA-256 from #2388, copied into
-   `pin.tsv`), verifies it, and caches it under `BASHY_HOME`. Any other
-   platform is refused.
-3. Fetch `antlr-4.13.2-complete.jar` and refuse it unless its SHA-256 equals
-   the `pin.tsv` value.
-4. The generation unit is `tools/grammar-oracle/generate.bsh`, a
-   `~~~java as gen !java-runner` fence. Its `main` calls `org.antlr.v4.Tool`
-   with `-Dlanguage=Go -package parser -no-listener -no-visitor` on the
-   recorded grammar copies, which have the Go-target transform applied. The
-   output goes to `tools/grammar-oracle/parser/`, which is committed. Then
-   `GOWORK=off go build ./...` must compile it.
-5. Regenerate into an empty temporary directory and run `diff -r` against the
-   committed output. The diff must be empty. Record the host, OS and arch,
-   the JDK version and SHA-256, the jar SHA-256, the commands and the exit
-   statuses in the candidate evidence record.
+1. Stage the inputs into a fresh remote temp dir: the upstream grammars,
+   `transformGrammar.py`, `go-target/patches/`, `gen/generate.bsh`, and the
+   pinned copies `gen/java-runner.sh` and `gen/java-pin.tsv` (#2388, bashy
+   `d6dbe6a1`, see `pin.tsv`). The temp dir is always deleted.
+2. Fetch `antlr-4.13.2-complete.jar` once into
+   `$BASHY_HOME/custom/antlr/4.13.2/`, and refuse it before every use unless
+   its SHA-256 equals the `pin.tsv` value.
+3. Apply the Go-target transform with the upstream `transformGrammar.py`,
+   unchanged, under `python3`. Then apply each local patch
+   (`grammar/NOTICE.md`).
+4. Register the runner in a private ring, as `examples/runners/README.md`
+   does:
+   `BASHY_COMMANDS_DIR=<tmp>/ring bashy commands register java-runner --set exec.0=<tmp>/java-runner.sh --set effects.0=exec`.
+   An explicit `JAVA_HOME` wins. Otherwise the runner uses the pinned Temurin
+   21 cached under `BASHY_HOME` (`JAVA_RUNNER_FETCH=1` fetches and verifies
+   it). Any other platform is refused.
+5. Run `gen/generate.bsh`, whose `~~~java as gen !java-runner` fence calls
+   `org.antlr.v4.Tool.main` with
+   `-Dlanguage=Go -no-listener -no-visitor -package goparser -Xexact-output-dir`
+   on the bare grammar names. `CLASSPATH` (for javac) and
+   `JAVA_RUNNER_CLASSPATH` (for the run) both name the verified jar. The
+   transformed grammars go to `grammar/go-target/`, and the recognizer
+   (package `goparser`) goes to `tools/grammar-oracle/goparser/` with
+   `generated.sha256`. Both are committed, and `GOWORK=off go build ./...`
+   must compile them.
+6. `gen/generate.sh --check` regenerates into an empty temp dir and runs
+   `diff -r` against the committed files, and the diff must be empty.
+   `TestGeneratedSums` re-hashes the committed outputs on Dragon. The host, OS
+   and arch, JDK, jar SHA-256, sums and exit statuses are recorded in
+   `grammar/NOTICE.md`.
 
-The checkpoint 1 feasibility run (the next run, after #2388) performs steps
-1–5 on the upstream grammar to compile a minimal generated recognizer, and
-fills in the JDK pins.
+Checkpoint 1 feasibility passed on 2026-10-19. The unpatched upstream grammar
+generated a recognizer that compiled and accepted a Tour of Go unit. Two runs
+were byte-identical.
+
+## Oracle recognizer (`tools/grammar-oracle/oracle`)
+
+`oracle.Recognize(lane, entry, src) Result` returns `{verdict, diagnostics}`.
+`diagnostics[0]` is the first error, with `offset`, `line`, `col`, `char` and
+`msg` as defined under "Positions and transforms". The positions map ANTLR's
+code-point columns back to bytes. Only lane `unit` with entry `sourceFile`
+exists so far. Any other pair is `error`. The package imports only `goparser`,
+the ANTLR runtime (with its `golang.org/x/exp` dependencies) and the standard
+library outside `go/...`. `TestIndependentImports` enforces this with
+`go list -deps`.
+
+The verdict is `accept` only with zero lexer and zero parser error events and
+the input consumed to EOF. The runtime's `BailErrorStrategy` in antlr4-go
+v4.13.1 calls `SetError` and records no position. The oracle therefore runs
+the default strategy with a listener that records every event. Any event is a
+reject, including one the strategy recovered from, so recovery is never an
+accept. This is the "bail" of PASS rule 2.
+
+`TestUnitLaneOracle` runs every unit-lane `required-positive` row. It writes
+or checks the oracle half of the result records in
+`docs/grammar-oracle/results/unit-oracle.jsonl` (`-update` rewrites it). The
+records have no reference fields and no `outcome`; the comparison driver adds
+those. On accept, the oracle boundary for a go-unit is
+`[{"kind":"go-unit","start":0,"end":len}]`. `docs/grammar-oracle/findings.tsv`
+is the ledger of every oracle disagreement with an authored expectation. A row
+is `open` or `fixed:<patch>`. The tests require each disagreement to be an
+open row at its first-error offset, and each fixed row to agree. The ledger
+never waives a PASS-rule failure.
+
+Checkpoint 2 unit lane: 184 required-positive rows, oracle accept 184,
+reject 0, expected accept 184. One real finding,
+`gbe/pointers/pointers.bsh` (`new(42)`, offset 1261, 45:11), was fixed by
+grammar patch 0001.
+
+## Go predicate audit (R6)
+
+The upstream parser base supplies these predicates: `isOperand`,
+`isConversion`, `isMethodExpr`, `isTypeArgument`/`isExpressionArgument`,
+`isNotReceive` and `closingBracket`. `isOperand` and `isMethodExpr` consult
+`addImportSpec`'s import-name table. The audit units are in
+`tools/grammar-oracle/testdata/go/`. A `neg-*` file is a gcsyntax syntax
+reject; every other file is a gcsyntax accept. Each expectation was confirmed
+with `go tool compile` (go1.27.2: `syntax error` or none), and
+`TestPredicateAudit` cross-checks it with go/parser outside package oracle.
+Outcome:
+
+- **Import-name table (`addImportSpec` → `isOperand`).** The table is
+  unsound. It records the last import path element after its last dot (`v2`,
+  `v3`), not the package name, and a local name that shadows an import is
+  never removed. With `x` absent from the table, `x.T{…}` was refused.
+  Patch 0002 takes the table out of every verdict: `operand` is always
+  viable. The table now feeds only `isMethodExpr`, which returns true for
+  every identifier whether or not it is in the table, so it decides nothing.
+  Units: `import-versioned-complit`, `import-dotted-complit`,
+  `import-renamed-complit`.
+- **Aliases (`aliases`).** Plain and generic aliases work as composite-literal
+  types, conversions and method-expression receivers. They passed with and
+  without the patches.
+- **Generics (`generics`).** Instantiated composite literals, calls,
+  conversions and method expressions, plain and package-qualified (including
+  `rand.N[int64]` behind a versioned import), all pass.
+- **Conversions (`conversions`).** `isConversion` is a pure token test (not
+  an identifier). Identifier and qualified conversions parse as an operand
+  followed by a call. All the type-literal conversions pass.
+- **Method expressions (`method-exprs`).** `T.M`, `(*T).M`, `time.Time.Unix`
+  and `(*time.Time).Unix` pass. A value receiver `t.M` parses as a selector,
+  which has the same tokens.
+- **`make`/`new` (`builtin-new-make`, `type-first-arg`).** The predicates key
+  on the token text. They refused Go 1.26 `new(expr)`, methods named `make`
+  or `new`, and a Type first argument to any other call, which the spec
+  syntax admits. Patch 0001 replaces them with the spec production.
+- **Negatives.** `neg-method-expr-name`, `neg-conversion-unclosed`,
+  `neg-make-empty-arg`, `neg-new-two-types` and
+  `neg-generic-qualified-complit` are rejected, as gcsyntax rejects them.
+- **Open: `neg-complit-in-if`.** The grammar over-accepts `if x == T{} {`.
+  It lacks the spec's composite-literal parsing-ambiguity rule, which gc
+  implements with `xnest` control-clause state. Fixing it needs parser state,
+  not a token predicate. It stays `open` in `findings.tsv` and blocks any
+  required-negative or mutant that reaches it.
+- `isNotReceive` (`chan<-` versus `chan (<-chan T)`) and `closingBracket`
+  (an omitted `;` before `)`/`}`) have no table dependency. They are
+  exercised by the 184 unit rows.

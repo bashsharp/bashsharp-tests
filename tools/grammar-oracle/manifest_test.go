@@ -278,6 +278,13 @@ func TestManifestRows(t *testing.T) {
 
 func TestInventoryRegenerates(t *testing.T) {
 	cmd := exec.Command("sh", "inventory.sh")
+	// go test exports its own GOROOT; the validators inventory.sh calls build
+	// with their own pinned toolchains (go-by-example: docs/go-by-example/toolchain.tsv).
+	for _, kv := range os.Environ() {
+		if !strings.HasPrefix(kv, "GOROOT=") {
+			cmd.Env = append(cmd.Env, kv)
+		}
+	}
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	got, err := cmd.Output()
@@ -324,6 +331,8 @@ func TestPinnedFiles(t *testing.T) {
 				nl := bytes.IndexByte(data[end:], '\n')
 				data = data[:end+nl+1]
 			}
+		case "local-file":
+			data, err = os.ReadFile(strings.TrimPrefix(id, "tests:tools/grammar-oracle/"))
 		case "s6-table":
 			data, err = os.ReadFile(filepath.Join(repoRoot(t, "bashsharp"), "godelta/go-delta.tsv"))
 			if sha != s6SHA256 {
@@ -341,7 +350,36 @@ func TestPinnedFiles(t *testing.T) {
 		}
 		checked++
 	}
-	if checked != 8 {
-		t.Errorf("checked %d pinned local files, want 8 (5 grammar files, 2 license headers, S6 table)", checked)
+	if checked != 14 {
+		t.Errorf("checked %d pinned local files, want 14 (5 grammar files, 2 license headers, S6 table, 6 local files)", checked)
+	}
+}
+
+// TestGeneratedSums re-hashes the generation output listed in
+// goparser/generated.sha256 (written by gen/generate.sh), so a hand edit of the
+// committed recognizer or the go-target grammars fails without the remote host.
+func TestGeneratedSums(t *testing.T) {
+	data, err := os.ReadFile("goparser/generated.sha256")
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for _, l := range strings.Split(strings.TrimSuffix(string(data), "\n"), "\n") {
+		want, name, ok := strings.Cut(l, "  ")
+		if !ok {
+			t.Fatalf("generated.sha256: bad line %q", l)
+		}
+		got, err := os.ReadFile(name)
+		if err != nil {
+			t.Error(err)
+			continue
+		}
+		if sum(got) != want {
+			t.Errorf("%s: sha256 %s, generated.sha256 says %s; regenerate with gen/generate.sh", name, sum(got), want)
+		}
+		n++
+	}
+	if n != 5 {
+		t.Errorf("generated.sha256 lists %d files, want 5", n)
 	}
 }

@@ -1,0 +1,11 @@
+--- a/GoParser.g4
++++ b/GoParser.g4
+@@ -411,7 +411,7 @@
+     ;
+ 
+ primaryExpr :
+-    ( {p.isOperand()}? operand
++    ( operand
+     | {p.isConversion()}? conversion
+     | {p.isMethodExpr()}? methodExpr )
+     ( DOT IDENTIFIER | index | slice_ | typeAssertion | arguments )*
