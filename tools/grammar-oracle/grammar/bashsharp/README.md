@@ -7,6 +7,13 @@ import the patched Go grammars in `../go-target/` (patches 0001-0003; see
 `../NOTICE.md`), so the Go regions use the same productions as the unit
 lane. `gen/generate.sh` generates package `bashsharpparser`.
 
+This combined grammar is the normative Bash# grammar (operator decision
+2026-10-19). The production parser, sh/syntax, must conform to it: a
+disagreement the oracle finds is a parser bug, fixed in sh, unless the
+grammar itself is shown to be wrong, in which case the grammar is corrected
+first and recorded. The grammar index is the Grammar section of the Bash#
+README: https://github.com/bashsharp/bashsharp#grammar .
+
 They were transcribed from the permissive `sh/syntax` implementation (the
 start-site decision table in `bashpp_startsites.go`, the Go-region dispatch in
 `parser.go` and `bashpp_*.go`) and from the delta. GNU Bash `parse.y` was
