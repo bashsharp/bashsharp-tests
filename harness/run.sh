@@ -44,6 +44,16 @@ else
   exit 2
 fi
 
+# Sprint 384 S384.D: pinned grammar-oracle comparison and accounting.
+if [ ! -x "${TEST_DIR}/tools/grammar-oracle/gate.sh" ]; then
+  echo "FATAL: grammar-oracle gate missing" >&2
+  exit 2
+fi
+if ! "${TEST_DIR}/tools/grammar-oracle/gate.sh"; then
+  echo "FATAL: grammar-oracle comparison gate failed" >&2
+  exit 2
+fi
+
 if [ -x "${TEST_DIR}/tools/tour/validate.sh" ]; then
   if ! "${TEST_DIR}/tools/tour/validate.sh"; then
     echo "FATAL: Go tour inventory validation failed" >&2
