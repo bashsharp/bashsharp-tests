@@ -214,3 +214,41 @@ func TestMixedPrimitives(t *testing.T) {
 		t.Errorf("unknown dialect: %+v", r)
 	}
 }
+
+// TestMixedFences holds the required P7 fence cases of the Sprint 384
+// independent review (finding 1) independently of the manifest: opener widths
+// 3, 7 and 64, the first exact closer, CRLF line ends and a missing final
+// newline. Each pins the oracle and the sh/syntax reference verdict and
+// boundary; where they differ, the case names an open findings.tsv row.
+func TestMixedFences(t *testing.T) {
+	known := findings(t)
+	t64 := strings.Repeat("~", 64)
+	for _, c := range []struct {
+		id, src    string
+		oracle, sh string // fmt of the boundary of an accept
+		finding    string // findings.tsv row when oracle != sh
+	}{
+		{"fence/width-3", "~~~python\nprint(1)\n~~~\n", "[{fence 0 22}]", "[{fence 0 22}]", ""},
+		{"fence/width-7", "~~~~~~~python\nprint(1)\n~~~~~~~\n", "[{fence 0 30}]", "[{fence 0 30}]", ""},
+		// README P7 bounds no width; sh/syntax recognizes the header within
+		// its 64-byte start-site look-ahead, so it runs this as commands.
+		{"fence/width-64", t64 + "python\nprint(1)\n" + t64 + "\n", "[{fence 0 144}]", "[]", "production/fence-width-64"},
+		{"fence/first-exact-closer", "~~~python\nx\n~~~~\n~~~\necho after\n", "[{fence 0 20}]", "[{fence 0 20}]", ""},
+		{"fence/crlf", "~~~python\r\nprint(1)\r\n~~~\r\n", "[{fence 0 24}]", "[{fence 0 24}]", ""},
+		{"fence/crlf-declares", "~~~python\r\ndef g():\r\n  pass\r\n~~~\r\ng()\n", "[{fence 0 32}]", "[{fence 0 32}]", ""},
+		{"fence/no-final-newline", "~~~python\nprint(1)\n~~~", "[{fence 0 22}]", "[{fence 0 22}]", ""},
+	} {
+		r := oracle.Recognize("mixed", "bashsharp", []byte(c.src))
+		if r.Verdict != oracle.Accept || fmt.Sprint(r.Boundary) != c.oracle {
+			t.Errorf("%s: got %s %v %v, want accept %s", c.id, r.Verdict, r.Boundary, r.Diagnostics, c.oracle)
+		}
+		if f := known[c.finding]; (c.oracle != c.sh) != (f != nil && f.status == "open") {
+			t.Errorf("%s: oracle %s, sh/syntax %s, findings.tsv row %q: want an open row exactly when they differ", c.id, c.oracle, c.sh, c.finding)
+		}
+	}
+	// A "\r" not followed by "\n" is an ordinary byte: this closer does not
+	// close, and the fence is unclosed (sh/syntax: unclosed source block).
+	if r := oracle.Recognize("mixed", "bashsharp", []byte("~~~python\r\nprint(1)\r\n~~~\r")); r.Verdict != oracle.Reject {
+		t.Errorf("fence/crlf-lone-cr: got %s %v, want reject", r.Verdict, r.Boundary)
+	}
+}

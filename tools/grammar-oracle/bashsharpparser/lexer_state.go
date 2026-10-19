@@ -816,15 +816,24 @@ func (l *BashSharpLexer) fenceOpen() {
 }
 
 // fenceLine: the first line equal to the opener's tilde run closes the fence;
-// every other line is opaque body text.
+// every other line is opaque body text. A line ends at "\n" or end of input;
+// sh/syntax reads "\r\n" as "\n" (Parser.rune), so a "\r" just before the
+// newline is not part of the line, while any other "\r" is.
 func (l *BashSharpLexer) fenceLine() {
-	if strings.TrimSuffix(l.GetText(), "\n") == l.st.fence && strings.HasSuffix(l.GetText(), "\n") || l.GetText() == l.st.fence {
+	line, nl := strings.CutSuffix(l.GetText(), "\n")
+	if nl {
+		line = strings.TrimSuffix(line, "\r")
+	}
+	if line == l.st.fence {
 		l.SetType(BashSharpLexerFENCE_CLOSE)
 		l.PopMode()
 		l.fenceFuncs()
 		return
 	}
-	l.st.fenceBody.WriteString(l.GetText())
+	l.st.fenceBody.WriteString(line)
+	if nl {
+		l.st.fenceBody.WriteByte('\n')
+	}
 	l.SetChannel(antlr.TokenHiddenChannel)
 }
 

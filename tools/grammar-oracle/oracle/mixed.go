@@ -125,8 +125,10 @@ func (m *mixed) collectSites(tree antlr.Tree, orig func(int) int) {
 	add := func(kind string, ctx antlr.ParserRuleContext) {
 		start, stop := ctx.GetStart(), ctx.GetStop()
 		end := stop.GetStop() + 1
-		if kind == "fence" && strings.HasSuffix(stop.GetText(), "\n") {
-			end-- // a fence ends with its closing tilde run, not the newline after it
+		if kind == "fence" {
+			// A fence ends with its closing tilde run, not the newline (or
+			// "\r\n") after it.
+			end -= len(stop.GetText()) - len(strings.TrimSuffix(strings.TrimSuffix(stop.GetText(), "\n"), "\r"))
 		}
 		m.sites = append(m.sites, Site{kind, m.offsets[orig(start.GetStart())], m.offsets[orig(end)]})
 	}
