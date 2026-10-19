@@ -41,26 +41,14 @@ func main() {
 		fmt.Fprintln(os.Stderr, "FAIL:", err)
 		os.Exit(2)
 	}
+	t := sum.Tally
 	if !sum.Pass {
-		required, planned, missing := 0, 0, 0
-		for _, rec := range sum.Records {
-			if rec.Outcome == "missing" || rec.Outcome == "error" {
-				missing++
-			}
-			if rec.Outcome == "disagree" {
-				if rec.Class == "planned" {
-					planned++
-				} else {
-					required++
-				}
-			}
-		}
-		fmt.Fprintf(os.Stderr, "FAIL: grammar-oracle comparison: %d required disagreements, %d planned disagreements, %d missing/errors; %d compared records\n", required, planned, missing, len(sum.Records))
+		fmt.Fprintf(os.Stderr, "FAIL: grammar-oracle comparison: %d required disagreements, %d missing/errors; reported separately: %d probe, %d planned disagreements, %d known divergences; %d compared records\n", t.Required, t.Missing, t.Probes, t.Planned, t.Known, len(sum.Records))
 		os.Exit(1)
 	}
 	if err = driver.Verify(r, compare); err != nil {
 		fmt.Fprintln(os.Stderr, "FAIL:", err)
 		os.Exit(1)
 	}
-	fmt.Printf("PASS: grammar-oracle comparison, %d records\n", len(sum.Records))
+	fmt.Printf("PASS: grammar-oracle comparison, %d records: %d required disagreements, %d missing/errors; reported separately: %d probe, %d planned disagreements, %d known divergences\n", len(sum.Records), t.Required, t.Missing, t.Probes, t.Planned, t.Known)
 }

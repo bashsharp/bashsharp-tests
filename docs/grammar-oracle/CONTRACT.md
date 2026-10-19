@@ -74,9 +74,11 @@ The comparison driver writes one record per expected fixture:
   optional `"logical":{"file","line","col"}`. Each side keeps its own actual
   position. The driver never invents a position for a side that accepted.
   Wording is not compared.
-- `production_verdict` (gosource only) is the raw production-policy verdict,
-  including `CheckBranches` label, goto and branch checks. `verdict_reference`
-  is the isolated lexical and grammar verdict, and it is the one compared.
+- `production_verdict` (gosource only) is the verdict of the full production
+  pipeline, gosource `Load` with default options: gc's parser with
+  `CheckBranches` label, goto and branch checks, then go/types and lowering.
+  `verdict_reference` is the isolated lexical and grammar verdict, and it is
+  the one compared.
 - `outcome` is `agree`, `disagree`, `missing` or `error`. `category` is
   `syntax`, `boundary` or `semantic`.
 
@@ -103,11 +105,15 @@ GOTOOLCHAIN=go1.27.2 go test ./gosource -run '^TestGrammarOracleReference$' -cou
   `diagnostics`, `production_verdict`, and `phase`, which is `syntax` or
   `context`). It ends with `{"done":true,"count":N}`.
 - `sh/syntax` parses the whole input with `Variant(LangBash)` or
-  `Variant(LangBashPP)`. It reads sites from the AST extension nodes, in the
+  `Variant(LangBashPP)`. It reports `phase: "context"` for an embed-target
+  refusal, and for an `import [ALIAS] "PATH"` statement refused only because
+  `PATH` fails `module.CheckImportPath` (`validBashPPImportPath`): module-path
+  validity is never a syntax verdict. It reads sites from the AST extension nodes, in the
   way that `sh/grammar` `compareSites` does. It uses an empty alias
   environment.
 - `sh/gosource` reports the verdict from the vendored gcsyntax parser, and
-  reports `CheckBranches` in `production_verdict`. Malformed literals, invalid
+  reports `Load`'s verdict in `production_verdict`; `phase` is `context` when
+  only `CheckBranches` refuses. Malformed literals, invalid
   bytes and scanner errors count as rejects even when the message has no
   `syntax error` prefix. `Load`'s type checking is never a syntax verdict.
 - The driver also enforces a 600 s wall limit. A timeout, a non-zero exit, a
@@ -123,9 +129,11 @@ bridge/module restrictions, null safety, deep `readonly`, contracts,
 decorator registration (`EDECO-*`), `lower.CheckBashSharp`/`--check`, and run
 exit codes. S6 `exit` values describe fixture execution, not parse verdicts.
 
-Two cases are categorized `semantic` rather than `disagree`: a reference
-refusal with `phase: "context"`, and a gosource production-only branch error.
-Both are still reported. A syntax verdict must never need PATH, the network,
+Three cases are categorized `semantic` rather than `disagree`: a reference
+refusal with `phase: "context"`; a gosource production-only branch error;
+and a go-unit input that gcsyntax accepts, the oracle rejects and the
+production pipeline (`production_verdict`) rejects too. The evidence is on
+the reference side only. All are still reported. A syntax verdict must never need PATH, the network,
 a model, package downloads or program execution.
 
 ## Positions and transforms
@@ -205,6 +213,32 @@ These stay open and are reported, not waived. In `findings.tsv`:
   bash subscripts that `bash -n` accepts, `import ""`, and gcsyntax accepting
   a unary `~`.
 
+Run H applied the manager's decisions on these:
+
+- **Probes are non-blocking.** PASS rules 1 and 3 cover the manifest rows
+  and the frozen mutant set; a probe is neither. A probe still needs a
+  complete result (rule 2). Its disagreements are reported in their own
+  `report.md` section, with totals, and route to the S6-gap decision (todo
+  `a964f1a3`); their `findings.tsv` rows stay `open`.
+- **Known divergences.** The sh README "Caveats" documents that the static
+  parser assumes an array index is an arithmetic expression. The grammar
+  stays at `bash -n` behaviour, so the three subscript mutants are an
+  explicit list in the driver (`knownDivergences`), modelled on the four
+  `sh/grammar` `TestKnownDivergences` cases. Each entry pins the exact
+  observed pair, and the gate fails if either side changes:
+
+  | fixture | input | oracle | reference | reference error offset |
+  |---|---|---|---|---|
+  | `mutant/startsite/generic-inst-bare-ptr/4` | `f[**T]` | accept | reject | 2 |
+  | `mutant/startsite/subscript-dash/0` | `f[-]x` | accept | reject | 2 |
+  | `mutant/startsite/subscript-empty/1` | `f[` LF `]` | accept | reject | 1 |
+
+- **`import ""`** (`mutant/s6/M17/5`) is `semantic`: the `sh/syntax` adapter
+  reports the module-path refusal as `phase: "context"`.
+- **Unary `~`** (`mutant/tour/solutions/webcrawler.bsh/7`) is `semantic`:
+  gcsyntax accepts, the oracle rejects (the spec's `unary_op` has no `~`;
+  the oracle is unchanged), and `Load` rejects.
+
 ## PASS rule
 
 A candidate PASSes only if all of the following hold:
@@ -218,7 +252,8 @@ A candidate PASSes only if all of the following hold:
    zero errors under a bail strategy), any unconsumed trailing input before
    EOF, and any `missing` result all fail, whatever the class.
 3. **No unresolved required disagreement.** On required rows and mutants,
-   `verdict_oracle == verdict_reference`. On required rows that agreement must
+   `verdict_oracle == verdict_reference`, except a listed known divergence
+   whose exact observed pair holds. On required rows that agreement must
    also equal `expected`. When both sides accept, the boundary site lists are
    equal (kind and span), and the outermost kind equals `boundary` unless it
    is `-`. Two recognizers that agree with each other still fail against a
@@ -227,7 +262,8 @@ A candidate PASSes only if all of the following hold:
    context. A difference counts only as `semantic`, and only when the
    reference phase is `context`.
 
-Planned and not-applicable rows are reported separately with their reasons.
+Planned and not-applicable rows, probes and known divergences are reported
+separately, planned rows with their reasons.
 They neither fail nor count toward a PASS. The disagreement ledger records
 each failure: file, offset, line:col, lane, both verdicts and diagnostics. The
 ledger never waives a failure.

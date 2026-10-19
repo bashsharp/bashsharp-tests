@@ -77,6 +77,7 @@ type Summary struct {
 	Pass      bool
 	Issues    []string
 	Toolchain string
+	Tally     Tally
 }
 
 func readRows(path string) ([]Fixture, error) {
@@ -231,6 +232,14 @@ func classify(f Fixture, o oracle.Result, r *Reference) Record {
 		rec.Outcome = "agree"
 		return rec
 	}
+	// gcsyntax accepts what the oracle refuses, and the full production
+	// pipeline (Load: go/types and lowering) refuses it too: the refusal is
+	// semantic, decided on reference-side evidence alone.
+	if f.Dialect == "go-unit" && r.Verdict == "accept" && o.Verdict == "reject" && r.Production != nil && *r.Production == "reject" {
+		rec.Category = "semantic"
+		rec.Outcome = "agree"
+		return rec
+	}
 	if o.Verdict != r.Verdict {
 		rec.Outcome = "disagree"
 		return rec
@@ -243,12 +252,64 @@ func classify(f Fixture, o oracle.Result, r *Reference) Record {
 	rec.Outcome = "agree"
 	return rec
 }
+
+// knownDivergence is the exact observed pair on a mutant where the oracle
+// follows bash -n and sh/syntax does not, as the sh/grammar
+// TestKnownDivergences cases are. The sh static parser assumes an array index
+// is an arithmetic expression (sh README "Caveats"); bash -n accepts these
+// subscripts. A change on either side fails the gate, so a fix or a
+// regression is visible.
+type knownDivergence struct {
+	Oracle, Reference string
+	Offset            int // the reference's first error offset
+}
+
+var knownDivergences = map[string]knownDivergence{
+	"mutant/startsite/generic-inst-bare-ptr/4": {"accept", "reject", 2}, // f[**T]
+	"mutant/startsite/subscript-dash/0":        {"accept", "reject", 2}, // f[-]x
+	"mutant/startsite/subscript-empty/1":       {"accept", "reject", 1}, // f[ LF ]
+}
+
+func (k knownDivergence) holds(r Record) bool {
+	return r.Oracle == k.Oracle && r.Reference == k.Reference && r.Category == "syntax" &&
+		len(r.DiagnosticsReference) > 0 && r.DiagnosticsReference[0].Offset == k.Offset
+}
+
+// Kind is how a fixture counts toward the gate: "required" (manifest rows
+// that are neither planned nor not-applicable, and the frozen mutant set),
+// "probe" (derived probes: non-blocking, CONTRACT PASS rules 1 and 3 cover
+// neither), "known-divergence", "planned" or "not-applicable".
+func Kind(f Fixture) string {
+	switch {
+	case f.Class == "not-applicable" || f.Class == "planned":
+		return f.Class
+	case f.Lane == "derived" && strings.HasPrefix(f.ID, "probe/"):
+		return "probe"
+	case f.Lane == "derived":
+		if _, ok := knownDivergences[f.ID]; ok {
+			return "known-divergence"
+		}
+	}
+	return "required"
+}
+
 func valid(f Fixture, r Record) bool {
 	if f.Class == "not-applicable" || f.Class == "planned" {
 		return true
 	}
 	if r.Outcome == "missing" || r.Outcome == "error" || r.Oracle == "error" || r.Reference == "error" {
 		return false
+	}
+	switch Kind(f) {
+	case "probe":
+		return true
+	case "known-divergence":
+		return knownDivergences[f.ID].holds(r)
+	}
+	if f.Lane == "derived" {
+		// A mutant has no authored expectation: the two sides agree, with
+		// equal site lists on accept, or the difference is semantic.
+		return r.Outcome == "agree"
 	}
 	if f.Class == "contextual" {
 		return r.Reference == f.Expected && r.Outcome != "disagree"
@@ -269,6 +330,40 @@ func valid(f Fixture, r Record) bool {
 	}
 	return true
 }
+
+// Tally counts the comparison by how each record counts toward the gate.
+// Required counts every record that fails the PASS rule other than a missing
+// or error one; Probes, Planned and Known count reported, non-blocking
+// differences (a known divergence counts only while its pair holds).
+type Tally struct{ Required, Probes, Planned, Known, Missing int }
+
+func Count(rows []Fixture, records []Record) Tally {
+	fixtures := map[string]Fixture{}
+	for _, f := range rows {
+		fixtures[f.ID] = f
+	}
+	var t Tally
+	for _, r := range records {
+		f := fixtures[r.ID]
+		switch {
+		case r.Outcome == "missing" || r.Outcome == "error" || r.Oracle == "error" || r.Reference == "error":
+			if f.Class != "planned" {
+				t.Missing++
+			}
+		case !valid(f, r):
+			t.Required++
+		case r.Outcome != "disagree":
+		case Kind(f) == "probe":
+			t.Probes++
+		case Kind(f) == "planned":
+			t.Planned++
+		case Kind(f) == "known-divergence":
+			t.Known++
+		}
+	}
+	return t
+}
+
 func adapter(ctx context.Context, sh, tool, dir, kind string, requested []Fixture) (map[string]Reference, error) {
 	if len(requested) == 0 {
 		return map[string]Reference{}, nil
@@ -447,7 +542,7 @@ func Run(opt Options) (Summary, error) {
 	if tool == "local" {
 		label = "local go1.27.2 (cached toolchain; host review status unverified)"
 	}
-	summary := Summary{Records: records, Pass: pass, Issues: issues, Toolchain: label}
+	summary := Summary{Records: records, Pass: pass, Issues: issues, Toolchain: label, Tally: Count(rows, records)}
 	if err := writeResults(opt, rows, summary); err != nil {
 		return summary, err
 	}
@@ -527,7 +622,7 @@ func writeReport(opt Options, rows []Fixture, s Summary) error {
 	for _, k := range keys {
 		fmt.Fprintf(&b, "| %s | %d |\n", k, cat[k])
 	}
-	b.WriteString("\n## Disagreements and incomplete results\n\n")
+	b.WriteString("\n## Blocking disagreements and incomplete results\n\n")
 	ledger, err := os.ReadFile(opt.FindingsPath)
 	if err != nil {
 		return err
@@ -539,13 +634,26 @@ func writeReport(opt Options, rows []Fixture, s Summary) error {
 		}
 	}
 	var additions strings.Builder
+	line := func(f Fixture, r Record) {
+		off, line, col := position(f, r)
+		fmt.Fprintf(&b, "- %s: %s at byte %d (%d:%d); oracle %s %s boundary %v; reference %s %s boundary %v; outcome %s/%s.\n", f.ID, f.Source, off, line, col, r.Oracle, diagOracle(r.DiagnosticsOracle), r.BoundaryOracle, r.Reference, diagReference(r.DiagnosticsReference), r.BoundaryReference, r.Category, r.Outcome)
+	}
+	blocking := 0
+	for _, r := range s.Records {
+		if f := fixtures[r.ID]; !valid(f, r) {
+			line(f, r)
+			blocking++
+		}
+	}
+	if blocking == 0 {
+		b.WriteString("None.\n")
+	}
 	for _, r := range s.Records {
 		f := fixtures[r.ID]
-		if r.Outcome != "disagree" && r.Outcome != "missing" && r.Outcome != "error" && valid(f, r) {
+		if r.Outcome != "disagree" {
 			continue
 		}
 		off, line, col := position(f, r)
-		fmt.Fprintf(&b, "- %s: %s at byte %d (%d:%d); oracle %s %s boundary %v; reference %s %s boundary %v; outcome %s/%s.\n", f.ID, f.Source, off, line, col, r.Oracle, diagOracle(r.DiagnosticsOracle), r.BoundaryOracle, r.Reference, diagReference(r.DiagnosticsReference), r.BoundaryReference, r.Category, r.Outcome)
 		ledgerID := "reference/" + f.ID
 		if r.Outcome == "disagree" && !existing[ledgerID] {
 			fmt.Fprintf(&additions, "%s\t%s\t%d\t%d:%d\topen\t%s\t%s\t%s\treference comparison: %s\n", ledgerID, f.Source, off, line, col, r.Oracle, r.Reference, cleanTSV(diagOracle(r.DiagnosticsOracle)+" "+fmt.Sprint(r.BoundaryOracle)+" | "+diagReference(r.DiagnosticsReference)+" "+fmt.Sprint(r.BoundaryReference)), r.Category)
@@ -561,6 +669,26 @@ func writeReport(opt Options, rows []Fixture, s Summary) error {
 		f.Close()
 		if e != nil {
 			return e
+		}
+	}
+	t := Count(rows, s.Records)
+	probes := 0
+	for _, r := range s.Records {
+		if Kind(fixtures[r.ID]) == "probe" {
+			probes++
+		}
+	}
+	fmt.Fprintf(&b, "\n## Probes (non-blocking)\n\nCONTRACT PASS rules 1 and 3 cover the manifest rows and the frozen mutant set; a probe is neither. Probes: %d, disagreements: %d, missing/errors are counted above. Each disagreement stays open in findings.tsv and routes to the S6-gap decision (todo a964f1a3).\n\n", probes, t.Probes)
+	for _, r := range s.Records {
+		if f := fixtures[r.ID]; Kind(f) == "probe" && r.Outcome == "disagree" {
+			line(f, r)
+		}
+	}
+	fmt.Fprintf(&b, "\n## Known divergences\n\nThe sh static parser assumes an array index is arithmetic (sh README \"Caveats\"); the oracle follows bash -n. Each entry pins the exact observed pair; a change on either side fails the gate. Holding: %d of %d.\n\n", t.Known, len(knownDivergences))
+	for _, r := range s.Records {
+		if f := fixtures[r.ID]; Kind(f) == "known-divergence" {
+			k := knownDivergences[f.ID]
+			fmt.Fprintf(&b, "- %s: pinned oracle %s, reference %s at byte %d; observed holds=%t.\n", f.ID, k.Oracle, k.Reference, k.Offset, k.holds(r))
 		}
 	}
 	b.WriteString("\n## Semantic cases\n\n")
@@ -582,10 +710,18 @@ func writeReport(opt Options, rows []Fixture, s Summary) error {
 			fmt.Fprintf(&b, "- %s\n", sanitize(issue))
 		}
 	}
-	b.WriteString("\n## Planned and not applicable\n\n")
+	records := map[string]Record{}
+	for _, r := range s.Records {
+		records[r.ID] = r
+	}
+	fmt.Fprintf(&b, "\n## Planned and not applicable\n\nPlanned disagreements: %d.\n\n", t.Planned)
 	for _, f := range rows {
 		if f.Class == "planned" || f.Class == "not-applicable" {
-			fmt.Fprintf(&b, "- %s (%s): %s\n", f.ID, f.Class, f.Reason)
+			outcome := ""
+			if r, ok := records[f.ID]; ok && f.Class == "planned" {
+				outcome = fmt.Sprintf(" Outcome %s/%s (oracle %s, reference %s).", r.Category, r.Outcome, r.Oracle, r.Reference)
+			}
+			fmt.Fprintf(&b, "- %s (%s): %s%s\n", f.ID, f.Class, f.Reason, outcome)
 		}
 	}
 	return os.WriteFile(opt.ReportPath, []byte(b.String()), 0644)
