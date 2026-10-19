@@ -153,6 +153,9 @@ func TestMixedPrimitives(t *testing.T) {
 		// P7 fences close at the first exact closer.
 		{"bashsharp", "~~~python\nx\n~~~\n", "accept", "[{fence 0 15}]"},
 		{"bashsharp", "~~~python\nx\n~~~~\n", "reject", ""},
+		// An unaliased fence declares its functions: a later `f()` is a call.
+		{"bashsharp", "~~~cpp\nvoid f() {}\n~~~\nf()\n", "accept", "[{fence 0 22}]"},
+		{"bashsharp", "~~~cpp as x\nvoid f() {}\n~~~\nf()\n", "reject", ""},
 		// P8 decorators and @name() functions.
 		{"bashsharp", "@n()\nfunc f() {}\n", "accept", "[{decorator 0 4} {typed-func 5 16}]"},
 		{"bashsharp", "@n()\n{ :; }\n", "accept", "[{at-function 0 11}]"},

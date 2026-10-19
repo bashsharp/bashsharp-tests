@@ -14,6 +14,7 @@ func main() {
 	root := flag.String("root", "", "bashsharp-tests root")
 	sh := flag.String("sh-root", "", "read-only sh checkout")
 	tool := flag.String("toolchain", "go1.27.2", "GOTOOLCHAIN value")
+	derived := flag.String("derived-root", "", "root under which derived.tsv tests: sources are materialized (default -root)")
 	verify := flag.Bool("verify", false, "verify committed comparison records")
 	flag.Parse()
 	if *root == "" {
@@ -35,7 +36,7 @@ func main() {
 		fmt.Println("PASS: grammar-oracle evidence verified")
 		return
 	}
-	sum, err := driver.Run(driver.Options{Root: r, SHRoot: *sh, Toolchain: *tool, Timeout: 600 * time.Second, ComparePath: compare, ReportPath: filepath.Join(r, "docs/grammar-oracle/results/report.md"), FindingsPath: filepath.Join(r, "docs/grammar-oracle/findings.tsv")})
+	sum, err := driver.Run(driver.Options{Root: r, SHRoot: *sh, DerivedRoot: *derived, Toolchain: *tool, Timeout: 600 * time.Second, ComparePath: compare, ReportPath: filepath.Join(r, "docs/grammar-oracle/results/report.md"), FindingsPath: filepath.Join(r, "docs/grammar-oracle/findings.tsv")})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "FAIL:", err)
 		os.Exit(2)

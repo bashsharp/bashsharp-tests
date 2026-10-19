@@ -99,6 +99,8 @@ type lexState struct {
 	pending   []antlr.Token
 	heredocs  []heredoc
 	fence     string
+	fenceLang string // "" for an aliased fence, which promotes no names
+	fenceBody strings.Builder
 	funcs     map[string]bool
 }
 
@@ -691,6 +693,12 @@ func (l *BashSharpLexer) fenceOpen() {
 		n++
 	}
 	l.st.fence = text[:n]
+	fields := strings.Fields(text)
+	l.st.fenceLang = ""
+	if len(fields) < 2 || fields[1] != "as" {
+		l.st.fenceLang = strings.ToLower(fields[0][n:])
+	}
+	l.st.fenceBody.Reset()
 }
 
 // fenceLine: the first line equal to the opener's tilde run closes the fence;
@@ -699,9 +707,132 @@ func (l *BashSharpLexer) fenceLine() {
 	if strings.TrimSuffix(l.GetText(), "\n") == l.st.fence && strings.HasSuffix(l.GetText(), "\n") || l.GetText() == l.st.fence {
 		l.SetType(BashSharpLexerFENCE_CLOSE)
 		l.PopMode()
+		l.fenceFuncs()
 		return
 	}
+	l.st.fenceBody.WriteString(l.GetText())
 	l.SetChannel(antlr.TokenHiddenChannel)
+}
+
+// fenceFuncs: a closed, unaliased fence declares the functions its language's
+// look-ahead reads, so a later `name()` is a call, not a shell function head
+// (sh/syntax bashppRegisterSourceBlockFuncs and bashppFenceLookahead).
+func (l *BashSharpLexer) fenceFuncs() {
+	read := fenceLookahead[l.st.fenceLang]
+	if read == nil {
+		return
+	}
+	for _, line := range strings.Split(l.st.fenceBody.String(), "\n") {
+		decl := read(line)
+		if decl == "" {
+			continue
+		}
+		name, _, ok := strings.Cut(decl, "(")
+		name = strings.TrimSpace(name)
+		if ok && !strings.HasPrefix(name, "_") && validIdent(name) {
+			l.st.funcs[name] = true
+		}
+	}
+}
+
+// fenceLookahead maps a fence language spelling to its declaration-line
+// reader, which returns the text from the declared name on, or "".
+var fenceLookahead = map[string]func(string) string{}
+
+func init() {
+	add := func(read func(string) string, spellings ...string) {
+		for _, s := range spellings {
+			fenceLookahead[s] = read
+		}
+	}
+	add(func(line string) string {
+		if r, ok := strings.CutPrefix(line, "def "); ok {
+			return r
+		}
+		return ""
+	}, "python", "py")
+	add(func(line string) string {
+		if r, ok := strings.CutPrefix(strings.TrimPrefix(line, "export "), "function "); ok {
+			return r
+		}
+		return ""
+	}, "typescript", "ts", "javascript", "js")
+	add(func(line string) string {
+		if r, ok := strings.CutPrefix(strings.TrimSpace(line), "pub fn "); ok {
+			return r
+		}
+		return ""
+	}, "rust", "rs")
+	add(func(line string) string {
+		decl := strings.TrimSpace(line)
+		if strings.HasPrefix(decl, "static ") || strings.HasPrefix(decl, "#") {
+			return ""
+		}
+		before, after, ok := strings.Cut(decl, "(")
+		if !ok || before == "" {
+			return ""
+		}
+		head := strings.TrimSpace(before)
+		if strings.HasSuffix(head, "if") || strings.HasSuffix(head, "for") || strings.HasSuffix(head, "while") {
+			return ""
+		}
+		parts := strings.Fields(before)
+		if len(parts) <= 1 {
+			return ""
+		}
+		return parts[len(parts)-1] + "(" + after
+	}, "c", "cpp", "cxx")
+	add(func(line string) string {
+		if r, ok := strings.CutPrefix(strings.TrimSpace(line), "func "); ok {
+			return r
+		}
+		return ""
+	}, "go")
+	add(func(line string) string {
+		decl, rest := strings.TrimSpace(line), ""
+		for _, kw := range []string{"function ", "filter "} {
+			if r, ok := strings.CutPrefix(decl, kw); ok {
+				rest = strings.TrimSpace(r)
+				break
+			}
+		}
+		if rest == "" {
+			return ""
+		}
+		name := rest
+		if i := strings.IndexAny(rest, " \t({"); i >= 0 {
+			name = rest[:i]
+		}
+		if i := strings.LastIndex(name, ":"); i >= 0 {
+			name = name[i+1:]
+		}
+		if name == "" {
+			return ""
+		}
+		return name + "("
+	}, "powershell", "pwsh", "ps1")
+	add(func(line string) string {
+		decl := strings.TrimSpace(line)
+		if !strings.HasPrefix(decl, "public static ") {
+			return ""
+		}
+		before, after, ok := strings.Cut(decl, "(")
+		if !ok {
+			return ""
+		}
+		fields := strings.Fields(before)
+		if len(fields) < 4 || strings.ContainsAny(before, "=;") {
+			return ""
+		}
+		return fields[len(fields)-1] + "(" + after
+	}, "csharp", "cs")
+	add(func(line string) string {
+		before, _, ok := strings.Cut(strings.TrimSpace(line), "()")
+		if !ok {
+			return ""
+		}
+		return strings.TrimSpace(before) + "("
+	}, "bash", "sh")
 }
 
 // heredocLine consumes here-document body lines in queue order (README P9).

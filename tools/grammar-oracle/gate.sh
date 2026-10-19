@@ -6,4 +6,10 @@ if [ -z "${SH_ROOT:-}" ] && [ -z "${DHNT_ROOT:-}" ]; then
   exit 2
 fi
 cd "$ROOT/tools/grammar-oracle"
-GOWORK=off GOTOOLCHAIN="${GRAMMAR_ORACLE_TOOLCHAIN:-go1.27.2}" "${GRAMMAR_ORACLE_GO:-go}" run ./driver/cmd -root "$ROOT" -toolchain "${GRAMMAR_ORACLE_TOOLCHAIN:-go1.27.2}" "$@"
+GO=("${GRAMMAR_ORACLE_GO:-go}")
+export GOWORK=off GOTOOLCHAIN="${GRAMMAR_ORACLE_TOOLCHAIN:-go1.27.2}"
+# Materialize the frozen derived inputs (derived.tsv) into a temp root; no tracked bytes.
+DERIVED="$(mktemp -d)"
+trap 'rm -rf "$DERIVED"' EXIT
+"${GO[@]}" run ./mutate/cmd -root "$ROOT" -out "$DERIVED"
+"${GO[@]}" run ./driver/cmd -root "$ROOT" -derived-root "$DERIVED" -toolchain "$GOTOOLCHAIN" "$@"

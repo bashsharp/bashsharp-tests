@@ -68,6 +68,7 @@ type Record struct {
 }
 type Options struct {
 	Root, SHRoot, Toolchain               string
+	DerivedRoot                           string // tests root for derived.tsv sources; default Root
 	Timeout                               time.Duration
 	ComparePath, ReportPath, FindingsPath string
 }
@@ -328,11 +329,21 @@ func Run(opt Options) (Summary, error) {
 	if err != nil {
 		return Summary{}, err
 	}
+	derivedRoot := root
+	if opt.DerivedRoot != "" {
+		if derivedRoot, err = filepath.Abs(opt.DerivedRoot); err != nil {
+			return Summary{}, err
+		}
+	}
+	isDerived := map[string]bool{}
 	derived := filepath.Join(root, "docs/grammar-oracle/derived.tsv")
 	if _, err := os.Stat(derived); err == nil {
 		extra, e := readRows(derived)
 		if e != nil {
 			return Summary{}, e
+		}
+		for i := range extra {
+			isDerived[extra[i].ID] = true
 		}
 		rows = append(rows, extra...)
 	}
@@ -355,7 +366,11 @@ func Run(opt Options) (Summary, error) {
 		if f.Class == "not-applicable" {
 			continue
 		}
-		f.Bytes, f.Path, err = input(f.Source, root, tmp)
+		base := root
+		if isDerived[f.ID] {
+			base = derivedRoot
+		}
+		f.Bytes, f.Path, err = input(f.Source, base, tmp)
 		if err != nil {
 			issues = append(issues, f.ID+": input unavailable")
 			continue
