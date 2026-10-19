@@ -230,9 +230,9 @@ func TestMixedFences(t *testing.T) {
 	}{
 		{"fence/width-3", "~~~python\nprint(1)\n~~~\n", "[{fence 0 22}]", "[{fence 0 22}]", ""},
 		{"fence/width-7", "~~~~~~~python\nprint(1)\n~~~~~~~\n", "[{fence 0 30}]", "[{fence 0 30}]", ""},
-		// README P7 bounds no width; sh/syntax recognizes the header within
-		// its 64-byte start-site look-ahead, so it runs this as commands.
-		{"fence/width-64", t64 + "python\nprint(1)\n" + t64 + "\n", "[{fence 0 144}]", "[]", "production/fence-width-64"},
+		// README P7 bounds no width; sh/syntax agrees since de35c153b
+		// (findings.tsv production/fence-width-64, fixed).
+		{"fence/width-64", t64 + "python\nprint(1)\n" + t64 + "\n", "[{fence 0 144}]", "[{fence 0 144}]", "production/fence-width-64"},
 		{"fence/first-exact-closer", "~~~python\nx\n~~~~\n~~~\necho after\n", "[{fence 0 20}]", "[{fence 0 20}]", ""},
 		{"fence/crlf", "~~~python\r\nprint(1)\r\n~~~\r\n", "[{fence 0 24}]", "[{fence 0 24}]", ""},
 		{"fence/crlf-declares", "~~~python\r\ndef g():\r\n  pass\r\n~~~\r\ng()\n", "[{fence 0 32}]", "[{fence 0 32}]", ""},
