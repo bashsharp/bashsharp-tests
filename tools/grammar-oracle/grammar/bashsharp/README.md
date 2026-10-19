@@ -134,8 +134,12 @@ documented: a function body is any compound command, not only a block.
 - Outside fence bodies, `\r` is an ordinary byte, as in GNU Bash. `sh/syntax`
   reads every `\r\n` as `\n`, so it accepts CRLF shell lines such as
   `g()\r\n` that the oracle rejects.
-- `sh/syntax` treats a fence opener of 64 or more tildes as shell text (its
-  start-site look-ahead stops at 64 bytes); P7 bounds no width, so the oracle
-  keeps the fence. Open production finding `production/fence-width-64`.
 - The island lane (Go payloads of fences and embeds) and the bounded mutation
   set belong to checkpoints 3-4.
+
+## Repaired production finding
+
+`production/fence-width-64`: `sh/syntax` formerly treated a fence opener of
+64 or more tildes as shell text because its start-site look-ahead stopped at
+64 bytes. Repaired by sh `de35c153b` (Sprint 473); P7 and the oracle bound no
+fence width.

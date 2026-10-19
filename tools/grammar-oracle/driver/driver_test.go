@@ -113,6 +113,68 @@ func TestCorruptedEmbedPayloadFailsGate(t *testing.T) {
 	}
 }
 
+func TestFencePayloadGate(t *testing.T) {
+	sh, err := roots("sh", "")
+	if err != nil {
+		t.Skip("sh reference checkout unavailable")
+	}
+	for _, tc := range []struct {
+		name, body string
+		pass       bool
+	}{
+		{"longer tilde line stays body", "package main\nfunc valid() {}\n~~~~\nfunc main( {\n", false},
+		{"raw string with longer tilde line", "package main\nvar text = `\n~~~~\n`\nfunc main() {}\n", true},
+		{"comment before package clause", "// package comment\npackage main\nfunc main() {}\n", true},
+		{"block comment and blanks before package clause", "\n/* package comment */\n\npackage main\nfunc main() {}\n", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			dir := filepath.Join(root, "tests", "go-delta")
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				t.Fatal(err)
+			}
+			script := []byte("~~~go\n" + tc.body + "~~~\n")
+			if err := os.WriteFile(filepath.Join(dir, "fence.bsh"), script, 0644); err != nil {
+				t.Fatal(err)
+			}
+			docs := filepath.Join(root, "docs", "grammar-oracle")
+			if err := os.MkdirAll(filepath.Join(docs, "results"), 0755); err != nil {
+				t.Fatal(err)
+			}
+			manifest := "# fixture_id\tlane\tsource\tsha256\tdialect\tpolicy\tclass\texpected\tboundary\treason\n" +
+				fmt.Sprintf("fence\tisland\ttests:tests/go-delta/fence.bsh\t%s\tbashsharp\tsh-syntax\trequired-positive\taccept\tfence\tfixture\n", digest(script))
+			if err := os.WriteFile(filepath.Join(docs, "manifest.tsv"), []byte(manifest), 0644); err != nil {
+				t.Fatal(err)
+			}
+			findings := filepath.Join(docs, "findings.tsv")
+			if err := os.WriteFile(findings, nil, 0644); err != nil {
+				t.Fatal(err)
+			}
+			s, err := Run(Options{Root: root, SHRoot: sh, Toolchain: "go1.27.2", ComparePath: filepath.Join(docs, "results", "compare.jsonl"), ReportPath: filepath.Join(docs, "results", "report.md"), FindingsPath: findings})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if s.Pass != tc.pass || len(s.Records) != 2 {
+				t.Fatalf("gate pass=%t records=%d issues=%v, want pass=%t and two records", s.Pass, len(s.Records), s.Issues, tc.pass)
+			}
+			if parent := s.Records[0]; parent.Oracle != "accept" || parent.Reference != "accept" {
+				t.Fatalf("fence verdicts oracle=%s reference=%s, want accept", parent.Oracle, parent.Reference)
+			}
+			p := s.Records[1]
+			if p.ID != "fence#payload-1" || p.SHA != digest([]byte(tc.body)) || p.Lane != "island-payload" || p.Class != "required-positive" {
+				t.Fatalf("payload extraction = %+v, want exact body", p)
+			}
+			wantVerdict := "accept"
+			if !tc.pass {
+				wantVerdict = "reject"
+			}
+			if p.Oracle != wantVerdict || p.Reference != wantVerdict {
+				t.Fatalf("payload verdicts oracle=%s reference=%s, want %s", p.Oracle, p.Reference, wantVerdict)
+			}
+		})
+	}
+}
+
 func TestAdapterIDFailures(t *testing.T) {
 	f := Fixture{ID: "a", SHA: "sha"}
 	for _, body := range []string{

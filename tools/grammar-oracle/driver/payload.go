@@ -3,6 +3,8 @@ package driver
 import (
 	"bytes"
 	"fmt"
+	"go/scanner"
+	"go/token"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -63,7 +65,7 @@ func payloads(parent Fixture, sites []oracle.Site, tmp string) ([]Fixture, error
 			continue
 		}
 		prefix := []byte(nil)
-		if !bytes.HasPrefix(bytes.TrimSpace(body), []byte("package ")) {
+		if !hasPackageClause(body) {
 			prefix = []byte("package payload\n")
 		}
 		input := append(append([]byte(nil), prefix...), body...)
@@ -100,6 +102,14 @@ func payloads(parent Fixture, sites []oracle.Site, tmp string) ([]Fixture, error
 	return out, nil
 }
 
+func hasPackageClause(body []byte) bool {
+	fset := token.NewFileSet()
+	var s scanner.Scanner
+	s.Init(fset.AddFile("", fset.Base(), len(body)), body, nil, 0)
+	_, first, _ := s.Scan()
+	return first == token.PACKAGE
+}
+
 func goFenceBody(src []byte, site oracle.Site) ([]byte, int, bool) {
 	b := src[site.Start:site.End]
 	headerEnd := bytes.IndexByte(b, '\n')
@@ -126,7 +136,7 @@ func goFenceBody(src []byte, site oracle.Site) ([]byte, int, bool) {
 			end += p
 		}
 		line := stripCR(b[p:end])
-		if len(line) >= width && len(bytes.Trim(line, "~")) == 0 {
+		if len(line) == width && len(bytes.Trim(line, "~")) == 0 {
 			return b[start:p], site.Start + start, true
 		}
 		p = end + 1
