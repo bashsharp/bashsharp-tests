@@ -20,7 +20,7 @@ overrides explicit runtime and no install/lifecycle command is invoked.
 
 Against unchanged `ycode/priorart/opencode` commit
 `e03db9bc6908f75c9334d8aa997deeaac81c0298` with
-`BASHPP_BUN=/Users/qiangli/.bun/bin/bun`, import
+`BASHPP_BUN=<home>/.bun/bin/bun`, import
 `opencode/config/paths` inside a fence, await the exported wrapper, and assert
 `/tmp/x.json` plus `/tmp/x.jsonc`. Run the unchanged CLI entry as a disposable
 Bun process with `--version` and assert `local`. Record before/after fixture

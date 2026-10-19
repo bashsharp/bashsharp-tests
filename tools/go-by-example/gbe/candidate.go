@@ -141,7 +141,7 @@ func reviewedCandidate(path string, manifestSHA string) (*Reviewed, error) {
 	explicitRelease := version != "" && strings.Contains(recipe, "GOTOOLCHAIN="+version)
 	pinnedSDKPath := false
 	if version != "" && strings.Contains(recipe, "GOTOOLCHAIN=local") {
-		pattern := `(?:\A|\s)PATH=/[^\s:]+/golang\.org/toolchain@v0\.0\.1-` + regexp.QuoteMeta(version) + `\.` + regexp.QuoteMeta(goos) + `-` + regexp.QuoteMeta(goarch) + `/bin(?::|\s|\z)`
+		pattern := `(?:\A|\s)PATH=(?:/|<home>/|\$HOME/)[^\s:]*golang\.org/toolchain@v0\.0\.1-` + regexp.QuoteMeta(version) + `\.` + regexp.QuoteMeta(goos) + `-` + regexp.QuoteMeta(goarch) + `/bin(?::|\s|\z)`
 		pinnedSDKPath = regexp.MustCompile(pattern).MatchString(recipe)
 		if runtime.GOOS == "windows" {
 			pinnedSDKPath = strings.Contains(strings.ToLower(recipe), "/go/"+strings.TrimPrefix(version, "go")+"/go/bin/go.exe build")

@@ -52,7 +52,7 @@ and is preserved unchanged.
 
 It reads retained product evidence only — it never type-checks and never runs a
 fixture. Its semantics are ported from the pinned SDK
-(`/Users/qiangli/.bashy/sprint118/sources/go-full-sdk/root`, `go1.27.0`):
+(`<home>/.bashy/sprint118/sources/go-full-sdk/root`, `go1.27.0`):
 
 * `commentMap` is a direct port of `src/go/types/commentMap_test.go`, using the
   real `go/scanner`. The expected position of an `/* ERROR … */` annotation is

@@ -175,7 +175,7 @@ structs	structs	1	2	0	0	0	0	reviewed-stdlib	toolchain
 sync	sync	1	11	0	1	0	0	reviewed-stdlib	toolchain	
 sync/atomic	atomic	1	4	0	1	0	0	reviewed-stdlib	toolchain	
 syscall	syscall	1	30	0	249	0	0	reviewed-stdlib	toolchain	
-syscall/js	-	1	0	0	4	1	132	not-buildable	refuse	build constraints exclude all Go files in /Users/qiangli/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.0.darwin-arm64/src/syscall/js
+syscall/js	-	1	0	0	4	1	132	not-buildable	refuse	build constraints exclude all Go files in <home>/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.0.darwin-arm64/src/syscall/js
 testing	testing	1	10	0	3	0	0	reviewed-stdlib	toolchain	
 testing/cryptotest	cryptotest	1	1	0	0	0	0	reviewed-stdlib	toolchain	
 testing/fstest	fstest	1	2	0	0	0	0	reviewed-stdlib	toolchain	

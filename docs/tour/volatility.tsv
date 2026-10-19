@@ -58,7 +58,7 @@
 #   experiment on the native binary freshly built from the byte-identical
 #   source with the pinned go1.27.0 (LC_ALL=C, empty PATH, fresh cwd per run;
 #   raw commands/status/streams retained under
-#   /Users/qiangli/.local/state/bashy/sprint118-evidence/tour-channel-order-review)
+#   <home>/.local/state/bashy/sprint118-evidence/tour-channel-order-review)
 #   witnessed BOTH legal orders under GOMAXPROCS 1/2/4: "-5 17 12" in
 #   1204/1207 runs, "17 -5 12" in 3/1207 (GOMAXPROCS=2: 1/400; GOMAXPROCS=4:
 #   2/400; GOMAXPROCS=1: 0/400), every run exit 0 with stdout exactly 9 bytes

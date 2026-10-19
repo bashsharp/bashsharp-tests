@@ -43,7 +43,7 @@ class ReviewedCandidateBindingTests(unittest.TestCase):
         self.assertEqual(c18['replaces'], 'published-candidate-002')
         self.assertEqual(entry('published-candidate-002')['status'], 'superseded-by-candidate018')
         self.assertNotEqual(c18['module_context_sha256'], entry('published-candidate-002')['module_context_sha256'])
-        self.assertNotEqual(c18['build_cache_root'], '/Users/qiangli/.bashy/sprint118/caches/go-full-published002')
+        self.assertNotEqual(c18['build_cache_root'], '<home>/.bashy/sprint118/caches/go-full-published002')
         source = (REPO / 'tools/go-full/authentication.rb').read_text()
         reviewed = re.search(r"REVIEWED_RELOCATION_SHA256 = '([0-9a-f]{64})'", source).group(1)
         self.assertEqual(reviewed, c18['relocation_manifest_sha256'])

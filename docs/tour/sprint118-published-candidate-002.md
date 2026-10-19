@@ -19,13 +19,13 @@ verified before and after execution. All modes used `GOMAXPROCS=2`.
 
 ## Evidence and provenance
 
-- Candidate manifest: `/Users/qiangli/.local/state/bashy/sprint118-evidence/published-candidate-002/candidate.json`
+- Candidate manifest: `<home>/.local/state/bashy/sprint118-evidence/published-candidate-002/candidate.json`
 - Payload SHA-256: `e9a8a66ca1adbcbc614ab0f0dc9e6ea8d5590cb23e66ce7a8bdc74dab3becce3`
 - Candidate manifest SHA-256: `ddf233e89c2839f299c14010c3d2ca8fba4ffb23e8835b86bd5ae0b6811f9aff`
 - Ledger SHA-256: `77a6c61ea4b8a9e45667e9ece0be1a0834d7385793553f2d3f98c6a18253f4cc`
 - Ledger root: `d549d6ae42c44ddb067908464054e7bd2ab835130081db83b117bbf6c23e1d54`
 - Runtime source revision: `23ab881905b118ab8366c161a57f10b730b78276`
-- Durable raw logs, artifacts, gate report, and analysis: `/Users/qiangli/.local/state/bashy/sprint118-evidence/published-candidate-002/tour/replay-002`
+- Durable raw logs, artifacts, gate report, and analysis: `<home>/.local/state/bashy/sprint118-evidence/published-candidate-002/tour/replay-002`
 - [Complete captured ledger](../../tests/tour/executor-results.jsonl)
 - [Exact failures, commands, source hashes, stdout and stderr](../../tests/tour/published-candidate-002-failures.json)
 - The unchanged source archive and its SHA-256 table are preserved next to the

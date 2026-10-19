@@ -1,4 +1,4 @@
-# Sprint 155 / S155.10: Go port of the Go by Example harness, candidate040 rebuilt on novidesign.local
+# Sprint 155 / S155.10: Go port of the Go by Example harness, candidate040 rebuilt on a remote macOS host
 
 Sprint: #155; Story: S155.10; Story-ID: `67bdd9fae2b3`.
 
@@ -6,7 +6,7 @@ Sprint: #155; Story: S155.10; Story-ID: `67bdd9fae2b3`.
 `tools/go-by-example/gbe/`, behind the unchanged wrappers (see
 [README.md](README.md), "Sprint 155"). This record is the proof run of that
 port: the reviewed Sprint 118 candidate040 sources were rebuilt on
-novidesign.local and replayed through the ported gate over all 85 rows in all
+a remote macOS host and replayed through the ported gate over all 85 rows in all
 three modes.
 
 ## Candidate
@@ -17,13 +17,13 @@ siblings into `~/sprint155/lanes/67bdd9fa/candidate/`, checked out at the
 candidate040 commits (bashy `7e8abb38`, sh `704fa063`, coreutils `ec91ea45`,
 readline `b958823b`, filebrowser `cde11469`, all clean) and built with the
 reviewed recipe
-`env PATH=/Users/noviadmin/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.0.darwin-arm64/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin CI=true GOTOOLCHAIN=local GOMAXPROCS=2 GOFLAGS=-p=2 make build`.
+`env PATH=<home>/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.0.darwin-arm64/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin CI=true GOTOOLCHAIN=local GOMAXPROCS=2 GOFLAGS=-p=2 make build`.
 
 | field | candidate040 (reviewed) | this rebuild | why it cannot match |
 | --- | --- | --- | --- |
 | manifest_sha256 | `cf644a343b77...` | `6557ecec0db5...` | the manifest carries the absolute repository paths of the host that built it |
 | launcher_sha256 | `454c25a8cfb7...` | `d1fd0029efb0...` | `bin/bashy` is `native/siglaunch.c.in` compiled by the host `cc`; a different clang/SDK emits different bytes |
-| payload_sha256 | `22d88c86b2bf...` | `0b80c4064ebb...` | `make build` embeds the meet SPA only when node/pnpm exist; novidesign has neither, so this is the no-UI build of the same sources |
+| payload_sha256 | `22d88c86b2bf...` | `0b80c4064ebb...` | `make build` embeds the meet SPA only when node/pnpm exist; the remote macOS host has neither, so this is the no-UI build of the same sources |
 | repositories | five reviewed commits | the same five commits | — |
 
 `gbe.sh validate-candidate --candidate candidate/candidate.json --bashy candidate/bashy/bin/bashy`:
@@ -70,7 +70,7 @@ the day-class and noon-class lines; see [README.md](README.md).
 
 `gbe-full-002.jsonl.pass` is the anchored chain.
 
-`PASS: verdict=pass denominator=255 executed=255 evidence=/Users/noviadmin/sprint155/evidence/67bdd9fa/gbe-full-002.jsonl.pass root_digest=0a1ff72eeac3c183472a8292195e4ef431d874adce836d70087d55237285ca98`
+`PASS: verdict=pass denominator=255 executed=255 evidence=<home>/sprint155/evidence/67bdd9fa/gbe-full-002.jsonl.pass root_digest=0a1ff72eeac3c183472a8292195e4ef431d874adce836d70087d55237285ca98`
 
 | mode | pass | failed | spawned | missing |
 | --- | ---: | ---: | ---: | ---: |
@@ -107,7 +107,7 @@ both hash to `508da714507ef23f0e05e70bd4e8afdfa323bc0923536d66e3e5b3b27707308a`
 No comparator was loosened; the only comparator change is VERSION 8, which
 admits a line the pinned program prints and VERSION 7 could not read.
 
-## Gates run on novidesign.local (all from `~/sprint155/lanes/67bdd9fa`)
+## Gates run on a remote macOS host (all from `~/sprint155/lanes/67bdd9fa`)
 
 | gate | command | result |
 | --- | --- | --- |
@@ -122,7 +122,7 @@ admits a line the pinned program prints and VERSION 7 could not read.
 
 Not run: `gbe.sh bounded-evidence-selftests` needs the retained Candidate024-027
 trees under `~/.local/state/bashy/sprint118-evidence`, which exist on neither
-this workstation nor novidesign.local (`GBE_BOUNDED_STATE` points it elsewhere);
+this workstation nor a remote macOS host (`GBE_BOUNDED_STATE` points it elsewhere);
 it is ported, not exercised.
 
 The broad suite needed three corrections to expectations the Ruby script had
@@ -140,7 +140,7 @@ records an `invented` detail instead, so the anchor is the only refusal left.
 same reason. The Go-1.26 case is the one already recorded as stale in
 `sprint118-candidate027-full.md`.
 
-## Retained artifacts (novidesign.local, `~/sprint155/evidence/67bdd9fa/`)
+## Retained artifacts (a remote macOS host, `~/sprint155/evidence/67bdd9fa/`)
 
 | artifact | SHA-256 |
 | --- | --- |

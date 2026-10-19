@@ -1012,7 +1012,8 @@ type boundedSuite struct {
 // exercised through the same generalized validator. GBE_BOUNDED_STATE names
 // the directory holding the retained runtime-integration-0NN trees.
 func boundedSelftestsMain(args []string) {
-	state := envOr("GBE_BOUNDED_STATE", "/Users/qiangli/.local/state/bashy/sprint118-evidence")
+	home, _ := os.UserHomeDir()
+	state := envOr("GBE_BOUNDED_STATE", filepath.Join(home, ".local/state/bashy/sprint118-evidence"))
 	suites := []boundedSuite{
 		{"Candidate024", state + "/runtime-integration-024/gbe-subset.jsonl.fail", state + "/runtime-integration-024/subset-inventory.tsv", "examples/generics/generics.go", "d070bee32f", "f7dbbff0fdff337e"},
 		{"Candidate025", state + "/runtime-integration-025/gbe-subset.jsonl.pass", state + "/runtime-integration-025/subset-inventory.tsv", "examples/recursion/recursion.go", "3e64a878e9", "57a8b7680573866b"},

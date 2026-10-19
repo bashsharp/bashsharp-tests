@@ -28,7 +28,7 @@ The exact 255-row repository ledger is
 ## Retained receipt
 
 All new evidence is under
-`/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-027/`.
+`<home>/.local/state/bashy/sprint118-evidence/runtime-integration-027/`.
 The earlier bounded Candidate027 evidence remains byte-for-byte unchanged.
 Nothing from either attempt was deleted or pruned.
 

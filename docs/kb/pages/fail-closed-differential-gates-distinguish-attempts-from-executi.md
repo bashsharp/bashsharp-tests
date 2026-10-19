@@ -6,7 +6,6 @@ status: validated
 evidence: Story 198 validator now independently re-normalizes raw streams with a repository-hashed shared module; arrays raw/stale-normalized tamper remains rejected after self-hash and root recomputation.
 source:
     tool: codex-gpt5.6-sol-o
-    host: dragon
     episode: weave-issue-15
 created: "2026-09-03T12:45:33Z"
 updated: "2026-09-03T14:09:11Z"

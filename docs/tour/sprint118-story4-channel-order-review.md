@@ -1,7 +1,7 @@
 # Sprint 118 / Story 4 — channel arrival-order review of `concurrency/channels.go`
 
 Story-ID `759341a95870` · Bounded semantic oracle review · evidence root
-`/Users/qiangli/.local/state/bashy/sprint118-evidence/tour-channel-order-review`
+`<home>/.local/state/bashy/sprint118-evidence/tour-channel-order-review`
 
 ## Trigger
 
@@ -158,7 +158,7 @@ reports those failures and the aggregate FAIL verdict, with no integrity finding
 No source bytes, old result records or runtime acceptance threshold changed.
 
 Fresh root: `68fa76b3f0e2f87f35ca969d5424efb46863a32f0e4a2c74b741205be7836b90`.
-Manager evidence root: `/Users/qiangli/.local/state/bashy/sprint118-evidence`.
+Manager evidence root: `<home>/.local/state/bashy/sprint118-evidence`.
 Receipts: `tour-channel-order-manager-gate.json`,
 `tour-channel-contract-manager-gate.json`,
 `tour-channel-contract-full-manager-gate.json`.

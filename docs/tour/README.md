@@ -243,7 +243,7 @@ observations. What changed from `tour-evidence/v2`:
   re-verified after every mode.
 
 **Current result: PASS, 291/291.** `tests/tour/executor-results.jsonl` is the
-Sprint 155 (S155.9) run of the Go-ported executor on novidesign.local against a
+Sprint 155 (S155.9) run of the Go-ported executor on a remote macOS host against a
 clean rebuild of the Sprint 118 candidate017 revision set (bashy `fdd3fac9`,
 sh `037aaf86`, coreutils `ec91ea45`, readline `b958823b`, filebrowser
 `cde11469`): baseline 97, interpreted 97, compiled 97, 11 semantic rows, 77

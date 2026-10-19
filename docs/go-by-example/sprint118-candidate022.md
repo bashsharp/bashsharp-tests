@@ -4,7 +4,7 @@ Candidate022 is the runtime candidate frozen after the post-candidate021
 interpreted fixes. It uses `sh`
 `69579ce6a96a53918bbe05214d77c32d5135c516` and `bashy`
 `67886176d8a50c555714e97a96ce57ee4835479f`. Its manifest is
-`/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-022/candidate.json`
+`<home>/.local/state/bashy/sprint118-evidence/runtime-integration-022/candidate.json`
 with SHA-256
 `5e336da824fc062d07c0428ae6a7e4b8c6ec8ac6ac56bd14312bdf1157d72eb9`.
 
@@ -46,7 +46,7 @@ gate started, and no other gate was running).
 - attempt records: 255; executed: 254; missing or unspawned: 1
 
 The retained evidence is
-`/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-022/gbe-full.jsonl.fail`.
+`<home>/.local/state/bashy/sprint118-evidence/runtime-integration-022/gbe-full.jsonl.fail`.
 Its file SHA-256 is
 `8b3b991a484c51fd0ff77b137a6144f0cf2a8814258a711c2ac2a13fafab9634`
 and its authenticated root digest is

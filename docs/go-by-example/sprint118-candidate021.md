@@ -3,7 +3,7 @@
 Candidate021 is the current frozen runtime candidate for Story 3. It uses
 `sh` `05c215e870270163a2e999bd6263f213e1e684db` and `bashy`
 `9df0f148d82905d15b9af56405e8cf3cb8879bc7`. Its manifest is
-`/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-021/candidate.json`
+`<home>/.local/state/bashy/sprint118-evidence/runtime-integration-021/candidate.json`
 with SHA-256
 `cd6d16511fbfc7c771c7f0d5ff91584a152a7c08d3c86f1890f734f73c2b6770`.
 
@@ -23,7 +23,7 @@ candidate021 produced the alternate permitted map order in both native and
 compiled modes and passed that row.
 
 The retained evidence is
-`/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-021/gbe-full.jsonl.fail`.
+`<home>/.local/state/bashy/sprint118-evidence/runtime-integration-021/gbe-full.jsonl.fail`.
 Its file SHA-256 is
 `361784b500fd0d5b03617dd0de6ce7087cc46dd22948703537d8889bdcf47766`
 and its authenticated root digest is

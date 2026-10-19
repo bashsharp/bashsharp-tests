@@ -24,7 +24,7 @@ Both `issue78346.go` native skips are source-bound: the pinned fixture declares 
 Independent retained integrity validation passed 8,373 unique file/absence records, root membership/seals, native observation joins, shared-cache environment bindings and 2,910 process streams. Producer source and module postchecks also passed. Reproduce the read-only retained audit:
 
 ```sh
-/usr/bin/ruby /Users/qiangli/.bashy/sprint118/evidence/go-full/product013-preparation/audit-retained.rb
+/usr/bin/ruby <home>/.bashy/sprint118/evidence/go-full/product013-preparation/audit-retained.rb
 ```
 
 The source modules were authenticated offline before launch: 19 dependency modules, all 4,391 source files and archive/go.mod records, exact candidate013 commits and launcher/payload, pinned SDK, and generated scaffold bytes. The module manifest is `~/.bashy/sprint118/sources/go-full-candidate013-modules/manifest.json`, SHA256 `8f6b4ae106b5855ae69858ecabf7c5cb544457304052d9067f45ca259c3ec837`. The exact reviewed command and frozen bindings are in `typechecker-command-review.json`; validation is in `module-validation.json`.

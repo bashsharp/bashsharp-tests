@@ -28,7 +28,7 @@ binds clean revisions of all five runtime repositories. No optional build tag
 is required by this candidate.
 
 Durable evidence base:
-`/Users/qiangli/.local/state/bashy/sprint118-evidence/published-candidate-002/gbe`.
+`<home>/.local/state/bashy/sprint118-evidence/published-candidate-002/gbe`.
 
 - `reviewed-results.jsonl.fail`: complete final recipe ledger.
 - `reviewed-results.jsonl.work`: separate mode source/build/runtime roots,
@@ -105,10 +105,10 @@ artifact digest, telemetry mode digest and telemetry setup command.
 Run from bashpp-tests:
 
 ```sh
-CORPUS_TEST_GO=/Users/qiangli/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.0.darwin-arm64/bin/go ruby tests/go-by-example/gate_contract_test.rb
+CORPUS_TEST_GO=<home>/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.0.darwin-arm64/bin/go ruby tests/go-by-example/gate_contract_test.rb
 tools/go-by-example/validate.sh
-ruby tools/go-by-example/validate-evidence.rb /Users/qiangli/.local/state/bashy/sprint118-evidence/published-candidate-002/gbe/reviewed-results.jsonl.fail
-ruby tools/go-by-example/tamper-retained-evidence.rb /Users/qiangli/.local/state/bashy/sprint118-evidence/published-candidate-002/gbe/reviewed-results.jsonl.fail
+ruby tools/go-by-example/validate-evidence.rb <home>/.local/state/bashy/sprint118-evidence/published-candidate-002/gbe/reviewed-results.jsonl.fail
+ruby tools/go-by-example/tamper-retained-evidence.rb <home>/.local/state/bashy/sprint118-evidence/published-candidate-002/gbe/reviewed-results.jsonl.fail
 ```
 
 Measured tests: 11 tests / 60 assertions / zero skips; five retained-evidence
@@ -117,9 +117,9 @@ exits nonzero until product defects are fixed. Use a new evidence filename:
 
 ```sh
 ruby tools/go-by-example/gate.rb \
-  --candidate /Users/qiangli/.local/state/bashy/sprint118-evidence/published-candidate-002/candidate.json \
+  --candidate <home>/.local/state/bashy/sprint118-evidence/published-candidate-002/candidate.json \
   --bashy /private/tmp/s118-published-002/bashy/bin/bashy \
-  --evidence /Users/qiangli/.local/state/bashy/sprint118-evidence/published-candidate-002/gbe/manager-results.jsonl
+  --evidence <home>/.local/state/bashy/sprint118-evidence/published-candidate-002/gbe/manager-results.jsonl
 ```
 
 After fixes, freeze/review a new candidate and replay all rows/modes. Closure

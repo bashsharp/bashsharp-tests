@@ -1,6 +1,6 @@
 {
   "purpose": "failure taxonomy; original execution verdicts preserved",
-  "input": "/Users/noviadmin/sprint155/evidence/67bdd9fa/gbe-full-002.jsonl.pass",
+  "input": "<home>/sprint155/evidence/67bdd9fa/gbe-full-002.jsonl.pass",
   "input_sha256": "83f8b13e5c258bb2be111ec55347f4c5808d693cb7dc79dba375c2ac0ffd873d",
   "candidate_manifest_sha256": "6557ecec0db585d47721ef000316ccce18eaba95d9df30df08afa2115b8dc9fd",
   "complete_ledger": true,

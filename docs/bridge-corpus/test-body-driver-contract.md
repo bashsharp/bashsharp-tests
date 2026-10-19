@@ -169,7 +169,7 @@ remained 765 bytes with SHA-256
 `7827d7e3ab7cc317a254ccf76158069b80c5b55b34ca45a3e6d799ad185f70ea`.
 
 Exact commands, environment, candidate identity, and raw streams are retained
-at `/Users/qiangli/.bashy/sprint118/evidence/stdlib-testbody-load-proof-001`.
+at `<home>/.bashy/sprint118/evidence/stdlib-testbody-load-proof-001`.
 This is an actual failing non-main loading proof, not an execution of the two
 test bodies. It establishes the first implementation boundary before callback
 transport and testing.T lifecycle can be exercised.

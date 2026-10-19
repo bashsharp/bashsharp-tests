@@ -25,7 +25,7 @@ The exact repository ledger is
 ## Retained receipt
 
 The evidence is retained under
-`/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-040/`.
+`<home>/.local/state/bashy/sprint118-evidence/runtime-integration-040/`.
 
 | retained artifact | SHA-256 / identity |
 | --- | --- |

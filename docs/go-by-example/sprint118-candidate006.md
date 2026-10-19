@@ -40,7 +40,7 @@ revision is `194d246ebc67d122c0e0f9a028302c5df3dd48bf`; bashy is
 schema and source inventory digests are bound into every attempt.
 
 Durable base:
-`/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-006/gbe`.
+`<home>/.local/state/bashy/sprint118-evidence/runtime-integration-006/gbe`.
 
 - `results.jsonl.fail` contains all 255 attempts and the complete failing summary.
 - `results.jsonl.work` retains independent original inputs and runtime roots,
@@ -97,8 +97,8 @@ in the retained failure records for targeted reproduction.
 bash tools/go-by-example/validate.sh
 ruby tests/go-by-example/closing_channels_order_test.rb
 ruby tests/go-by-example/gate_contract_test.rb
-ruby tools/go-by-example/validate-evidence.rb /Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-006/gbe/results.jsonl.fail
-ruby tools/go-by-example/tamper-retained-evidence.rb /Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-006/gbe/results.jsonl.fail
+ruby tools/go-by-example/validate-evidence.rb <home>/.local/state/bashy/sprint118-evidence/runtime-integration-006/gbe/results.jsonl.fail
+ruby tools/go-by-example/tamper-retained-evidence.rb <home>/.local/state/bashy/sprint118-evidence/runtime-integration-006/gbe/results.jsonl.fail
 ```
 
 The closing-channel tests passed 4 tests and 59 assertions, including exhaustive

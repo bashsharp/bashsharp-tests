@@ -17,4 +17,4 @@ closed: 2026-09-23T17:21:10.61076Z
 closed_by: codex-s250
 ---
 
-Authenticated macOS novidesign full 255-attempt Go by Example gate on candidate 4f2d2d7a reports interpreted examples/signals/signals.go fail_incomplete(timeout), while oracle and compiled pass. Retain full run evidence, diagnose Bashy versus harness versus timing root cause under original source and deadline, fix narrowly, and rerun affected row/full gate.
+Authenticated macOS a remote macOS host full 255-attempt Go by Example gate on candidate 4f2d2d7a reports interpreted examples/signals/signals.go fail_incomplete(timeout), while oracle and compiled pass. Retain full run evidence, diagnose Bashy versus harness versus timing root cause under original source and deadline, fix narrowly, and rerun affected row/full gate.

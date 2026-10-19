@@ -26,31 +26,31 @@
 # nothing weaker; the failures this chain records are listed in
 # prerequisites.md and are real product defects, not harness gaps.
 # Historical v4 root (superseded by reviewed v5 normalization and telemetry setup):
-# Sprint118/Story3/fa07603b71dc	/Users/qiangli/.local/state/bashy/sprint118-evidence/published-candidate-002/gbe/results.jsonl.fail	fail	e15613842200bd68b6558964397a2a074d244635322d0d8475bf3a8cbb54a11f
-Sprint118/Story3/fa07603b71dc	/Users/qiangli/.local/state/bashy/sprint118-evidence/published-candidate-002/gbe/final-results.jsonl.fail	fail	f90040136533d83c9626f2bb222db2e5dcf86c2e41a6d235827c21a915c0bee7
-Sprint118/Story3/fa07603b71dc	/Users/qiangli/.local/state/bashy/sprint118-evidence/published-candidate-002/gbe/reviewed-results.jsonl.fail	fail	79fc60e9bfadbbfa01f00d7855e16f395841fb65db3e9bf6db419c9add33f791
-Sprint118/Story3/fa07603b71dc	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-005/gbe/results.jsonl.fail	fail	8d5fa5ff92427e48074ab8d28eaffa05d45c83b829b3c4a139beffefa91462a3
-Sprint118/Story3/fa07603b71dc	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-006/gbe/results.jsonl.fail	fail	725648b9f5525a7f6a1f48eac7aa62fe467d3db93dfad3351275b1111c0b7395
-Sprint118/Story3/fa07603b71dc	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-007/gbe/results.jsonl.fail	fail	cb0cba13457bf13da68a1250276d4b2e2b13fc7d874570ddea1af2588db4fada
-Sprint118/Story3/fa07603b71dc	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-008/gbe/results.jsonl.fail	fail	350b335204d2ef888786bffe1b1709873564dd0d071920a21df47058e0defd15
-Sprint118/Story3/fa07603b71dc	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-010/gbe/results.jsonl.fail	fail	0b4e23d70a888436ad562a961a75cb93bcef280ad6fac11c8463b71a36088b90
-Sprint118/Story3/fa07603b71dc	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-013/gbe/results.jsonl.fail	fail	a5c6947b99d1a25b6ef8956a3fc1af648cc67a07804973cdff7cdb37f39c641f
-Sprint118/Story3/fa07603b71dc	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-016/gbe/results.jsonl.fail	fail	82c9c068d1ce30843421600e9d40d55ac8eb62a3a869c580b2ec158a89036c74
-Sprint118/Story3/fa07603b71dc	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-017/gbe/results.jsonl.fail	fail	0590f81a612ec62a8676497a7f82a1130935187751a1eec14de3b7c89c33db25
-Sprint118/Story3/fa07603b71dc	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.fail	fail	77cece26e03c82ff256571e44a713c52adc29e45847bea4e19b6ba1b1195a119
-Sprint118/Story3/fa07603b71dc	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-021/gbe-full.jsonl.fail	fail	c005009bb0cef9e0ab16b2560bf4aeeb55180d63ad7b64f64c32a06f89285f98
-Sprint118/Story3/fa07603b71dc	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-022/gbe-full.jsonl.fail	fail	63cf7bf7a735959d66434eedb4c5ed431df19669289a05f127fb08d23605f8df
-Sprint118/Story3/fa07603b71dc	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-023/gbe-full.jsonl.fail	fail	731b5d3d29f540e39c9325b744ad6194c571254165190b8b8a92b81ae67a157d
-Sprint118/Story3/fa07603b71dc	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-027/gbe-full-001.jsonl.fail	fail	334f8cc658b5f6824021181e83137a2073858b3a83277740ff73a75a0bd50bb2
-Sprint118/Story3/fa07603b71dc	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-040/gbe-full-001.jsonl.pass	pass	165f4d14c2386219cf3e75a262ac28946ef5ab99d1466b5b773faebc6f56ec26
-Sprint118/Story3/fa07603b71dc	/Users/noviadmin/sprint155/evidence/67bdd9fa/gbe-full-002.jsonl.pass	pass	0a1ff72eeac3c183472a8292195e4ef431d874adce836d70087d55237285ca98
+# Sprint118/Story3/fa07603b71dc	<home>/.local/state/bashy/sprint118-evidence/published-candidate-002/gbe/results.jsonl.fail	fail	e15613842200bd68b6558964397a2a074d244635322d0d8475bf3a8cbb54a11f
+Sprint118/Story3/fa07603b71dc	<home>/.local/state/bashy/sprint118-evidence/published-candidate-002/gbe/final-results.jsonl.fail	fail	f90040136533d83c9626f2bb222db2e5dcf86c2e41a6d235827c21a915c0bee7
+Sprint118/Story3/fa07603b71dc	<home>/.local/state/bashy/sprint118-evidence/published-candidate-002/gbe/reviewed-results.jsonl.fail	fail	79fc60e9bfadbbfa01f00d7855e16f395841fb65db3e9bf6db419c9add33f791
+Sprint118/Story3/fa07603b71dc	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-005/gbe/results.jsonl.fail	fail	8d5fa5ff92427e48074ab8d28eaffa05d45c83b829b3c4a139beffefa91462a3
+Sprint118/Story3/fa07603b71dc	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-006/gbe/results.jsonl.fail	fail	725648b9f5525a7f6a1f48eac7aa62fe467d3db93dfad3351275b1111c0b7395
+Sprint118/Story3/fa07603b71dc	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-007/gbe/results.jsonl.fail	fail	cb0cba13457bf13da68a1250276d4b2e2b13fc7d874570ddea1af2588db4fada
+Sprint118/Story3/fa07603b71dc	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-008/gbe/results.jsonl.fail	fail	350b335204d2ef888786bffe1b1709873564dd0d071920a21df47058e0defd15
+Sprint118/Story3/fa07603b71dc	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-010/gbe/results.jsonl.fail	fail	0b4e23d70a888436ad562a961a75cb93bcef280ad6fac11c8463b71a36088b90
+Sprint118/Story3/fa07603b71dc	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-013/gbe/results.jsonl.fail	fail	a5c6947b99d1a25b6ef8956a3fc1af648cc67a07804973cdff7cdb37f39c641f
+Sprint118/Story3/fa07603b71dc	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-016/gbe/results.jsonl.fail	fail	82c9c068d1ce30843421600e9d40d55ac8eb62a3a869c580b2ec158a89036c74
+Sprint118/Story3/fa07603b71dc	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-017/gbe/results.jsonl.fail	fail	0590f81a612ec62a8676497a7f82a1130935187751a1eec14de3b7c89c33db25
+Sprint118/Story3/fa07603b71dc	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.fail	fail	77cece26e03c82ff256571e44a713c52adc29e45847bea4e19b6ba1b1195a119
+Sprint118/Story3/fa07603b71dc	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-021/gbe-full.jsonl.fail	fail	c005009bb0cef9e0ab16b2560bf4aeeb55180d63ad7b64f64c32a06f89285f98
+Sprint118/Story3/fa07603b71dc	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-022/gbe-full.jsonl.fail	fail	63cf7bf7a735959d66434eedb4c5ed431df19669289a05f127fb08d23605f8df
+Sprint118/Story3/fa07603b71dc	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-023/gbe-full.jsonl.fail	fail	731b5d3d29f540e39c9325b744ad6194c571254165190b8b8a92b81ae67a157d
+Sprint118/Story3/fa07603b71dc	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-027/gbe-full-001.jsonl.fail	fail	334f8cc658b5f6824021181e83137a2073858b3a83277740ff73a75a0bd50bb2
+Sprint118/Story3/fa07603b71dc	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-040/gbe-full-001.jsonl.pass	pass	165f4d14c2386219cf3e75a262ac28946ef5ab99d1466b5b773faebc6f56ec26
+Sprint118/Story3/fa07603b71dc	<home>/sprint155/evidence/67bdd9fa/gbe-full-002.jsonl.pass	pass	0a1ff72eeac3c183472a8292195e4ef431d874adce836d70087d55237285ca98
 Sprint118/Story3/fa07603b71dc	/srv/sprint243/compat-S243-wave4r1-gbe/gbe.jsonl.pass	pass	aa2d5268fb0ad453d3e2330f0c19dcd63752b809b26a01a3ca1c0d8ecea22552
 Sprint250/Story89/235209310249	/srv/sprint250/story89-linux-head-5353ba3/gbe-manager.jsonl.pass	pass	67ee74ead7fa6ecb959abb13781ddb1bd27e2822af60b715b0d9ee84e8ceda50
-Sprint118/Story3/fa07603b71dc	/Users/noviadmin/s250-8aaa6171-evidence/final-candidate-s250/go-by-example-s250/evidence.jsonl.pass	pass	779ae0dcfd07ee109ada7f757435afff65e1439b9af6db1e547b808c846dcaae
-Sprint118/Story3/fa07603b71dc	/Users/noviadmin/s250-8aaa6171-evidence/final-close-f93816e2-69eda1b3/go-by-example/evidence.jsonl.pass	pass	d3deda2e12168c6f8fd434ce0bcc84ff9233670ad803050687c598340623cbc7
+Sprint118/Story3/fa07603b71dc	<home>/s250-8aaa6171-evidence/final-candidate-s250/go-by-example-s250/evidence.jsonl.pass	pass	779ae0dcfd07ee109ada7f757435afff65e1439b9af6db1e547b808c846dcaae
+Sprint118/Story3/fa07603b71dc	<home>/s250-8aaa6171-evidence/final-close-f93816e2-69eda1b3/go-by-example/evidence.jsonl.pass	pass	d3deda2e12168c6f8fd434ce0bcc84ff9233670ad803050687c598340623cbc7
 Sprint118/Story3/fa07603b71dc	/srv/sprint250/public-final-f93816e-sh69eda1b/go-by-example/evidence.jsonl.pass	pass	5a66e1fa7e100892ae0c26fb837acdc7b3866687074896da161f019fac4c0229
-Sprint118/Story3/fa07603b71dc	/Users/noviadmin/s250-8aaa6171-evidence/final-close-8097526e-8f6327a7/go-by-example/evidence.jsonl.pass	pass	647f132e3b1591269df933aa1838ca67b9f1a56da084f664399f7eab18cab2a5
-Sprint118/Story3/fa07603b71dc	/Users/noviadmin/s250-8aaa6171-evidence/final-close-e48bd7df-0736c52e/go-by-example/evidence.jsonl.pass	pass	54e4d3a80034de4dc6c862fda435ff0c119afd23d58d0d234aa48d8ae47da584
+Sprint118/Story3/fa07603b71dc	<home>/s250-8aaa6171-evidence/final-close-8097526e-8f6327a7/go-by-example/evidence.jsonl.pass	pass	647f132e3b1591269df933aa1838ca67b9f1a56da084f664399f7eab18cab2a5
+Sprint118/Story3/fa07603b71dc	<home>/s250-8aaa6171-evidence/final-close-e48bd7df-0736c52e/go-by-example/evidence.jsonl.pass	pass	54e4d3a80034de4dc6c862fda435ff0c119afd23d58d0d234aa48d8ae47da584
 Sprint118/Story3/fa07603b71dc	/srv/sprint250/public-final-e48bd7d-sh0736c52/go-by-example/evidence.jsonl.pass	pass	4298dc14f4ae81346228f4f4e0ae2a8ccaa33b14f6a087350ee93485a94225ab
-Sprint118/Story3/fa07603b71dc	C:\Users\noviadmin\s250-327-final3\evidence\gbe-final3-green-255.jsonl.pass	pass	6867eacc716b234cd30f830d9ae01b93c7e9ea3c1b8b55d3a06aaa9ce36e154e
+Sprint118/Story3/fa07603b71dc	<home>\s250-327-final3\evidence\gbe-final3-green-255.jsonl.pass	pass	6867eacc716b234cd30f830d9ae01b93c7e9ea3c1b8b55d3a06aaa9ce36e154e
 Sprint118/Story3/fa07603b71dc	.evidence/sprint376-m8/gbe.jsonl.pass	pass	f004d8ec838aba9a08ffe66f364b02592f91647d0c060f64b9c7a91bc1d26295

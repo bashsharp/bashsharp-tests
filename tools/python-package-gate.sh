@@ -5,8 +5,8 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 fixtures="${here}/../tests/python-packages"
 BASHY="${BASHY:-${here}/../../bashy/bin/bash}"
-NANOCHAT_ROOT="${NANOCHAT_ROOT:-/Users/qiangli/projects/poc/nanochat}"
-MINISWE_ROOT="${MINISWE_ROOT:-/Users/qiangli/projects/poc/mini-swe-agent}"
+NANOCHAT_ROOT="${NANOCHAT_ROOT:-${HOME}/projects/poc/nanochat}"
+MINISWE_ROOT="${MINISWE_ROOT:-${HOME}/projects/poc/mini-swe-agent}"
 SH_ROOT="${SH_ROOT:-${here}/../../sh}"
 
 nanochat_sha=dc54a1a3077cab11d68fac4c5d1cd5c51f5d8c7a

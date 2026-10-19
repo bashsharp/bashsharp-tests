@@ -12,7 +12,7 @@ one of the **291** observations.
 ## Current status — read this first
 
 The committed ledger `tests/tour/executor-results.jsonl` **PASSES** the gate.
-It was produced on novidesign.local by the Go-ported executor (Sprint 155 /
+It was produced on a remote macOS host by the Go-ported executor (Sprint 155 /
 S155.9) against a clean rebuild of the Sprint 118 candidate017 revision set
 (`docs/tour/sprint118-candidate017-receipt.json`: bashy `fdd3fac9`, sh
 `037aaf86`, coreutils `ec91ea45`, readline `b958823b`, filebrowser

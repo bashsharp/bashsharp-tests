@@ -14,7 +14,7 @@ The authenticated candidate uses `sh`
 is `cd6d16511fbfc7c771c7f0d5ff91584a152a7c08d3c86f1890f734f73c2b6770`.
 
 The retained ledger is
-`/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-021/tour-results.jsonl`.
+`<home>/.local/state/bashy/sprint118-evidence/runtime-integration-021/tour-results.jsonl`.
 Its file SHA-256 is
 `ddd2ed8c9678bdcb9f9653232a963ee1a04a999b6f7fffd43ddc477cb82285c4`
 and its independently reconstructed root is

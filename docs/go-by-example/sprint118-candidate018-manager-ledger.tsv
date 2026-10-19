@@ -33,13 +33,13 @@ examples/command-line-flags/command-line-flags.go	oracle	pass	complete	0	run
 examples/command-line-flags/command-line-flags.go	interpreted	fail_mismatch	complete	1	run	gosource: dependency mutation of interpreter-owned references is unsupported for __gosource_import_0_0.StringVar
 examples/command-line-flags/command-line-flags.go	compiled	pass	complete	0	run	
 examples/command-line-subcommands/command-line-subcommands.go	oracle	pass	complete	0	run	
-examples/command-line-subcommands/command-line-subcommands.go	interpreted	fail_mismatch	complete	1	run	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/011/src/interpreted/command-line-subcommands.go:45:28: BASHPP-EPOINTER-TARGET: fooEnable is not a pointer
+examples/command-line-subcommands/command-line-subcommands.go	interpreted	fail_mismatch	complete	1	run	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/011/src/interpreted/command-line-subcommands.go:45:28: BASHPP-EPOINTER-TARGET: fooEnable is not a pointer
 examples/command-line-subcommands/command-line-subcommands.go	compiled	pass	complete	0	run	
 examples/constants/constants.go	oracle	pass	complete	0	run	
 examples/constants/constants.go	interpreted	pass	complete	0	run	
 examples/constants/constants.go	compiled	pass	complete	0	run	
 examples/context/context.go	oracle	pass	complete	143	run	
-examples/context/context.go	interpreted	fail_mismatch	complete	1	run	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/013/src/interpreted/context.go:47:28: gosource: original callback signature requires scalar parameters and supported results
+examples/context/context.go	interpreted	fail_mismatch	complete	1	run	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/013/src/interpreted/context.go:47:28: gosource: original callback signature requires scalar parameters and supported results
 examples/context/context.go	compiled	pass	complete	143	run	
 examples/custom-errors/custom-errors.go	oracle	pass	complete	0	run	
 examples/custom-errors/custom-errors.go	interpreted	fail_mismatch	complete	1	run	gosource: dependency mutation of interpreter-owned references is unsupported for __gosource_import_0_0.AsType
@@ -48,13 +48,13 @@ examples/defer/defer.go	oracle	pass	complete	0	run
 examples/defer/defer.go	interpreted	pass	complete	0	run	
 examples/defer/defer.go	compiled	pass	complete	0	run	
 examples/directories/directories.go	oracle	pass	complete	0	run	
-examples/directories/directories.go	interpreted	fail_mismatch	complete	2	run	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/016/src/interpreted/directories.go:56:24: BASHPP-ERANGE-TYPE: gosource: native handle (*os.unixDirent) is not scalar
+examples/directories/directories.go	interpreted	fail_mismatch	complete	2	run	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/016/src/interpreted/directories.go:56:24: BASHPP-ERANGE-TYPE: gosource: native handle (*os.unixDirent) is not scalar
 examples/directories/directories.go	compiled	pass	complete	0	run	
 examples/embed-directive/embed-directive.go	oracle	pass	complete	0	run	
 examples/embed-directive/embed-directive.go	interpreted	fail_mismatch	complete	0	run	
 examples/embed-directive/embed-directive.go	compiled	pass	complete	0	run	
 examples/enums/enums.go	oracle	pass	complete	0	run	
-examples/enums/enums.go	interpreted	fail_mismatch	complete	2	run	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/018/src/interpreted/enums.go:35:1: BASHPP-ECOLLECTION-KEY: unsupported map key type ServerState
+examples/enums/enums.go	interpreted	fail_mismatch	complete	2	run	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/018/src/interpreted/enums.go:35:1: BASHPP-ECOLLECTION-KEY: unsupported map key type ServerState
 examples/enums/enums.go	compiled	pass	complete	0	run	
 examples/environment-variables/environment-variables.go	oracle	pass	complete	0	run	
 examples/environment-variables/environment-variables.go	interpreted	pass	complete	0	run	
@@ -63,7 +63,7 @@ examples/epoch/epoch.go	oracle	pass	complete	0	run
 examples/epoch/epoch.go	interpreted	pass	complete	0	run	
 examples/epoch/epoch.go	compiled	pass	complete	0	run	
 examples/errors/errors.go	oracle	pass	complete	0	run	
-examples/errors/errors.go	interpreted	fail_mismatch	complete	2	run	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/021/src/interpreted/errors.go:57:20: BASHPP-ERANGE-TYPE: /Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/021/src/interpreted/errors.go:57:20: BASHPP-EEXPR-FORM: unsupported scalar expression *syntax.BashPPCompositeLit
+examples/errors/errors.go	interpreted	fail_mismatch	complete	2	run	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/021/src/interpreted/errors.go:57:20: BASHPP-ERANGE-TYPE: <home>/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/021/src/interpreted/errors.go:57:20: BASHPP-EEXPR-FORM: unsupported scalar expression *syntax.BashPPCompositeLit
 examples/errors/errors.go	compiled	pass	complete	0	run	
 examples/execing-processes/execing-processes.go	oracle	pass	complete	0	run	
 examples/execing-processes/execing-processes.go	interpreted	pass	complete	0	run	
@@ -93,7 +93,7 @@ examples/http-client/http-client.go	oracle	pass	complete	0	run
 examples/http-client/http-client.go	interpreted	pass	complete	0	run	
 examples/http-client/http-client.go	compiled	pass	complete	0	run	
 examples/http-server/http-server.go	oracle	pass	complete	143	run	
-examples/http-server/http-server.go	interpreted	fail_mismatch	complete	1	run	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/031/src/interpreted/http-server.go:43:28: gosource: original callback signature requires scalar parameters and supported results
+examples/http-server/http-server.go	interpreted	fail_mismatch	complete	1	run	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/031/src/interpreted/http-server.go:43:28: gosource: original callback signature requires scalar parameters and supported results
 examples/http-server/http-server.go	compiled	pass	complete	143	run	
 examples/if-else/if-else.go	oracle	pass	complete	0	run	
 examples/if-else/if-else.go	interpreted	pass	complete	0	run	
@@ -111,7 +111,7 @@ examples/logging/logging.go	oracle	pass	complete	0	run
 examples/logging/logging.go	interpreted	fail_mismatch	complete	1	run	2026/09/09 19:10:39 standard logger
 examples/logging/logging.go	compiled	pass	complete	0	run	
 examples/maps/maps.go	oracle	pass	complete	0	run	
-examples/maps/maps.go	interpreted	fail_mismatch	complete	2	run	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/037/src/interpreted/maps.go:68:5: unknown imported symbol or method: __gosource_import_0_1.Equal
+examples/maps/maps.go	interpreted	fail_mismatch	complete	2	run	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/037/src/interpreted/maps.go:68:5: unknown imported symbol or method: __gosource_import_0_1.Equal
 examples/maps/maps.go	compiled	pass	complete	0	run	
 examples/methods/methods.go	oracle	pass	complete	0	run	
 examples/methods/methods.go	interpreted	pass	complete	0	run	
@@ -153,10 +153,10 @@ examples/reading-files/reading-files.go	oracle	pass	complete	0	run
 examples/reading-files/reading-files.go	interpreted	pass	complete	0	run	
 examples/reading-files/reading-files.go	compiled	pass	complete	0	run	
 examples/recover/recover.go	oracle	pass	complete	0	run	
-examples/recover/recover.go	interpreted	fail_mismatch	complete	2	run	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/051/src/interpreted/recover.go:28:27: BASHPP-EEXPR-NIL: nil is not a scalar
+examples/recover/recover.go	interpreted	fail_mismatch	complete	2	run	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/051/src/interpreted/recover.go:28:27: BASHPP-EEXPR-NIL: nil is not a scalar
 examples/recover/recover.go	compiled	pass	complete	0	run	
 examples/recursion/recursion.go	oracle	pass	complete	0	run	
-examples/recursion/recursion.go	interpreted	fail_mismatch	complete	2	run	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/052/src/interpreted/recursion.go:26:2: BASHPP-EASSIGN-TYPE: untyped result is not assignable to func(int)(int)
+examples/recursion/recursion.go	interpreted	fail_mismatch	complete	2	run	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/052/src/interpreted/recursion.go:26:2: BASHPP-EASSIGN-TYPE: untyped result is not assignable to func(int)(int)
 examples/recursion/recursion.go	compiled	pass	complete	0	run	
 examples/regular-expressions/regular-expressions.go	oracle	pass	complete	0	run	
 examples/regular-expressions/regular-expressions.go	interpreted	fail_mismatch	complete	1	run	gosource: native slice retention or mutation is unsupported for *regexp.Regexp.Match
@@ -171,7 +171,7 @@ examples/signals/signals.go	oracle	pass	complete	0	run
 examples/signals/signals.go	interpreted	fail_mismatch	complete	130	run	
 examples/signals/signals.go	compiled	pass	complete	0	run	
 examples/slices/slices.go	oracle	pass	complete	0	run	
-examples/slices/slices.go	interpreted	fail_mismatch	complete	2	run	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/057/src/interpreted/slices.go:79:5: gosource: native slice retention or mutation is unsupported for slices.Equal
+examples/slices/slices.go	interpreted	fail_mismatch	complete	2	run	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/057/src/interpreted/slices.go:79:5: gosource: native slice retention or mutation is unsupported for slices.Equal
 examples/slices/slices.go	compiled	pass	complete	0	run	
 examples/sorting-by-functions/sorting-by-functions.go	oracle	pass	complete	0	run	
 examples/sorting-by-functions/sorting-by-functions.go	interpreted	fail_mismatch	complete	1	run	gosource: original callback with copied slice references is unsupported
@@ -192,7 +192,7 @@ examples/string-functions/string-functions.go	oracle	pass	complete	0	run
 examples/string-functions/string-functions.go	interpreted	pass	complete	0	run	
 examples/string-functions/string-functions.go	compiled	pass	complete	0	run	
 examples/strings-and-runes/strings-and-runes.go	oracle	pass	complete	0	run	
-examples/strings-and-runes/strings-and-runes.go	interpreted	fail_mismatch	complete	1	run	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/064/src/interpreted/strings-and-runes.go:33:21: BASHPP-ESELECTOR-ROOT: s is not a structured value
+examples/strings-and-runes/strings-and-runes.go	interpreted	fail_mismatch	complete	1	run	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/064/src/interpreted/strings-and-runes.go:33:21: BASHPP-ESELECTOR-ROOT: s is not a structured value
 examples/strings-and-runes/strings-and-runes.go	compiled	pass	complete	0	run	
 examples/struct-embedding/struct-embedding.go	oracle	pass	complete	0	run	
 examples/struct-embedding/struct-embedding.go	interpreted	pass	complete	0	run	
@@ -210,7 +210,7 @@ examples/temporary-files-and-directories/temporary-files-and-directories.go	orac
 examples/temporary-files-and-directories/temporary-files-and-directories.go	interpreted	pass	complete	0	run	
 examples/temporary-files-and-directories/temporary-files-and-directories.go	compiled	pass	complete	0	run	
 examples/testing-and-benchmarking/main_test.go	oracle	pass	complete	0	run	
-examples/testing-and-benchmarking/main_test.go	interpreted	fail_normalization	complete	1	run	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/070/src/interpreted/gbe_test_driver.go:14:15: gosource: original callback signature requires scalar parameters and supported results
+examples/testing-and-benchmarking/main_test.go	interpreted	fail_normalization	complete	1	run	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/070/src/interpreted/gbe_test_driver.go:14:15: gosource: original callback signature requires scalar parameters and supported results
 examples/testing-and-benchmarking/main_test.go	compiled	pass	complete	0	run	
 examples/text-templates/text-templates.go	oracle	pass	complete	0	run	
 examples/text-templates/text-templates.go	interpreted	pass	complete	0	run	
@@ -240,7 +240,7 @@ examples/variables/variables.go	oracle	pass	complete	0	run
 examples/variables/variables.go	interpreted	pass	complete	0	run	
 examples/variables/variables.go	compiled	pass	complete	0	run	
 examples/variadic-functions/variadic-functions.go	oracle	pass	complete	0	run	
-examples/variadic-functions/variadic-functions.go	interpreted	fail_mismatch	complete	2	run	/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/080/src/interpreted/variadic-functions.go:18:22: BASHPP-ERANGE-ARITY: integer range permits at most one iteration variable
+examples/variadic-functions/variadic-functions.go	interpreted	fail_mismatch	complete	2	run	<home>/.local/state/bashy/sprint118-evidence/runtime-integration-018/gbe-replay-manager-002/results.jsonl.work/080/src/interpreted/variadic-functions.go:18:22: BASHPP-ERANGE-ARITY: integer range permits at most one iteration variable
 examples/variadic-functions/variadic-functions.go	compiled	pass	complete	0	run	
 examples/waitgroups/waitgroups.go	oracle	pass	complete	0	run	
 examples/waitgroups/waitgroups.go	interpreted	pass	complete	0	run	

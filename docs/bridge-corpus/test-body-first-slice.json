@@ -52,7 +52,7 @@
   "measured_proof": {
     "candidate_manifest_sha256": "ddf233e89c2839f299c14010c3d2ca8fba4ffb23e8835b86bd5ae0b6811f9aff",
     "diagnostic": "Go execution requires package main with func main()",
-    "evidence_directory": "/Users/qiangli/.bashy/sprint118/evidence/stdlib-testbody-load-proof-001",
+    "evidence_directory": "<home>/.bashy/sprint118/evidence/stdlib-testbody-load-proof-001",
     "exit": 2,
     "source_unchanged": true
   },

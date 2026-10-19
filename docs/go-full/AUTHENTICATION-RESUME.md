@@ -19,10 +19,10 @@ Original identities, SDK bytes and raw native logs remain unchanged.
 
 The durable Sprint 118 paths are:
 
-- SDK identity: `/Users/qiangli/.bashy/sprint118/sources/go-full-sdk-identity-relocated.json`
-- Relocation manifest: `/Users/qiangli/.bashy/sprint118/sources/issue8-relocation.json`
-- Current SDK root: `/Users/qiangli/.bashy/sprint118/sources/go-full-sdk/root`
-- Current source root: `/Users/qiangli/.bashy/sprint118/sources/go-full/go`
+- SDK identity: `<home>/.bashy/sprint118/sources/go-full-sdk-identity-relocated.json`
+- Relocation manifest: `<home>/.bashy/sprint118/sources/issue8-relocation.json`
+- Current SDK root: `<home>/.bashy/sprint118/sources/go-full-sdk/root`
+- Current source root: `<home>/.bashy/sprint118/sources/go-full/go`
 
 ## Continuation contract
 
@@ -74,7 +74,7 @@ as interpreter coverage.
 
 ## Existing 1,209-root evidence
 
-`/Users/qiangli/.bashy/sprint118/evidence/go-full/product-all/roots.jsonl` contains
+`<home>/.bashy/sprint118/evidence/go-full/product-all/roots.jsonl` contains
 1,209 distinct v1 rows: 285 PASS, 895 FAIL and 29 upstream skips. It has no
 checkpoint context or final summary; rows lack the new top-level provenance and
 receipt contract and refer to the historical published-002 candidate. It cannot
@@ -104,7 +104,7 @@ Full product execution now requires `--module-context PATH`. The default reviewe
 context digest is `a886a3618bcacccbb5df4030ad9e0f58442f3440a75dab3b6e62e6e0a4550dd6`;
 `--module-context-sha256 SHA256` supplies an explicitly reviewed replacement.
 The existing candidate006 manifest is
-`/Users/qiangli/.bashy/sprint118/sources/go-full-candidate006-modules/manifest.json`.
+`<home>/.bashy/sprint118/sources/go-full-candidate006-modules/manifest.json`.
 Its module-files argument digest is
 `67c580c9ebf262d50db38bc4fe70460dafcf21cf99cbbd0fbcbd11b0e527b376`.
 It binds candidate006, not a later candidate binary or repository revision.

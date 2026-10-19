@@ -5,11 +5,11 @@ set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
 fixtures="${here}/../tests/typescript-workspaces"
-DHNT_ROOT="${DHNT_ROOT:-/Users/qiangli/projects/poc/dhnt}"
+DHNT_ROOT="${DHNT_ROOT:-${HOME}/projects/poc/dhnt}"
 SH_ROOT="${SH_ROOT:-${DHNT_ROOT}/sh}"
 BASHY_ROOT="${BASHY_ROOT:-${DHNT_ROOT}/bashy}"
 OPENCODE_ROOT="${OPENCODE_ROOT:-${DHNT_ROOT}/ycode/priorart/opencode}"
-BASHPP_BUN="${BASHPP_BUN:-/Users/qiangli/.bun/bin/bun}"
+BASHPP_BUN="${BASHPP_BUN:-${HOME}/.bun/bin/bun}"
 NODE="${BASHPP_NODE:-$(command -v node || true)}"
 COMPILER="${BASHPP_TYPESCRIPT_MODULE:-${OPENCODE_ROOT}/node_modules/typescript}"
 opencode_sha=e03db9bc6908f75c9334d8aa997deeaac81c0298

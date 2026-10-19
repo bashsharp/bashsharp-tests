@@ -8,7 +8,6 @@ description: 'WHEN Bash++ compiled testdir module units include authenticated .s
 status: candidate
 source:
     tool: codex-gpt-5.5-n
-    host: dragon
     episode: weave-issue-14
 created: "2026-09-22T19:49:56Z"
 ---

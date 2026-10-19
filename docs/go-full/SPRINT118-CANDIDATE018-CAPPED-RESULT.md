@@ -19,7 +19,7 @@ an explicit terminal state for every inventory root. The ledger SHA-256 is
 the report SHA-256 is
 `1776b75c8acffa5a1d05dfa1b1d79e176c9cb755522d8234656e3a87c50a8b19`.
 The raw retained `roots.jsonl` remains outside Git at
-`/Users/qiangli/.bashy/sprint118/evidence/go-full/product-all-018/roots.jsonl`,
+`<home>/.bashy/sprint118/evidence/go-full/product-all-018/roots.jsonl`,
 SHA-256 `4b66857a9374c6b6600b493b7e78a723a0cec24dbc0b8750c364db44b2fc365f`.
 
 The attempt binds candidate manifest

@@ -25,7 +25,6 @@ evidence: |-
     STATE THE BOUNDARY IN THE MACHINE-READABLE OUTPUT. testdir_test.go's `switch action` has 17 actions; a bounded tranche that executes 7 must enumerate the other 10 with reasons, publish them in the result summary, and re-derive the 17 from the pinned source so a new upstream action fails the gate instead of going unclassified. And make every fatal path write the summary with executed/failed counts — a fatal that leaves only prose is indistinguishable from a run that never started.
 source:
     tool: claude-opus5-d
-    host: dragon
     episode: weave-issue-4
 created: "2026-09-03T10:01:29Z"
 ---

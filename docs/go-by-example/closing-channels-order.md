@@ -43,7 +43,7 @@ the built native program SHA256 is
 `a5f58d87f538984c04410936c66e0dba526f9ee8e6a8c111458de084ebfd8538`.
 Every argv, environment, cwd, deadline, source/binary digest and raw stream is
 retained under
-`/Users/qiangli/.local/state/bashy/sprint118-evidence/closing-channels-order-review/`.
+`<home>/.local/state/bashy/sprint118-evidence/closing-channels-order-review/`.
 The six distinct real outputs and their capture provenance are retained in
 `tests/go-by-example/fixtures/closing-channels/` for offline regression coverage.
 These observations support the source argument; they do not claim that all

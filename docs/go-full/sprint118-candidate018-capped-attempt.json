@@ -42,7 +42,7 @@
   },
   "inventory_roots": 3495,
   "label": "candidate018-capped-1800s",
-  "ledger": "/Users/qiangli/.bashy/sprint118/evidence/go-full/product-all-018-control/candidate018-capped-1800s-ledger.tsv",
+  "ledger": "<home>/.bashy/sprint118/evidence/go-full/product-all-018-control/candidate018-capped-1800s-ledger.tsv",
   "not_attempted_by_axis": {
     "package": 25,
     "testdir": 1429,

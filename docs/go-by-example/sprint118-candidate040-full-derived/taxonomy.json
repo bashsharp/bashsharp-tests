@@ -1,6 +1,6 @@
 {
   "purpose": "failure taxonomy; original execution verdicts preserved",
-  "input": "/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-040/gbe-full-001.jsonl.pass",
+  "input": "<home>/.local/state/bashy/sprint118-evidence/runtime-integration-040/gbe-full-001.jsonl.pass",
   "input_sha256": "81e501547a700ff09fb890dac8373e9f2288c5c9f44feaada4bb53254feaab7d",
   "candidate_manifest_sha256": "cf644a343b7709349cf71f8ba1c26f80de4cbca109d45148332019357e2ac8b5",
   "complete_ledger": true,

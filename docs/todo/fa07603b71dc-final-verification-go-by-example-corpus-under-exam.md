@@ -12,7 +12,7 @@ sprint: 118
 closed: 2026-09-10T07:28:41.663697Z
 ---
 
-Candidate021 remains the accepted stable baseline: oracle 85/85, compiled 85/85, interpreted 57/85, root c005009bb0cef9e0ab16b2560bf4aeeb55180d63ad7b64f64c32a06f89285f98 under /Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-021.
+Candidate021 remains the accepted stable baseline: oracle 85/85, compiled 85/85, interpreted 57/85, root c005009bb0cef9e0ab16b2560bf4aeeb55180d63ad7b64f64c32a06f89285f98 under <home>/.local/state/bashy/sprint118-evidence/runtime-integration-021.
 
 Candidate022 is frozen at sh 69579ce6a96a53918bbe05214d77c32d5135c516 and bashy 67886176d8a50c555714e97a96ce57ee4835479f, covering the named post-candidate fixes (new(T), variadic range, named scalar map keys, slices.Equal/Sort) plus the follow-up numeric-slice correction that the bashy sibling pin requires. Manifest 5e336da824fc062d07c0428ae6a7e4b8c6ec8ac6ac56bd14312bdf1157d72eb9 is registered in candidates.tsv and independently re-derived by validate-candidate.rb; the frozen tree /private/tmp/s118-runtime-022 was made read-only after the build and was not mutated to register it. The full 255-observation replay ran with port 8090 exclusively owned: 255 attempt records, 254 executed, 1 unspawned; root 63cf7bf7a735959d66434eedb4c5ed431df19669289a05f127fb08d23605f8df, anchored in evidence-roots.tsv and re-verified by validate-evidence.rb. Every failure is retained under runtime-integration-022; see docs/go-by-example/sprint118-candidate022.md and sprint118-candidate022-ledger.tsv.
 

@@ -33,7 +33,7 @@ rows. Normalizer v5 remains byte-identical to the reviewed candidate002 replay.
 All 89 original corpus files remain intact.
 
 Durable base:
-`/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-005/gbe`.
+`<home>/.local/state/bashy/sprint118-evidence/runtime-integration-005/gbe`.
 
 - `results.jsonl.fail`: complete authenticated failing chain.
 - `results.jsonl.work`: original mode input copies, runtime roots, raw logs,
@@ -86,8 +86,8 @@ configuration were identical across modes and recorded before each baseline.
 
 ```sh
 tools/go-by-example/validate.sh
-ruby tools/go-by-example/validate-evidence.rb /Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-005/gbe/results.jsonl.fail
-ruby tools/go-by-example/tamper-retained-evidence.rb /Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-005/gbe/results.jsonl.fail
+ruby tools/go-by-example/validate-evidence.rb <home>/.local/state/bashy/sprint118-evidence/runtime-integration-005/gbe/results.jsonl.fail
+ruby tools/go-by-example/tamper-retained-evidence.rb <home>/.local/state/bashy/sprint118-evidence/runtime-integration-005/gbe/results.jsonl.fail
 ```
 
 All five real retained-evidence mutations are rejected after recomputing their

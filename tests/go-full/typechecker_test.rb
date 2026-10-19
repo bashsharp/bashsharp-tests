@@ -13,7 +13,7 @@ require_relative '../../tools/go-full/typechecker'
 
 class TypecheckerRecipeOptionsTest < Minitest::Test
   INVENTORY = File.expand_path('../../docs/go-full/typechecker-roots.jsonl', __dir__)
-  SOURCE_ROOT = '/Users/qiangli/.bashy/sprint118/sources/go-full/go'
+  SOURCE_ROOT = File.expand_path('~/.bashy/sprint118/sources/go-full/go')
 
   def roots
     @roots ||= File.foreach(INVENTORY).map { |line| JSON.parse(line).merge('axis' => 'typechecker') }
@@ -209,9 +209,9 @@ end
 # Bounded integration controls against the real frozen candidate and the real
 # pinned fixtures. Nothing here is evidence for the full 743-root denominator.
 class TypecheckerIntegrationControlTest < Minitest::Test
-  SOURCE_ROOT = '/Users/qiangli/.bashy/sprint118/sources/go-full/go'
-  SDK_IDENTITY = '/Users/qiangli/.bashy/sprint118/sources/go-full-sdk-identity-relocated.json'
-  CANDIDATE = '/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-006/candidate.json'
+  SOURCE_ROOT = File.expand_path('~/.bashy/sprint118/sources/go-full/go')
+  SDK_IDENTITY = File.expand_path('~/.bashy/sprint118/sources/go-full-sdk-identity-relocated.json')
+  CANDIDATE = File.expand_path('~/.local/state/bashy/sprint118-evidence/runtime-integration-006/candidate.json')
   BASHY = '/private/tmp/s118-runtime-006/bashy/bin/bashy'
 
   # A negative fixture whose single annotation the candidate reports exactly.
@@ -357,9 +357,9 @@ end
 # denominator; nothing here is evidence for the other 735.
 class TypecheckerJointPackageControlTest < Minitest::Test
   INVENTORY = File.expand_path('../../docs/go-full/typechecker-roots.jsonl', __dir__)
-  SOURCE_ROOT = '/Users/qiangli/.bashy/sprint118/sources/go-full/go'
-  SDK_IDENTITY = '/Users/qiangli/.bashy/sprint118/sources/go-full-sdk-identity-relocated.json'
-  CANDIDATE = '/Users/qiangli/.local/state/bashy/sprint118-evidence/runtime-integration-012/candidate.json'
+  SOURCE_ROOT = File.expand_path('~/.bashy/sprint118/sources/go-full/go')
+  SDK_IDENTITY = File.expand_path('~/.bashy/sprint118/sources/go-full-sdk-identity-relocated.json')
+  CANDIDATE = File.expand_path('~/.local/state/bashy/sprint118-evidence/runtime-integration-012/candidate.json')
   BASHY = '/tmp/s118-runtime-012/bashy/bin/bashy'
 
   def self.joint_roots
