@@ -219,14 +219,18 @@ never written into a tracked file.
    21 cached under `BASHY_HOME` (`JAVA_RUNNER_FETCH=1` fetches and verifies
    it). Any other platform is refused.
 5. Run `gen/generate.bsh`, whose `~~~java as gen !java-runner` fence calls
-   `org.antlr.v4.Tool.main` with
-   `-Dlanguage=Go -no-listener -no-visitor -package goparser -Xexact-output-dir`
-   on the bare grammar names. `CLASSPATH` (for javac) and
-   `JAVA_RUNNER_CLASSPATH` (for the run) both name the verified jar. The
-   transformed grammars go to `grammar/go-target/`, and the recognizer
-   (package `goparser`) goes to `tools/grammar-oracle/goparser/` with
-   `generated.sha256`. Both are committed, and `GOWORK=off go build ./...`
-   must compile them.
+   `org.antlr.v4.Tool.main` twice with
+   `-Dlanguage=Go -no-listener -no-visitor -Xexact-output-dir` on the bare
+   grammar names: `-package goparser` for `GoLexer.g4 GoParser.g4`, then
+   `-package bashsharpparser` for `grammar/bashsharp/BashSharpLexer.g4
+   BashSharpParser.g4`, which import the patched Go grammars. `CLASSPATH`
+   (for javac) and `JAVA_RUNNER_CLASSPATH` (for the run) both name the
+   verified jar. The transformed grammars go to `grammar/go-target/`. The unit
+   recognizer goes to `tools/grammar-oracle/goparser/` and the mixed-lane
+   recognizer to `tools/grammar-oracle/bashsharpparser/`, each with
+   `generated.sha256`. All are committed, and `GOWORK=off go build ./...` must
+   compile them. `bashsharpparser/lexer_state.go` and `parser_support.go` are
+   hand-written and are not generated.
 6. `gen/generate.sh --check` regenerates into an empty temp dir and runs
    `diff -r` against the committed files, and the diff must be empty.
    `TestGeneratedSums` re-hashes the committed outputs on the development
@@ -240,14 +244,19 @@ were byte-identical.
 
 ## Oracle recognizer (`tools/grammar-oracle/oracle`)
 
-`oracle.Recognize(lane, entry, src) Result` returns `{verdict, diagnostics}`.
-`diagnostics[0]` is the first error, with `offset`, `line`, `col`, `char` and
-`msg` as defined under "Positions and transforms". The positions map ANTLR's
-code-point columns back to bytes. Only lane `unit` with entry `sourceFile`
-exists so far. Any other pair is `error`. The package imports only `goparser`,
-the ANTLR runtime (with its `golang.org/x/exp` dependencies) and the standard
-library outside `go/...`. `TestIndependentImports` enforces this with
-`go list -deps`.
+`oracle.Recognize(lane, entry, src) Result` returns
+`{verdict, diagnostics, boundary}`. `diagnostics[0]` is the first error, with
+`offset`, `line`, `col`, `char` and `msg` as defined under "Positions and
+transforms". The positions map ANTLR's code-point positions back to bytes.
+The lane/entry pairs are `unit`/`sourceFile` (a Go source file) and
+`mixed`/`bash` or `mixed`/`bashsharp` (a script with Bash# off or on: the
+dialect column). Any other pair is `error`. On a mixed-lane accept, `boundary`
+is the list of extension sites, each a kind and a `[start,end)` byte span, in
+source order, keyed as the reference adapter keys them
+(`tools/grammar-oracle/grammar/bashsharp/README.md`). The package imports only
+`goparser`, `bashsharpparser`, the ANTLR runtime (with its `golang.org/x/exp`
+dependencies) and the standard library outside `go/...`.
+`TestIndependentImports` enforces this with `go list -deps`.
 
 The verdict is `accept` only with zero lexer and zero parser error events and
 the input consumed to EOF. The runtime's `BailErrorStrategy` in antlr4-go
@@ -271,6 +280,51 @@ Checkpoint 2 unit lane: 184 required-positive rows, oracle accept 184,
 reject 0, expected accept 184. One real finding,
 `gbe/pointers/pointers.bsh` (`new(42)`, offset 1261, 45:11), was fixed by
 grammar patch 0001.
+
+### Mixed lane (checkpoint 2)
+
+The combined grammar is `tools/grammar-oracle/grammar/bashsharp/`:
+separate ANTLR lexer and parser grammars that import the patched Go
+productions. Its README enumerates the contextual primitives (an empty alias
+environment, words and reserved-word spellings, comments, shell positions, Go
+blocks, Go-region entry and end with semicolon insertion, fences, decorators,
+the here-document queue, typed operands, substitution re-entry, embed
+lines). It also gives the R6 rule (a reserved word is decided by parser
+position, never by the lexer) and the coverage map. `TestDeltaMirror` (R5)
+holds the delta-owned productions to `sh/grammar/delta.ebnf`.
+
+`TestMixedLaneOracle` runs every mixed-lane row except not-applicable ones.
+That is required, contextual and planned rows, oracle side only. It writes or
+checks `docs/grammar-oracle/results/mixed-oracle.jsonl` (`-update`). A row
+with an authored `expected` is compared on the verdict and, when both sides
+accept, on the outermost boundary kind (`shell`: no site). A disagreement must
+be an open `findings.tsv` row. A boundary-only one is recorded with oracle
+verdict `boundary`.
+
+Checkpoint 2 mixed lane, oracle versus expected:
+
+| dialect / class | rows | oracle accept / reject | expected accept / reject | agree |
+|---|---|---|---|---|
+| bash required-positive | 153 | 153 / 0 | 153 / 0 | 153 |
+| bash required-negative | 97 | 0 / 97 | 0 / 97 | 97 |
+| bash planned | 1 | 1 / 0 | - | (not compared) |
+| bashsharp required-positive | 37 | 37 / 0 | 37 / 0 | 37 |
+| bashsharp required-negative | 11 | 0 / 11 | 0 / 11 | 11 |
+| bashsharp planned | 6 | 1 / 5 | 0 / 3 (3 rows `-`) | 2 |
+
+Every required row agrees. One open finding is on a planned row: `s6/M10`,
+the S6 gap. `sh/syntax` refuses a slice-literal range expression in a
+typed-func `for` header (offset 38, 3:9). The grammar follows the Go spec
+there and was not weakened.
+
+For checkpoint 3 (not an oracle finding): as a development aid, the lane-B
+reference adapter was run over the same rows. Its verdicts agree with every
+authored expectation. On the ten `startsite/decorator-body-*` rows (dialect
+`bash`, boundary `shell`) it reports an `at-function` site, because it keys
+`@name` shell functions without regard to the dialect. The manifest and the
+oracle report no site with Bash# off. The comparison driver will see a
+boundary disagreement between the reference and the expectation there. Route
+it to the adapter or to the manifest's boundary column.
 
 ## Go predicate audit (R6)
 

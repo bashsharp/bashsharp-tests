@@ -2,7 +2,8 @@
 # Grammar-oracle generation unit (Sprint 384, #1586). Runs only on the claimed
 # remote host, driven by gen/generate.sh; never on the development machine.
 #
-#   generate.bsh OUT     (cwd: the go-target grammar directory)
+#   generate.bsh OUT OUT2   (cwd: the go-target grammar directory, which also
+#                            holds the bashsharp grammars that import it)
 #
 # java-runner must already be registered (generate.sh does it in a private
 # BASHY_COMMANDS_DIR ring). CLASSPATH and JAVA_RUNNER_CLASSPATH both name the
@@ -22,4 +23,6 @@ public class Gen {
 ~~~
 
 out="$1"
+out2="$2"
 gen.main("-Dlanguage=Go", "-no-listener", "-no-visitor", "-package", "goparser", "-Xexact-output-dir", "-o", "$out", "GoLexer.g4", "GoParser.g4")
+gen.main("-Dlanguage=Go", "-no-listener", "-no-visitor", "-package", "bashsharpparser", "-Xexact-output-dir", "-o", "$out2", "BashSharpLexer.g4", "BashSharpParser.g4")

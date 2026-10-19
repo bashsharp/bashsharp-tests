@@ -38,5 +38,5 @@ func TestPredicateAudit(t *testing.T) {
 		}
 		checkLedger(t, known, "audit/"+filepath.Base(f), want, oracle.Recognize("unit", "sourceFile", src))
 	}
-	checkLedgerSeen(t, known, true)
+	checkLedgerSeen(t, known, func(id string) bool { return strings.HasPrefix(id, "audit/") })
 }

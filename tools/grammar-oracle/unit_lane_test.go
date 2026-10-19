@@ -105,14 +105,26 @@ func checkLedger(t *testing.T, known map[string]*finding, id, want string, r ora
 	}
 }
 
-// checkLedgerSeen fails on findings.tsv rows with prefix that no test visited.
-func checkLedgerSeen(t *testing.T, known map[string]*finding, audit bool) {
+// checkLedgerSeen fails on the findings.tsv rows a test owns (mine) that it
+// did not visit.
+func checkLedgerSeen(t *testing.T, known map[string]*finding, mine func(id string) bool) {
 	t.Helper()
 	for id, f := range known {
-		if strings.HasPrefix(id, "audit/") == audit && !f.seen {
+		if mine(id) && !f.seen {
 			t.Errorf("findings.tsv: %s matches no input", id)
 		}
 	}
+}
+
+// laneIDs is the set of manifest fixture ids in lane.
+func laneIDs(t *testing.T, lane string) func(string) bool {
+	ids := map[string]bool{}
+	for _, e := range readManifest(t) {
+		if e.lane == lane {
+			ids[e.id] = true
+		}
+	}
+	return func(id string) bool { return ids[id] }
 }
 
 // TestUnitLaneOracle runs every unit-lane required-positive row through the
@@ -147,7 +159,7 @@ func TestUnitLaneOracle(t *testing.T) {
 		}
 		buf.Write(append(line, '\n'))
 	}
-	checkLedgerSeen(t, known, false)
+	checkLedgerSeen(t, known, laneIDs(t, "unit"))
 	t.Logf("unit lane required-positive: %d rows, oracle accept %d, reject %d (expected accept %d)", accept+reject, accept, reject, accept+reject)
 	if *update {
 		if err := os.WriteFile(unitResultsPath, buf.Bytes(), 0o644); err != nil {

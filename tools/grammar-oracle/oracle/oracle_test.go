@@ -15,11 +15,12 @@ func TestIndependentImports(t *testing.T) {
 		t.Fatal(err)
 	}
 	allowed := map[string]bool{
-		"bashpp-tests/tools/grammar-oracle/oracle":   true,
-		"bashpp-tests/tools/grammar-oracle/goparser": true,
-		"github.com/antlr4-go/antlr/v4":              true,
-		"golang.org/x/exp/constraints":               true, // antlr4-go's own dependencies
-		"golang.org/x/exp/slices":                    true,
+		"bashpp-tests/tools/grammar-oracle/oracle":          true,
+		"bashpp-tests/tools/grammar-oracle/goparser":        true,
+		"bashpp-tests/tools/grammar-oracle/bashsharpparser": true,
+		"github.com/antlr4-go/antlr/v4":                     true,
+		"golang.org/x/exp/constraints":                      true, // antlr4-go's own dependencies
+		"golang.org/x/exp/slices":                           true,
 	}
 	for _, p := range strings.Fields(string(out)) {
 		if !allowed[p] {

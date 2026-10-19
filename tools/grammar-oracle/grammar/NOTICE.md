@@ -35,14 +35,39 @@ two steps:
 | `0002-operand-without-import-heuristic.patch` | `primaryExpr` | `{p.isOperand()}?` used `addImportSpec`'s import-name table, which records the last import path element after its last dot (`v2` for `math/rand/v2`, `v3` for `gopkg.in/yaml.v3`), not the package name. For `x.T` with `x` not in the table, only `methodExpr` stayed viable, so `rand.PCG{}` and `yaml.Node{}` were refused. The patch makes `operand` always viable. `methodExpr` and `conversion` keep their predicates, so every input accepted before is still accepted, and ALL(*) prediction chooses among the viable alternatives. | `findings.tsv`: `audit/import-versioned-complit.go`, `audit/import-dotted-complit.go` |
 | `0003-composite-literal-control-clause.patch` | `literalType`, `@members` | The spec's composite-literal parsing ambiguity: in the header of an `if`, `for` or `switch` statement, a composite literal whose type is a bare TypeName (`T{`, `pkg.T{`, `G[int]{`) must be enclosed in parentheses, square brackets or curly braces. gcsyntax tracks this as `xnest < 0`; upstream had no such rule and accepted `if x == T{} {`. The patch guards only the `typeName typeArgs?` alternative of `literalType` with `{compositeLitOK(p.GetParserRuleContext())}?`, defined in `@members`. It walks the rule-context chain: an enclosing block, argument list, index, slice, type-argument list, array length, literal value, conversion, parenthesized operand or case clause admits the literal; an enclosing `ifStmt`, `exprSwitchStmt`, `typeSwitchStmt` or `forStmt` header refuses it. Array, slice, map and struct literal types are untouched. The predicate names only context types, so the same text compiles in every package that imports these productions. | `findings.tsv`: `audit/neg-complit-in-if.go`; audit units `complit-in-headers`, `neg-complit-in-for`, `neg-complit-in-switch`, `neg-complit-in-else-if` |
 
-## Generated recognizer (`../goparser/`)
+## Mixed lane (`bashsharp/`, checkpoint 2)
+
+`bashsharp/BashSharpLexer.g4` and `bashsharp/BashSharpParser.g4` are this
+repository's own grammars (BSD-3-Clause, like the module). They `import` the
+patched `go-target/GoLexer.g4` and `go-target/GoParser.g4`, so the generated
+`../bashsharpparser/` contains grammars-v4 rules: it keeps their BSD-3
+provenance, and the headers above are its notice. The bashsharp grammars were
+transcribed from the permissive `sh/syntax` implementation and the
+`sh/grammar` delta, never from GNU Bash `parse.y`. `bashsharp/README.md`
+documents the entry points, the contextual primitives P0-P12, the reserved
+words (R6) and the coverage map.
+
+ANTLR merges imported lexer rules into same-named modes by position, not by
+name. So `GO_EOS` in mode `NLSEMI` shadows the imported `EOS` because it is
+defined first. `L_CURLY` (default mode) overrides the imported rule by name.
+The imported `@members` (patch 0003's `compositeLitOK`) are merged into the
+generated parser.
+
+## Generated recognizers (`../goparser/`, `../bashsharpparser/`)
 
 `go_lexer.go` and `go_parser.go` are ANTLR 4.13.2 output
 (`-Dlanguage=Go -no-listener -no-visitor -package goparser -Xexact-output-dir`,
 with grammar files passed by bare name). `go_parser_base.go` is
 `upstream/Go/go_parser_base.go` with its package clause renamed from
 `package parser` to `package goparser`, and nothing else. It keeps the BSD-3
-grammars-v4 provenance. `generated.sha256` lists all five outputs. `go vet` reports the
+grammars-v4 provenance. `generated.sha256` lists all five outputs.
+`../bashsharpparser/bashsharp_lexer.go` and `bashsharp_parser.go` come from
+the second ANTLR call (`-package bashsharpparser`, same options).
+Its `go_parser_base.go` is the same upstream base, with its package clause
+renamed and the `GoParser…` token constants renamed to `BashSharpParser…`
+(`sed` in generate.sh), and nothing else. Its `generated.sha256` lists the
+two bashsharp grammars and those three outputs. `lexer_state.go` and
+`parser_support.go` in that package are hand-written and not generated. `go vet` reports the
 generator's `unreachable code` (a `goto errorExit` after `return`). That
 code is never edited.
 
@@ -51,8 +76,8 @@ Darwin arm64, bashy 5.3.0(1)-bashy-dev (e8a4355), Python 3.9.6, Temurin
 21.0.12.1+1 (Eclipse Adoptium, cached under `$BASHY_HOME/custom/java/`), and
 `antlr-4.13.2-complete.jar` with SHA-256 `eae2dfa1…4d76`, equal to the pin.
 Run 1 was `gen/generate.sh` and run 2 was `gen/generate.sh --check`, a fresh
-remote temp dir with `diff -r` against the committed files. Both exited 0
-with identical outputs (patches 0001–0003):
+remote temp dir compared with the committed files. Both exited 0 with
+identical outputs (patches 0001–0003, both packages):
 
 ```
 f97d4dcf1b219cf45788d0be0963ca84a1f57337bbd58dc70f08b152649a29f6  grammar/go-target/GoLexer.g4
@@ -60,6 +85,11 @@ f97d4dcf1b219cf45788d0be0963ca84a1f57337bbd58dc70f08b152649a29f6  grammar/go-tar
 00af36106b0502fc0a739307c93905940c0791fce157d358ae335205b74a77e4  goparser/go_lexer.go
 38c8ef71130b2dd4ce8a0221129ea4614e133b7d45d8dec78ffbdb5bea7feb73  goparser/go_parser.go
 64b1ed3a05cd86db66d6e79ed0345b9a7945eb8dd2f1e2a34e0dc9c0dd66dcbb  goparser/go_parser_base.go
+349830997a477b1eae63f1a168618056f3f6aa2515dae2e007f521de9f7f7102  grammar/bashsharp/BashSharpLexer.g4
+4e91906671b5126b411893b1497a24b302e7b93d23a3cc2eba0a3eadcd9bee8e  grammar/bashsharp/BashSharpParser.g4
+355e0b0650e8fbb63ddfd4ac4268da33906cea080c91f1bf0521a605ee50ca49  bashsharpparser/bashsharp_lexer.go
+c216049830f73bc498096e063cf6c68010b77de54edcd1b6206e01b0e03afe00  bashsharpparser/bashsharp_parser.go
+4f0b74cfebcb1cdd6b6c932d83c7080dd32c1fe68ef3e70c81377c12ecf7c6be  bashsharpparser/go_parser_base.go
 ```
 
 Before patch 0003 the outputs were `GoParser.g4` 90e96bf5…eea8 and

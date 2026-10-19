@@ -350,36 +350,42 @@ func TestPinnedFiles(t *testing.T) {
 		}
 		checked++
 	}
-	if checked != 15 {
-		t.Errorf("checked %d pinned local files, want 15 (5 grammar files, 2 license headers, S6 table, 7 local files)", checked)
+	if checked != 17 {
+		t.Errorf("checked %d pinned local files, want 17 (5 grammar files, 2 license headers, S6 table, 9 local files)", checked)
 	}
 }
 
 // TestGeneratedSums re-hashes the generation output listed in
-// goparser/generated.sha256 (written by gen/generate.sh), so a hand edit of the
-// committed recognizer or the go-target grammars fails without the remote host.
+// goparser/generated.sha256 and bashsharpparser/generated.sha256 (written by
+// gen/generate.sh), so a hand edit of a committed recognizer or grammar fails
+// without the remote host.
 func TestGeneratedSums(t *testing.T) {
-	data, err := os.ReadFile("goparser/generated.sha256")
-	if err != nil {
-		t.Fatal(err)
-	}
-	n := 0
-	for _, l := range strings.Split(strings.TrimSuffix(string(data), "\n"), "\n") {
-		want, name, ok := strings.Cut(l, "  ")
-		if !ok {
-			t.Fatalf("generated.sha256: bad line %q", l)
-		}
-		got, err := os.ReadFile(name)
+	for _, c := range []struct {
+		list string
+		n    int
+	}{{"goparser/generated.sha256", 5}, {"bashsharpparser/generated.sha256", 5}} {
+		data, err := os.ReadFile(c.list)
 		if err != nil {
-			t.Error(err)
-			continue
+			t.Fatal(err)
 		}
-		if sum(got) != want {
-			t.Errorf("%s: sha256 %s, generated.sha256 says %s; regenerate with gen/generate.sh", name, sum(got), want)
+		n := 0
+		for _, l := range strings.Split(strings.TrimSuffix(string(data), "\n"), "\n") {
+			want, name, ok := strings.Cut(l, "  ")
+			if !ok {
+				t.Fatalf("%s: bad line %q", c.list, l)
+			}
+			got, err := os.ReadFile(name)
+			if err != nil {
+				t.Error(err)
+				continue
+			}
+			if sum(got) != want {
+				t.Errorf("%s: sha256 %s, %s says %s; regenerate with gen/generate.sh", name, sum(got), c.list, want)
+			}
+			n++
 		}
-		n++
-	}
-	if n != 5 {
-		t.Errorf("generated.sha256 lists %d files, want 5", n)
+		if n != c.n {
+			t.Errorf("%s lists %d files, want %d", c.list, n, c.n)
+		}
 	}
 }

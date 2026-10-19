@@ -1,7 +1,7 @@
 // Package oracle is the independent grammar-oracle recognizer (Sprint 384,
-// #1586). It imports only the generated goparser package and the ANTLR Go
-// runtime, never sh/syntax, sh/gosource or go/parser; oracle_test.go enforces
-// that with go list -deps.
+// #1586). It imports only the generated goparser and bashsharpparser packages
+// and the ANTLR Go runtime, never sh/syntax, sh/gosource or go/parser;
+// oracle_test.go enforces that with go list -deps.
 //
 // Accept means zero lexer and zero parser error events, with the entry rule
 // ending at EOF. Any event, including one the default strategy recovered from,
@@ -42,17 +42,31 @@ type Diagnostic struct {
 type Result struct {
 	Verdict     string       `json:"verdict"`
 	Diagnostics []Diagnostic `json:"diagnostics"`
+	// Boundary lists the extension sites of an accepted mixed-lane input
+	// in source order (nil for the unit lane).
+	Boundary []Site `json:"boundary,omitempty"`
 }
 
-// Lanes and their entry rules. Only the unit lane exists so far.
+// Lanes and their entries. The unit lane parses a Go source file
+// (sourceFile); the mixed lane parses a script in a dialect: bash (Bash# off)
+// or bashsharp.
 var entries = map[string]map[string]bool{
-	"unit": {"sourceFile": true},
+	"unit":  {"sourceFile": true},
+	"mixed": {"bash": true, "bashsharp": true},
 }
 
 // Recognize parses src as entry in lane.
 func Recognize(lane, entry string, src []byte) (res Result) {
 	if !entries[lane][entry] {
 		return Result{Verdict: Error, Diagnostics: []Diagnostic{{Msg: fmt.Sprintf("unknown lane/entry %s/%s", lane, entry)}}}
+	}
+	if lane == "mixed" {
+		defer func() {
+			if r := recover(); r != nil {
+				res = Result{Verdict: Error, Diagnostics: []Diagnostic{{Msg: fmt.Sprintf("panic: %v", r)}}}
+			}
+		}()
+		return recognizeMixed(entry, src)
 	}
 	l := &listener{DefaultErrorListener: antlr.NewDefaultErrorListener(), pos: newPositions(src)}
 	defer func() {
