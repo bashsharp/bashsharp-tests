@@ -187,6 +187,11 @@ func (l *BashSharpLexer) NextToken() antlr.Token {
 	}
 	t := l.BaseLexer.NextToken()
 	if t.GetTokenType() == antlr.TokenEOF {
+		// A here-document whose delimiter never appears is unclosed (README P9).
+		if len(st.heredocs) > 0 {
+			l.GetErrorListenerDispatch().SyntaxError(l, nil, t.GetLine(), t.GetColumn(), "unclosed here-document "+st.heredocs[0].delim, nil)
+			st.heredocs = nil
+		}
 		// A region still open at end of input ends there (README P6).
 		if l.top().goRegion() {
 			for l.top().goRegion() {
@@ -237,7 +242,10 @@ func (l *BashSharpLexer) regionEndsAhead(f *lexFrame) bool {
 	sh := l.shTop()
 	switch in.LA(i) {
 	case '}':
-		return goBlockContext(sh) && l.standalone(i)
+		// A "}" glued to the word before it (`"x"}`) is part of that word,
+		// not a closer (sh/syntax reads Go statements from shell words).
+		glued := i == 1 && !strings.ContainsRune("\n;&|()", rune(in.LA(-1)))
+		return goBlockContext(sh) && l.standalone(i) && !glued
 	case ')':
 		return len(sh.parens) > 0 && sh.parens[len(sh.parens)-1] == parenSubshell
 	case ';':
@@ -670,6 +678,13 @@ var reservedType = func() map[int]bool {
 // "}" that closes a Go block or a brace group inside one as RBRACE (P5).
 func (l *BashSharpLexer) shWord() {
 	f := l.top()
+	if strings.HasPrefix(l.GetText(), "#") && l.atWordStart() {
+		l.commentWord()
+		return
+	}
+	if !f.goRegion() && !f.cond && (f.cmdPos || f.declArgs) && f.forStage == 0 && !f.redirect && f.heredocOp == 0 {
+		l.subscriptWord()
+	}
 	text := strings.ReplaceAll(l.GetText(), "\\\n", "") // a line continuation joins the word
 	switch ty, ok := reservedSpelling[text]; {
 	case text == "}" && !f.goRegion() && !f.cond && goBlockContext(f):
@@ -683,6 +698,105 @@ func (l *BashSharpLexer) shWord() {
 	case isAssignmentWord(text):
 		l.SetType(BashSharpLexerASSIGNMENT_WORD)
 	}
+}
+
+// commentWord: a "#" at the start of a word begins a comment through the
+// end of the line (README P2), even where WORD's longest match ran on, for
+// example through a quote that the comment holds. The input is rewound to
+// the end of the line.
+func (l *BashSharpLexer) commentWord() {
+	text, _, _ := strings.Cut(l.GetText(), "\n")
+	n := len([]rune(text))
+	l.GetInputStream().Seek(l.TokenStartCharIndex + n)
+	if sim, ok := l.Interpreter.(*antlr.LexerATNSimulator); ok {
+		sim.Line, sim.CharPositionInLine = l.TokenStartLine, l.TokenStartColumn+n
+	}
+	l.SetText(text)
+	l.SetType(BashSharpLexerSH_COMMENT)
+	l.SetChannel(antlr.TokenHiddenChannel)
+}
+
+// subscriptWord: where an assignment may stand, a word that opens with
+// NAME[ reads the subscript as a matched pair through its "]", across blanks,
+// operators and newlines, and then continues the word (README P1, as
+// sh/syntax and Bash 5.3 read `a[i]=v`). End of input inside the pair is an
+// error.
+func (l *BashSharpLexer) subscriptWord() {
+	text := l.GetText()
+	k := 0
+	for k < len(text) && (text[k] == '_' || isASCIILetter(text[k]) || k > 0 && text[k] >= '0' && text[k] <= '9') {
+		k++
+	}
+	if k == 0 || k == len(text) || text[k] != '[' {
+		return
+	}
+	var sc subscan
+	for _, c := range text[k:] {
+		if sc.step(c) {
+			return // closed inside the word the rule matched
+		}
+	}
+	in := l.GetInputStream()
+	var b strings.Builder
+	b.WriteString(text)
+	for closed := false; !closed; {
+		c := in.LA(1)
+		if c == antlr.TokenEOF {
+			l.GetErrorListenerDispatch().SyntaxError(l, nil, l.TokenStartLine, l.TokenStartColumn, "unexpected EOF while looking for matching `]'", nil)
+			return
+		}
+		b.WriteRune(rune(c))
+		l.Interpreter.Consume(in)
+		closed = sc.step(rune(c))
+	}
+	// The rest of the word after the subscript.
+	for c := in.LA(1); c != antlr.TokenEOF && !strings.ContainsRune(" \t\n;&|()<>", rune(c)); c = in.LA(1) {
+		b.WriteRune(rune(c))
+		l.Interpreter.Consume(in)
+	}
+	l.SetText(b.String())
+}
+
+// subscan is the matched-pair scan of a subscript: bracket depth, an open
+// quote (single, double or back), the depth of $( ) nesting, and a pending
+// backslash escape.
+type subscan struct {
+	depth, paren int
+	q, prev      rune
+	esc          bool
+}
+
+// step consumes c and reports whether the subscript's "]" closed.
+func (s *subscan) step(c rune) bool {
+	prev := s.prev
+	s.prev = c
+	switch {
+	case s.esc:
+		s.esc = false
+	case s.q == '\'':
+		if c == '\'' {
+			s.q = 0
+		}
+	case c == '\\':
+		s.esc = true
+	case s.q != 0:
+		if c == s.q {
+			s.q = 0
+		}
+	case c == '\'' || c == '"' || c == '`':
+		s.q = c
+	case c == '(' && (s.paren > 0 || prev == '$'):
+		s.paren++
+	case c == ')' && s.paren > 0:
+		s.paren--
+	case s.paren > 0:
+	case c == '[':
+		s.depth++
+	case c == ']':
+		s.depth--
+		return s.depth == 0
+	}
+	return false
 }
 
 // fenceOpen records the opener's tilde run (README P7).
@@ -1079,7 +1193,7 @@ func (l *BashSharpLexer) startSite(f *lexFrame) int {
 	}
 	for _, kw := range []string{"var", "const", "type"} {
 		if rest, ok := cutKeyword(s, kw); ok {
-			if name := leadingIdent(rest); name != "" && !goKeywords[name] {
+			if name := leadingIdent(rest); name != "" && !goKeywords[name] && (kw != "type" || typeShape(rest[len(name):]) && l.bodyCloses()) {
 				return goDecl
 			}
 		}
@@ -1097,7 +1211,15 @@ func (l *BashSharpLexer) startSite(f *lexFrame) int {
 	}
 	if rest, ok := cutKeyword(s, "func"); ok {
 		if name := leadingIdent(rest); name != "" && !goKeywords[name] {
-			if strings.HasPrefix(strings.TrimLeft(rest[len(name):], " \t"), "(") {
+			sig := rest[len(name):]
+			// Type parameters: `func Index[T comparable](` (sh/syntax
+			// bashppFuncTypeParams reads them from shell words, so a list
+			// holding a shell operator, as in `[T int | float64]`, the S6
+			// M11 gap, is not this site).
+			if end := matchBracket(sig); strings.HasPrefix(sig, "[") && end > 0 && !strings.ContainsAny(sig[:end], "|&;<>()") {
+				sig = sig[end+1:]
+			}
+			if strings.HasPrefix(strings.TrimLeft(sig, " \t"), "(") {
 				return goFunc
 			}
 		}
@@ -1128,7 +1250,9 @@ func (l *BashSharpLexer) startSite(f *lexFrame) int {
 			return goControl
 		}
 	}
-	if rest, ok := cutShortDeclLhs(s); ok && strings.TrimLeft(rest, " \t") != "" {
+	// The := is a word of its own: `ech:=o` and `x :=1` stay shell words
+	// (sh/syntax bashppShortDecl).
+	if rest, ok := cutShortDeclLhs(s); ok && (strings.HasPrefix(rest, " ") || strings.HasPrefix(rest, "\t")) && strings.TrimLeft(rest, " \t") != "" {
 		return goSimple
 	}
 	if l.goCallHere(s) {
@@ -1153,6 +1277,71 @@ func (l *BashSharpLexer) startSite(f *lexFrame) int {
 		return goSimple
 	}
 	return 0
+}
+
+// bodyCloses: a type body opened on this line (a struct, interface or enum
+// "{") has its matching "}" before end of input. An unclosed body is not a
+// complete type shape, and `type T struct {` stays the shell builtin, as in
+// sh/syntax. Quotes and // comments are skipped.
+func (l *BashSharpLexer) bodyCloses() bool {
+	in := l.GetInputStream()
+	depth, opened := 0, false
+	for i := 1; ; i++ {
+		c := in.LA(i)
+		switch {
+		case c == antlr.TokenEOF:
+			return !opened
+		case c == '\n' && !opened:
+			return true
+		case c == '"' || c == '\'' || c == '`':
+			for i++; in.LA(i) != c && in.LA(i) != antlr.TokenEOF; i++ {
+				if in.LA(i) == '\\' && c != '`' {
+					i++
+				}
+			}
+		case c == '/' && in.LA(i+1) == '/':
+			for in.LA(i+1) != '\n' && in.LA(i+1) != antlr.TokenEOF {
+				i++
+			}
+		case c == '{':
+			depth++
+			opened = true
+		case c == '}':
+			depth--
+			if depth == 0 {
+				return true
+			}
+		}
+	}
+}
+
+// typeShape: after `type NAME`, a complete Go type shape commits (the
+// start-site table row "`type NAME TYPE` with complete Go type shape"): an
+// alias, a struct, interface or enum body, a type with parentheses or
+// braces, or a single type word ending the command. `type foo`, and a type
+// word followed by more words, stay the shell builtin (sh/syntax
+// bashppTypeDecl).
+func typeShape(rest string) bool {
+	if strings.HasPrefix(rest, "[") { // type parameters
+		end := matchBracket(rest)
+		if end < 0 {
+			return true
+		}
+		rest = rest[end+1:]
+	}
+	cmd, _, _ := strings.Cut(rest, ";")
+	words := lineWords(cmd)
+	switch {
+	case len(words) == 0:
+		return false
+	case len(words) == 1, words[0] == "=", strings.ContainsAny(cmd, "({"):
+		return true
+	}
+	switch words[0] {
+	case "struct", "interface", "enum", "chan", "<-chan", "func":
+		return true
+	}
+	return false
 }
 
 var goKeywords = map[string]bool{

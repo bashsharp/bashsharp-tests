@@ -161,6 +161,24 @@ func TestMixedPrimitives(t *testing.T) {
 		{"bashsharp", "@n()\n{ :; }\n", "accept", "[{at-function 0 11}]"},
 		// P9 here-documents are opaque to the grammar.
 		{"bash", "cat <<'E'\n}{ (\nE\necho\n", "accept", "[]"},
+		// An unclosed here-document is a reject.
+		{"bash", "cat <<-EOF\n\thi\nEEOF\n", "reject", ""},
+		// NAME[ where an assignment may stand reads a matched subscript.
+		{"bash", "f[[(]]\n", "accept", "[]"},
+		{"bash", "a[0=1\n", "reject", ""},
+		{"bash", "echo a[b\n", "accept", "[]"},
+		{"bash", "f[`]\n", "reject", ""},
+		// A # at a word start is a comment even holding a quote.
+		{"bash", "#\" x\necho \"y\"\n", "accept", "[]"},
+		// type commits on a complete type shape only; := is its own word.
+		{"bashsharp", "type foobar\necho after\n", "accept", "[]"},
+		{"bashsharp", "type T struct { A int\nfunc f(j T) int { return 1 }\n", "accept", "[{typed-func 22 50}]"},
+		{"bashsharp", "ech:=o a; { echo; }\n", "accept", "[]"},
+		// A } glued to a word does not close a Go block.
+		{"bashsharp", "func f(c int) {\n  c = \"x\"}\n", "reject", ""},
+		// Generic typed functions; a union constraint (S6 M11) is not the site.
+		{"bashsharp", "func F[T any](x T) T {\n  return x\n}\n", "accept", "[{typed-func 0 35}]"},
+		{"bashsharp", "func F[T int | float64](x T) T {\n  return x\n}\n", "reject", ""},
 		// P10 typed operands.
 		{"bashsharp", "func f(n int) { f($((n - 1))) }\n", "accept", "[{typed-func 0 31}]"},
 		// P11 substitution bodies are scripts.

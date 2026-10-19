@@ -44,7 +44,7 @@ type span struct {
 
 type finding struct {
 	offset int
-	status string // open | fixed:<patch>
+	status string // open | fixed:<patch> | fixed:bashsharpparser/<file>
 	seen   bool
 }
 
@@ -69,7 +69,12 @@ func findings(t *testing.T) map[string]*finding {
 			t.Fatalf("findings.tsv: offset %q: %v", f[2], err)
 		}
 		if p, ok := strings.CutPrefix(fd.status, "fixed:"); ok {
-			if _, err := os.Stat("grammar/go-target/patches/" + p); err != nil {
+			// A grammar patch, or a hand-written lexer or parser file.
+			path := "grammar/go-target/patches/" + p
+			if strings.HasPrefix(p, "bashsharpparser/") {
+				path = p
+			}
+			if _, err := os.Stat(path); err != nil {
 				t.Errorf("findings.tsv %s: %v", f[0], err)
 			}
 		} else if fd.status != "open" {

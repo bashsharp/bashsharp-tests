@@ -164,6 +164,47 @@ a model, package downloads or program execution.
   committed as a required regression fixture with an authored expectation.
   It is never waived.
 
+### Derived probes and the run-G disagreements
+
+A probe is one whole top-level declaration of a package-led unit, verbatim:
+a function keeps its signature and its body, and a top-level-only
+declaration stays top-level. The generator and `derived.tsv` were not
+changed in run G. The context hypothesis was measured first: each probe the
+oracle accepted and `sh/syntax` refused was parsed again after the parent's
+earlier declarations that `sh/syntax` accepts (imports, types, functions).
+All 207 were refused at the same byte, and 2 (generic functions) were
+accepted in both forms. So context changes no verdict.
+
+Run G fixed these oracle defects in the hand-written
+`bashsharpparser/lexer_state.go`. No grammar or generated file changed, so
+`generated.sha256` still verifies and regeneration was not needed. The
+`findings.tsv` rows are `fixed:bashsharpparser/lexer_state.go`, and
+`TestMixedPrimitives` holds a minimized case for each fix:
+
+- An unclosed here-document is a reject (README P9).
+- Where an assignment may stand, `NAME[` reads its subscript as a matched
+  pair. End of input inside the pair is a reject (README P1).
+- A `#` at the start of a word is a comment, even where `WORD`'s longest
+  match would run on through a quote (README P2).
+- `type NAME` commits only on a complete type shape. `:=` must be a word of
+  its own. A `}` glued to the token before it closes no Go block.
+  `func NAME[…](` with no shell operator in its type parameters is the
+  typed-func site, so S6 M11 stays out (README P5).
+
+These stay open and are reported, not waived. In `findings.tsv`:
+
+- The **207 probes marked `DESIGN DECISION`** are Go forms inside a committed
+  site that `sh/syntax` does not implement. Examples are a call argument
+  that is itself a call, a float `const`, a multi-name `var`, a Go `for` or
+  `if … else` in a typed body, and a `make(…)` right-hand side. The oracle
+  follows the Go productions there, as it does for S6 M10. Narrowing it to
+  the subset `sh/syntax` implements needs a decision on the start-site
+  table: either the table bounds what a committed site may contain, or Go
+  does.
+- The **5 rows marked `PRODUCTION DEFECT`** are reference-side defects: three
+  bash subscripts that `bash -n` accepts, `import ""`, and gcsyntax accepting
+  a unary `~`.
+
 ## PASS rule
 
 A candidate PASSes only if all of the following hold:

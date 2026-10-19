@@ -45,15 +45,15 @@ stream depends on context is one of these enumerated primitives:
 | | Primitive | Mechanism |
 |---|---|---|
 | P0 | Aliases | An empty alias environment: no alias is expanded. A static recognizer has no alias table, and the reference adapter uses none either. |
-| P1 | Words | `WORD` is the maximal run of word parts: unquoted characters, `\x`, `'…'`, `"…"`, `$'…'`, `$"…"`, `$name`, `${…}`, `$((…))`, `$(…)`, `$[…]`, backquotes, `<(…)`/`>(…)` and extended globs. Quotes and nested substitutions are balanced recursive lexical fragments. A `$` is a literal only before a character that cannot begin an expansion, so an unterminated `${` is an error. The lexer types a word by its **spelling** only. `if`, `then`, `{`, `}`, `[[`, `!`, … get `W_IF`, `W_THEN`, …. With Bash# on, `agentic` gets `W_AGENTIC` and `@…` gets `AT_WORD`. A `NAME=…` word gets `ASSIGNMENT_WORD`. A backslash-newline inside a word is removed before the spelling is matched. |
+| P1 | Words | `WORD` is the maximal run of word parts: unquoted characters, `\x`, `'…'`, `"…"`, `$'…'`, `$"…"`, `$name`, `${…}`, `$((…))`, `$(…)`, `$[…]`, backquotes, `<(…)`/`>(…)` and extended globs. Quotes and nested substitutions are balanced recursive lexical fragments. A `$` is a literal only before a character that cannot begin an expansion, so an unterminated `${` is an error. The lexer types a word by its **spelling** only. `if`, `then`, `{`, `}`, `[[`, `!`, … get `W_IF`, `W_THEN`, …. With Bash# on, `agentic` gets `W_AGENTIC` and `@…` gets `AT_WORD`. A `NAME=…` word gets `ASSIGNMENT_WORD`. A backslash-newline inside a word is removed before the spelling is matched. Where an assignment may stand (a command position or declaration-builtin arguments), a word that opens with `NAME[` reads its subscript as a matched pair through the matching `]`, across blanks, operators and newlines (quotes and `$(…)` nest), and then continues the word; end of input inside the pair is an error (Bash 5.3, `sh/syntax`). A `#` at the start of a word always begins a comment, even where a longer `WORD` match would run on through a quote. |
 | P2 | Comments | `#` starts a comment only at the start of a word. With Bash# on, `//` at the start of a word outside `[[ ]]` is a comment as well (S6 M14). |
 | P3 | Shell positions | The lexer tracks the command position from the token stream: after a separator, an operator or a keyword prefix, and after a pattern's `)`. It also tracks case-pattern positions, for/select word lists, redirection targets, here-document delimiters, `[[ … ]]` (with mode `COND_REGEX` for the operand of `=~`) and declaration builtins. The tracking is used **only** to lex `((…))` and `NAME=(…)`, to decide fence headers (P7), Go-region entry (P5) and the `}` closer of a Go block (P5), and to enter `COND_REGEX`. It never decides a reserved word. |
 | P4 | Go statement blocks | In a Go region, a `{` that opens a function body becomes `BLOCK_OPEN`: the lexer tracks a function signature's parameter lists. So does the block of an `if`/`for`/`switch`/`select`/`else` header at the region's outer level. The block's body is shell text in mode `SH`. Any other `{` (a composite literal, or a struct, interface or enum body) stays `L_CURLY`. In a header, a brace after an array, slice, map or struct literal type is a literal, as the spec's composite-literal parsing ambiguity says. After a complete signature, newlines and comment lines before the `{` are hidden: this is the delta's `header_end`. |
-| P5 | Go-region entry and block closers | With Bash# on, at a command position, the start-site decision table opens a Go region (mode `DEFAULT_MODE`, the imported GoLexer) for the statements listed below. Inside a Go block, outside any subshell, a standalone `}` word is `RBRACE`, and it closes the innermost brace even in an argument position, as `sh/syntax` does. |
+| P5 | Go-region entry and block closers | With Bash# on, at a command position, the start-site decision table opens a Go region (mode `DEFAULT_MODE`, the imported GoLexer) for the statements listed below. Inside a Go block, outside any subshell, a standalone `}` word is `RBRACE`, and it closes the innermost brace even in an argument position, as `sh/syntax` does. A `}` glued to the token before it (`"x"}`) is not standalone and closes nothing. |
 | P6 | Go-region end | An inserted semicolon at the region's outer level (a newline after a statement-ending token, `;`, or end of input) is `REGION_END`, and lexing returns to the shell. Elsewhere it is the GoLexer's `EOS`. A region also ends, without consuming input, before a `}` that closes the enclosing Go block, before a `)` that closes an enclosing subshell, and before `;;`/`;&`. A case clause head ends at its `:`. |
 | P7 | Fences | A column-one header at a command position, validated as `sh/syntax` `recognizeSourceFence` does (`~~~`+ language, optional `as ALIAS`, optional `!RUNNER`, nothing else). Mode `FENCE_BODY` then consumes lines up to and including the first line that is exactly the opener's tilde run. The body is opaque, except that a closed fence without `as ALIAS` declares the functions its language's declaration lines name (`sh/syntax` `bashppRegisterSourceBlockFuncs`), so a later `f()` is a call (P5). |
 | P8 | Decorators | A column-one `@name(` opens a decorator region (Go arguments, keyword arguments allowed). The exception is `@name()` followed, possibly after comment lines, by a compound command: that is Bash's function named `@name` (`at_function`). |
-| P9 | Here-documents | `<<`/`<<-` queue their delimiter, with quotes removed. After the next shell newline, mode `HEREDOC` consumes the body lines up to each delimiter in turn; `<<-` strips leading tabs. A body that reaches end of input is accepted, as GNU Bash 5.3 does with a warning. |
+| P9 | Here-documents | `<<`/`<<-` queue their delimiter, with quotes removed. After the next shell newline, mode `HEREDOC` consumes the body lines up to each delimiter in turn; `<<-` strips leading tabs. A here-document whose delimiter line never appears is an error at end of input, as in `sh/syntax` (GNU Bash 5.3 only warns). |
 | P10 | Typed operands | Inside a Go region, `$name`, `${…}`, `$(…)` and `$((…))` are one `SHELL_OPERAND` token, and Go `operand` admits it. `#` comments are allowed in a Go region. |
 | P11 | Substitution re-entry | The body of every `$(…)`, backquote (unescaped first), `<(…)` and `>(…)` is parsed again with entry `script` in the same dialect, with its positions mapped back. A fence inside `$(…)` is therefore still a fence. Arithmetic bodies are not command text. |
 | P12 | Embed lines | `embed FORMAT "./path"\|"../path" [as ALIAS] [!RUNNER]` ending its command is an `embed_line`. A left-edge parser predicate checks the token shape. Whether the target file exists is not grammar (the reference phase is `context`). |
@@ -77,13 +77,20 @@ operator checks, and `identIs("enum")`.
 
 Transcribed from `RecognizeStartSite` and the `parser.go` dispatch:
 
-- `var`/`const`/`type` + a non-keyword identifier, and `const (`.
+- `var`/`const` + a non-keyword identifier, and `const (`. `type` + a
+  non-keyword identifier only with a complete type shape: an alias, a
+  `struct`/`interface`/`enum` body whose `}` closes before end of input, a
+  type with parentheses or braces, or one type word ending the command.
+  `type foo` and `type foo bar baz` stay the shell builtin.
 - `import` + anything (only an interpreted-string path is valid; S6 M16), and
   `package` (always an error; S6 M15).
-- `func NAME(` and `func (` with a non-empty list. This covers typed functions,
-  methods and an immediately called literal.
+- `func NAME(`, `func NAME[…](` (type parameters without a shell operator
+  character; `[T int | float64]` is the S6 M11 gap) and `func (` with a
+  non-empty list. This covers typed functions, methods and an immediately
+  called literal.
 - `go` + a literal or a selector call.
-- A short declaration `a, b := …` with a right-hand side.
+- A short declaration `a, b := …` with a right-hand side, the `:=` followed
+  by a blank (`ech:=o` and `x :=1` are shell words).
 - A call: `f(…)` with arguments or a dotted callee. A plain `f()` qualifies
   only for a declared typed function or a predeclared builtin followed by a
   statement end (`sh/syntax` `bashppCallable`).
@@ -124,7 +131,5 @@ documented: a function body is any compound command, not only a block.
 - A `$(…)` body with an unbalanced `)` (a case pattern) or a here-document
   holding `)` is not delimited correctly. Expansions inside here-document
   bodies are not parsed.
-- A here-document that reaches end of input is accepted (GNU Bash 5.3);
-  `sh/syntax` refuses it.
 - The island lane (Go payloads of fences and embeds) and the bounded mutation
   set belong to checkpoints 3-4.
