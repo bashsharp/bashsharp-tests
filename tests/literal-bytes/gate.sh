@@ -8,6 +8,10 @@ AGENTOS_BIN="${BASHY_AGENTOS_BIN-$ROOT/../bashy/bin/bashy}"
 for adapter in "$ROOT/tests/literal-bytes/ycode_adapter_test.go" "$ROOT/tests/literal-bytes/yoke_mcp_test.go"; do
   [[ -s "$adapter" ]] || { echo "literal-bytes: required adapter is absent or empty: $adapter" >&2; exit 2; }
 done
+count_lib="$ROOT/tests/literal-bytes/count-transport.sh"
+[[ -s "$count_lib" ]] || { echo "literal-bytes: required counting library is absent or empty: $count_lib" >&2; exit 2; }
+# shellcheck disable=SC1090
+. "$count_lib"
 tmp="$(mktemp -d)"
 failed=0
 cleanup() {
@@ -106,7 +110,21 @@ if ! (cd "$YCODE_DIR" && LITERAL_BYTES_ROOT="$ROOT/tests/literal-bytes" BASH_SHE
   failed=$((failed + 1))
 else
   cat "$tmp/ycode.log"
-  transport_counts[ycode-provider]=$(rg -c '^    --- PASS: TestSprint381LiteralBytes/' "$tmp/ycode.log" || true)
+  # Portable exact case-name accounting (no rg dependency): the helper prints
+  # the exact passing-case count on stdout and per-name diagnostics on stderr.
+  # Its nonzero exit feeds `failed` so duplicates, unexpected names, failures,
+  # and skips fail the gate even when the count alone would still match; the
+  # per-transport count check below remains the count-equality gate.
+  set +e
+  ycode_count=$(count_transport_cases "$tmp/ycode.log" "TestSprint381LiteralBytes" "$ROOT/tests/literal-bytes/cases.tsv" "ycode-provider" "$tmp")
+  ycode_rc=$?
+  set -e
+  case "$ycode_count" in ''|*[!0-9]*) ycode_count=0;; esac
+  transport_counts[ycode-provider]=$ycode_count
+  if (( ycode_rc != 0 )); then
+    echo "literal-bytes: ycode-provider case accounting failed" >&2
+    failed=$((failed + 1))
+  fi
 fi
 YOKE_DIR="${YOKE_DIR:-$ROOT/../yoke}"
 yoke_test_source="$ROOT/tests/literal-bytes/yoke_mcp_test.go"
@@ -119,7 +137,17 @@ if ! (cd "$YOKE_DIR" && LITERAL_BYTES_ROOT="$ROOT/tests/literal-bytes" BASH_SHEL
   failed=$((failed + 1))
 else
   cat "$tmp/yoke.log"
-  transport_counts[yoke-mcp]=$(rg -c '^    --- PASS: TestSprint381LiteralBytesRunTool/' "$tmp/yoke.log" || true)
+  # Same portable accounting as the ycode-provider transport above.
+  set +e
+  yoke_count=$(count_transport_cases "$tmp/yoke.log" "TestSprint381LiteralBytesRunTool" "$ROOT/tests/literal-bytes/cases.tsv" "yoke-mcp" "$tmp")
+  yoke_rc=$?
+  set -e
+  case "$yoke_count" in ''|*[!0-9]*) yoke_count=0;; esac
+  transport_counts[yoke-mcp]=$yoke_count
+  if (( yoke_rc != 0 )); then
+    echo "literal-bytes: yoke-mcp case accounting failed" >&2
+    failed=$((failed + 1))
+  fi
 fi
 for transport in bashy-c install-agent-shim ycode-provider yoke-mcp; do
   count="${transport_counts[$transport]}"
