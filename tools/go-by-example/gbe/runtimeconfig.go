@@ -15,10 +15,81 @@ import (
 
 var reTelemetryMode = regexp.MustCompile(`\Aoff(?: \d{4}-\d{2}-\d{2})?\z`)
 
-// provisionManagedToolCache constructs yoke/binmgr's already-installed Go
-// fast path. The cache is gate-owned and outside every program root. It points
-// at the SDK authenticated by resolveToolchain; no downloader or host fallback
-// participates in runtime execution.
+// Initialize through the authenticated product before measuring any row. A
+// linked SDK alone is not a complete binmgr tree: the producer owns its cache
+// publication protocol. Never synthesize its completion marker in the harness.
+func initializeManagedToolCaches(candidate, cache, logs string, env map[string]string, run func([]string, string, string, map[string]string, Number, string) (*Object, error), toolchains ...*toolchainContext) error {
+	seen := map[string]bool{}
+	for _, tc := range toolchains {
+		if tc == nil || seen[tc.goVersion] {
+			continue
+		}
+		if err := authenticateManagedSDK(tc.goroot, tc); err != nil {
+			return err
+		}
+		version := strings.TrimPrefix(tc.goVersion, "go")
+		before := newInputBinding(cache, false, "shared")
+		initEnv := map[string]string{}
+		for key, value := range env {
+			initEnv[key] = value
+		}
+		initEnv["BASHY_BIN_CACHE"] = cache
+		initEnv["BASHY_GO_VERSION"] = version
+		prefix := filepath.Join(logs, version)
+		stage, runErr := run([]string{candidate, "go", "version"}, filepath.Dir(cache), prefix, initEnv, Int(180), os.DevNull)
+		evidence := Obj("version", tc.goVersion, "expected_go_sha256", tc.goSHA256, "stage", nil, "changed_paths", before.Changes())
+		if stage != nil {
+			evidence.Set("stage", stage)
+		}
+		if runErr != nil {
+			evidence.Set("error", runErr.Error())
+		}
+		if err := os.MkdirAll(logs, 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(prefix+".initialization.json", []byte(Generate(evidence)+"\n"), 0o644); err != nil {
+			return err
+		}
+		if runErr != nil || stage == nil || !success(stage) {
+			return fmt.Errorf("managed SDK %s initialization failed; see %s", version, prefix)
+		}
+		installedRoot := filepath.Join(cache, "go", version, "go")
+		authErr := authenticateManagedSDK(installedRoot, tc)
+		if authErr == nil {
+			authErr = authenticateManagedSDK(tc.goroot, tc)
+		}
+		evidence.Set("installed_go_sha256", sha(goExecutable(installedRoot)))
+		evidence.Set("original_go_sha256", sha(goExecutable(tc.goroot)))
+		evidence.Set("authenticated", authErr == nil)
+		if authErr != nil {
+			evidence.Set("error", authErr.Error())
+		}
+		if err := os.WriteFile(prefix+".initialization.json", []byte(Generate(evidence)+"\n"), 0o644); err != nil {
+			return err
+		}
+		if authErr != nil {
+			return authErr
+		}
+		seen[tc.goVersion] = true
+	}
+	return nil
+}
+
+func authenticateManagedSDK(root string, tc *toolchainContext) error {
+	if got := sha(goExecutable(root)); got != tc.goSHA256 {
+		return fmt.Errorf("managed SDK binary checksum mismatch at %s", root)
+	}
+	data, err := os.ReadFile(filepath.Join(root, "VERSION"))
+	lines := rubyLinesChomp(string(data))
+	if err != nil || len(lines) == 0 || strings.TrimSpace(lines[0]) != tc.goVersion {
+		return fmt.Errorf("managed SDK VERSION mismatch at %s", root)
+	}
+	return nil
+}
+
+// provisionManagedToolCache seeds the gate-owned cache with the SDK
+// authenticated by resolveToolchain. initializeManagedToolCaches must finish
+// the product-owned installation protocol before any measured row starts.
 func provisionManagedToolCache(cache string, tc *toolchainContext) (string, error) {
 	version := strings.TrimPrefix(tc.goVersion, "go")
 	if version == "" || version == tc.goVersion {

@@ -423,7 +423,7 @@ func validateEvidenceMain(args []string) {
 		"target", "${GOROOT}/bin/go",
 		"version", toolpin[2],
 		"go_sha256", toolpin[4],
-		"network", "not used for SDK provisioning; authenticated cache prepared before execution",
+		"network", "candidate provisions reviewed SDKs before baseline; installed binary and VERSION re-authenticated",
 	)
 	if buildToolchain.Version != oracleToolchain.Version {
 		wantManaged.Set("candidate_build", Obj(

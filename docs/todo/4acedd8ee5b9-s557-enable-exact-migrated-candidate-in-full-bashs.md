@@ -13,3 +13,14 @@ sprint_title: 'Bashy v1.0.0 preparation: split private/public development and re
 ---
 
 The full harness invokes tools/go-by-example/gate.sh without its required candidate manifest. Support a reviewed exact migrated candidate and explicit manifest input through the existing full harness and public workflow. Preserve candidate identity/hash checks and existing corpus PASS/FAIL/PLANNED accounting; never bypass candidate review or auto-approve unknown artifacts. Determine the existing registry contract, implement the missing plumbing and record reviewable candidate evidence. Full suites remote only. No private data or licensed fixtures.
+
+
+Follow-up implementation for the first-row input mutation: exact candidate
+Yoke revision 621b5f18 requires a producer-owned tree completion record, while
+the harness only seeded an SDK symlink. Initialize each reviewed coordinate
+through the authenticated candidate before row snapshots, retain bounded
+initialization evidence, and re-authenticate original and installed SDKs.
+No input-guard exclusions or marker synthesis. The original failed attempt
+lost detailed mutation paths, so historical attribution remains a hypothesis.
+Focused mocked initialization/provisioning tests pass; full hosted replay is
+pending manager integration. Status remains assigned for manager acceptance.

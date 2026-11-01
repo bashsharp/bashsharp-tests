@@ -164,11 +164,18 @@ toolchain.
 The gate now supplies one `GOCACHE` outside every execution root, identically to
 all three modes, so the effect channel measures the program instead of the
 toolchain. It also constructs one isolated `BASHY_BIN_CACHE` outside every
-execution root before any program runs. Its sole Go entry is the yoke/binmgr
-fast path `go/1.27.1/go/bin/go`, reached through a symlink to the already
-authenticated pinned GOROOT. The gate rechecks the target, `VERSION`, and
-`bin/go` digest; there is no network download, native fallback, or host-global
-tool cache. The cache environment and exact capability are recorded in evidence
+execution root before any program runs. It seeds each reviewed oracle and
+candidate SDK coordinate with a link to the authenticated GOROOT, then runs
+the authenticated candidate's `go version` front door for that version. This
+prerequisite may download the official SDK through the producer's verified
+installer, which owns the tree-completion protocol. Each initialization has a
+180-second deadline and retained stdout, stderr, process lineage, and exact
+cache path changes under the result work tree's `managed-tool-initialization`.
+Before taking any row baseline, the gate rechecks both the installed and
+original `VERSION` and `bin/go` digest against the reviewed SDK. It never writes
+a completion marker itself or exempts cache mutations during measured rows.
+There is no native fallback or host-global tool cache.
+The cache environment and exact capability are recorded in evidence
 and supplied identically to all three modes. Program writes under `HOME`,
 `TMPDIR`, or the execution root remain fully compared.
 
