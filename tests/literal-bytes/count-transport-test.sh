@@ -97,7 +97,7 @@ make_log "$tmp/duplicate.log" <<'EOF'
     --- PASS: TestDemo/beta (0.10s)
     --- PASS: TestDemo/gamma (0.10s)
 EOF
-run_case "duplicate" "3" 1 "literal-bytes: t duplicate pass 'alpha'" "$tmp/duplicate.log"
+run_case "duplicate" "2" 1 "literal-bytes: t duplicate pass 'alpha'" "$tmp/duplicate.log"
 
 make_log "$tmp/unexpected.log" <<'EOF'
     --- PASS: TestDemo/alpha (0.10s)
@@ -134,3 +134,61 @@ set -e
 grep -Fx "literal-bytes: t go-test log is absent or empty: $tmp/does-not-exist.log" "$tmp/absent.stderr" >/dev/null || {
   echo "FAIL absent-log (missing exact stderr line)" >&2; cat "$tmp/absent.stderr" >&2; exit 1; }
 echo "PASS absent-log"
+
+# A contradictory terminal result is never a measured pass.
+cp "$tmp/all-pass.log" "$tmp/pass-fail.log"
+printf '    --- FAIL: TestDemo/gamma (0.01s)\n' >> "$tmp/pass-fail.log"
+run_case "pass-fail" "2" 1 "literal-bytes: t failed case 'gamma'" "$tmp/pass-fail.log"
+cp "$tmp/all-pass.log" "$tmp/pass-skip.log"
+printf '    --- SKIP: TestDemo/gamma (0.01s)\n' >> "$tmp/pass-skip.log"
+run_case "pass-skip" "2" 1 "literal-bytes: t skipped case 'gamma'" "$tmp/pass-skip.log"
+
+# Runtime tool errors must not become empty missing/unexpected lists and
+# therefore apparent success. Use shell functions so no host tools change.
+(
+  comm() { return 7; }
+  run_case "comm-error" "0" 2 "literal-bytes: t counting command failed" "$tmp/all-pass.log"
+)
+(
+  awk() { return 7; }
+  # In particular, failure on the left of awk | sort must survive sort's 0.
+  run_case "pipeline-error" "0" 2 "literal-bytes: t counting command failed" "$tmp/all-pass.log"
+)
+(
+  wc() { return 7; }
+  run_case "wc-error" "0" 2 "literal-bytes: t counting command failed" "$tmp/all-pass.log"
+)
+(
+  command() {
+    if [[ "$#" -eq 2 && "$1" == -v && "$2" == wc ]]; then return 1; fi
+    builtin command "$@"
+  }
+  run_case "missing-tool" "0" 2 "literal-bytes: t counting requires missing tool: wc" "$tmp/all-pass.log"
+)
+
+# Require the same locale for every ordered comparison, even if the caller
+# supplied another locale; do not change that caller's locale or pipefail.
+(
+  export LC_ALL=POSIX
+  for candidate in en_US.UTF-8 en_US.utf8 C.UTF-8; do
+    if locale -a 2>/dev/null | grep -Fx "$candidate" >/dev/null; then
+      export LC_ALL="$candidate"
+      break
+    fi
+  done
+  original_locale="$LC_ALL"
+  comm() {
+    [[ "$LC_ALL" == C ]] || { echo "comm received inconsistent locale" >&2; return 7; }
+    builtin command comm "$@"
+  }
+  uniq() {
+    [[ "$LC_ALL" == C ]] || { echo "uniq received inconsistent locale" >&2; return 7; }
+    builtin command uniq "$@"
+  }
+  run_case "locale" "3" 0 "" "$tmp/all-pass.log"
+  set +o pipefail
+  count_transport_cases "$tmp/all-pass.log" TestDemo "$tmp/cases.tsv" t "$tmp/work-locale" > "$tmp/direct-count"
+  [[ "$LC_ALL" == "$original_locale" ]] || { echo "FAIL locale leaked" >&2; exit 1; }
+  [[ "$(set -o | awk '$1 == "pipefail" {print $2}')" == off ]] || { echo "FAIL pipefail leaked" >&2; exit 1; }
+  echo "PASS caller-state-preserved"
+)
