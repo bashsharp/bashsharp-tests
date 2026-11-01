@@ -21,8 +21,14 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEST_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-BASHY_BIN="${BASHY_BIN:-${TEST_DIR}/../bashy/bin/bash}"
+BASHY_BIN="${BASHY_BIN:-${TEST_DIR}/../bashy/bin/bashy}"
 MANIFEST="${MANIFEST:-${TEST_DIR}/tests/manifest.tsv}"
+# Selection is explicit; the gate still authenticates the manifest against its
+# reviewed registry and hashes every executable and declared source checkout.
+if [ -z "${GBE_CANDIDATE:-}" ] || [ ! -f "$GBE_CANDIDATE" ]; then
+  echo "FATAL: set GBE_CANDIDATE to the reviewed exact candidate manifest" >&2
+  exit 2
+fi
 
 PASSED=0; FAILED=0; PLANNED=0; TOTAL=0
 declare -a FAIL_NAMES=()
@@ -91,7 +97,7 @@ fi
 # Final Go-by-Example verification is never optional: all 85 pinned programs
 # must produce oracle, interpreted, compiled-build, and compiled-run records.
 if [ -x "${TEST_DIR}/tools/go-by-example/gate.sh" ]; then
-  "${TEST_DIR}/tools/go-by-example/gate.sh" || {
+  "${TEST_DIR}/tools/go-by-example/gate.sh" --candidate "$GBE_CANDIDATE" --bashy "$BASHY_BIN" || {
     echo "FATAL: Go by Example three-mode differential failed" >&2
     exit 2
   }

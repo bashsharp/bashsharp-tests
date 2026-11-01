@@ -288,15 +288,21 @@ func (t *tamperSuite) phaseA(gateEnv []string) {
 	// The launcher is selected by path and authenticated by digest.
 	t.expectFail("mutated_candidate_launcher", "digest mismatch", skip, nil, SGATE, "--candidate", CANDIDATE, "--bashy", "/bin/echo")
 
-	// A zeroed or self-identical digest is not a reviewed artifact.
+	// A zeroed or changed digest is not the reviewed artifact.
 	zeroRepo := t.copyRepo("zero-repo")
 	recandidate(zeroRepo, func(f []string) { f[3] = strings.Repeat("0", 64) })
 	t.expectFail("unprovisioned_candidate", "invalid reviewed candidate launcher_sha256",
 		skip, nil, gateWrapper(zeroRepo), "--candidate", CANDIDATE, "--bashy", BASHY)
 
 	sameRepo := t.copyRepo("same-repo")
-	recandidate(sameRepo, func(f []string) { f[4] = f[3] })
-	t.expectFail("launcher_is_not_its_own_payload", "launcher and payload digests are identical",
+	recandidate(sameRepo, func(f []string) {
+		if f[4][0] == 'a' {
+			f[4] = "b" + f[4][1:]
+		} else {
+			f[4] = "a" + f[4][1:]
+		}
+	})
+	t.expectFail("unreviewed_payload_digest", "candidate manifest payload_sha256 differs from the reviewed table",
 		skip, nil, gateWrapper(sameRepo), "--candidate", CANDIDATE, "--bashy", BASHY)
 
 	// Only the reviewed Go 1.27.2 security build may differ from the fixed

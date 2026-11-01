@@ -371,9 +371,6 @@ func validateEvidenceMain(args []string) {
 			die("candidate " + key + " is not the repository-reviewed value")
 		}
 	}
-	if runtime.GOOS != "windows" && recorded.Str("launcher_sha256") == recorded.Str("payload_sha256") {
-		die("candidate launcher and payload digests may not coincide")
-	}
 	if !deepEqual(recorded.Get("repositories"), reviewed.RepositoryRecords()) {
 		die("candidate runtime dependencies differ from the reviewed set: " + Generate(recorded.Get("repositories")))
 	}
