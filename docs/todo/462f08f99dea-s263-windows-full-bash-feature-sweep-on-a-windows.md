@@ -3,7 +3,7 @@ id: 462f08f99dea
 kind: task
 title: S263 Windows full Bash# feature sweep on a Windows host
 seq: 92
-status: todo
+status: wontfix
 priority: p1
 labels:
     - windows
@@ -12,6 +12,7 @@ created: 2026-09-23T17:26:37.742115Z
 sprint: 263
 sprint_id: 0d309714-8bdb-5839-9c40-8bff200ed2f5
 sprint_title: Bash# full feature sweep on Windows, macOS, and Linux
+closed: 2026-11-01T06:44:01.05607Z
 ---
 
 On Windows a Windows host, run every applicable existing gate in the Sprint263 inventory against a clean candidate at public heads: Bash# five-family acceptance and lowering, decorators, agentic, fenced languages/manifest integration, Bash++/Bash# interpreter/runtime full-tier tests and relevant Bashy/library tests. Record command, candidate SHA, denominator, raw log/hash, and pass/fail/skip for each gate. Preserve fixture bytes and time limits. File narrow repair stories for real failures, fix, and rerun affected gates until green. Reuse Sprint250 receipts only where exact candidate and gate are identical.
@@ -25,3 +26,5 @@ On Windows a Windows host, run every applicable existing gate in the Sprint263 i
 - Next step: run only the inventory's Bash#-specific rows that apply to Windows, at the recorded candidate (default: the bashy v0.31.0 tag and its pinned siblings). Keep one evidence record for the host.
 - Acceptance: every applicable row has a result with command, SHA, denominator and log hash. Each failure has a linked repair story or is one of the 9df13ad43092 reds.
 - Deps: d94af6237d36; host claim.
+
+Won't do (operator 2026-11-01: close S263, reduce scope). Superseded by gates that now run natively on Linux/macOS/Windows: the release gate (make test-bash 86/86), this harness (harness/run.sh), the tour install-matrix CI, and the per-OS repair-profile runner (bashy-only; Bash# suites can join as a profile component when needed).

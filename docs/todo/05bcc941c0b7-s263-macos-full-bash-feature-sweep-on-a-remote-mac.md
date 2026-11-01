@@ -3,7 +3,7 @@ id: 05bcc941c0b7
 kind: test
 title: S263 macOS full Bash# feature sweep on a remote macOS host
 seq: 93
-status: todo
+status: wontfix
 priority: p1
 labels:
     - macos
@@ -11,6 +11,7 @@ created: 2026-09-23T17:28:05.602479Z
 sprint: 263
 sprint_id: 0d309714-8bdb-5839-9c40-8bff200ed2f5
 sprint_title: Bash# full feature sweep on Windows, macOS, and Linux
+closed: 2026-11-01T06:44:00.974968Z
 ---
 
 Run every applicable existing Bash++/Bash# feature gate from the S263 inventory on a remote macOS host at clean recorded public candidate heads. Capture exact commands, counts, raw logs, SHA/candidate manifest, environment prerequisites and skips. Reuse Sprint250 receipts only for an identical candidate and gate. File narrow S263 fix stories for failures, repair root cause, rerun affected gates; preserve fixtures and time limits.
@@ -24,3 +25,5 @@ Run every applicable existing Bash++/Bash# feature gate from the S263 inventory 
 - Next step: run the inventory's Bash#-specific rows (acceptance/lowering, decorators, agentic, polyglot/manifest, bashsharp go test, sh full tier) at the recorded candidate (default: the bashy v0.31.0 tag and its pinned siblings). Keep one evidence record.
 - Acceptance: every applicable row passes, or its failures map to known-red IDs or new repair stories, with command, SHA, denominator and log hash.
 - Deps: d94af6237d36; host claim.
+
+Won't do (operator 2026-11-01: close S263, reduce scope). Superseded by gates that now run natively on Linux/macOS/Windows: the release gate (make test-bash 86/86), this harness (harness/run.sh), the tour install-matrix CI, and the per-OS repair-profile runner (bashy-only; Bash# suites can join as a profile component when needed).
