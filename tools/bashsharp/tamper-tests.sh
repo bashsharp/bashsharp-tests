@@ -32,12 +32,13 @@ cat > "${tmp}/fake-engine" <<'EOF'
 #!/usr/bin/env bash
 set -u
 printf 'engine\t%s\n' "$*" >> "${BASHSHARP_FAKE_LOG}"
-enabled=false
+enabled=${BASHSHARP_FAKE_DEFAULT:-false}
 posix=false
 fixture=''
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --bashpp) enabled=true ;;
+    --no-bashpp) enabled=false ;;
     --posix) posix=true ;;
     -c) exit 0 ;;
     *) fixture="$1" ;;
@@ -93,6 +94,26 @@ grep -q $'^front-door\ttranspile' "${fake_log}" && {
   echo "Bash# tamper: Sprint 114 gate invoked transpile" >&2
   exit 1
 }
+
+# The same off/on contract must hold for Bashy's default-on native front door.
+: > "${fake_log}"
+BASHSHARP_FAKE_DEFAULT=true BASHSHARP_FAKE_LOG="${fake_log}" BASH_ENGINE_BIN="${tmp}/fake-engine" BASHY_BIN="${tmp}/fake-bashy" \
+  "${tmp}/tools/bashsharp/acceptance.sh" >/dev/null
+[ "$(wc -l < "${fake_log}" | tr -d ' ')" -eq 128 ] || {
+  echo "Bash# tamper: default-on engine did not execute all 128 commands" >&2
+  exit 1
+}
+# Removing explicit-off must reproduce the POSIX comparison failure, not pass
+# by comparing two enabled executions or silently dropping a fixture.
+sed 's/--no-bashpp "${fixture}"/"${fixture}"/' \
+  "${ROOT}/tools/bashsharp/acceptance.sh" > "${tmp}/tools/bashsharp/acceptance.sh"
+if BASHSHARP_FAKE_DEFAULT=true BASHSHARP_FAKE_LOG="${fake_log}" BASH_ENGINE_BIN="${tmp}/fake-engine" BASHY_BIN="${tmp}/fake-bashy" \
+  "${tmp}/tools/bashsharp/acceptance.sh" >"${tmp}/default-on-negative.log" 2>&1; then
+  echo "Bash# tamper: implicit selector-off oracle was accepted" >&2
+  exit 1
+fi
+grep -Fq 'kwargs/bind-reordered: --posix --bashpp is not inert' "${tmp}/default-on-negative.log"
+cp "${ROOT}/tools/bashsharp/acceptance.sh" "${tmp}/tools/bashsharp/acceptance.sh"
 
 rm "${tmp}/tests/bashsharp/kwargs/missing-required.bpp"
 expect_rejected "missing-fixture"

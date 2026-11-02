@@ -47,8 +47,10 @@ while IFS=$'\t' read -r id feature class case_ledger lowering; do
     cases=$((cases + 1))
     stem="${tmp}/${id}.${case_id}"
 
+    # The native Bashy front door enables Bash++ by default; make the
+    # selector-off oracle explicit for either supported engine front door.
     plain_rc=0
-    capture "${stem}.plain.out" "${stem}.plain.err" "${family_dir}" "${BASH_ENGINE_BIN}" "${fixture}" || plain_rc=$?
+    capture "${stem}.plain.out" "${stem}.plain.err" "${family_dir}" "${BASH_ENGINE_BIN}" --no-bashpp "${fixture}" || plain_rc=$?
     posix_rc=0
     capture "${stem}.posix.out" "${stem}.posix.err" "${family_dir}" "${BASH_ENGINE_BIN}" --posix --bashpp "${fixture}" || posix_rc=$?
     same_result "${stem}.plain.out" "${stem}.posix.out" "${stem}.plain.err" "${stem}.posix.err" "${plain_rc}" "${posix_rc}" ||
