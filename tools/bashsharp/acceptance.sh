@@ -51,10 +51,14 @@ while IFS=$'\t' read -r id feature class case_ledger lowering; do
     # selector-off oracle explicit for either supported engine front door.
     plain_rc=0
     capture "${stem}.plain.out" "${stem}.plain.err" "${family_dir}" "${BASH_ENGINE_BIN}" --no-bashpp "${fixture}" || plain_rc=$?
+    # Hold POSIX semantics constant while testing selector inertness.
+    # Special-builtin errors can legitimately terminate only POSIX execution.
+    posix_off_rc=0
+    capture "${stem}.posix-off.out" "${stem}.posix-off.err" "${family_dir}" "${BASH_ENGINE_BIN}" --posix --no-bashpp "${fixture}" || posix_off_rc=$?
     posix_rc=0
     capture "${stem}.posix.out" "${stem}.posix.err" "${family_dir}" "${BASH_ENGINE_BIN}" --posix --bashpp "${fixture}" || posix_rc=$?
-    same_result "${stem}.plain.out" "${stem}.posix.out" "${stem}.plain.err" "${stem}.posix.err" "${plain_rc}" "${posix_rc}" ||
-      fail "${id}/${case_id}: --posix --bashpp is not inert against the plain/POSIX-off oracle"
+    same_result "${stem}.posix-off.out" "${stem}.posix.out" "${stem}.posix-off.err" "${stem}.posix.err" "${posix_off_rc}" "${posix_rc}" ||
+      fail "${id}/${case_id}: --posix --bashpp is not inert against the POSIX selector-off oracle"
 
     enabled_rc=0
     case "${driver}" in
@@ -93,5 +97,5 @@ while IFS=$'\t' read -r id feature class case_ledger lowering; do
 done < "${MATRIX}"
 
 [ "${cases}" -eq 40 ] || fail "executed ${cases} cases, expected 40"
-[ "${executions}" -ge $((cases * 3)) ] || fail "execution count ${executions} cannot prove the ${cases}-case contract"
+[ "${executions}" -ge $((cases * 4)) ] || fail "execution count ${executions} cannot prove the ${cases}-case contract"
 echo "Bash# Sprint 114 interpreted gate complete — ${cases} cases, ${executions} executions"

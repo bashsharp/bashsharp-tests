@@ -19,8 +19,8 @@ symlinks=$(find "${FIXTURE_ROOT}" -type l -print) || fail "cannot inspect corpus
 grep -Fq '\t' "${MATRIX}" && fail "matrix contains literal \\t escapes; use TSV tabs"
 grep -Eiq '(^|[[:space:]])(planned|skip|skipped|n/a)([[:space:]]|$)' "${MATRIX}" &&
   fail "planned/skip status is not permitted"
-grep -Fq 'same_result "${stem}.plain.out" "${stem}.posix.out"' "${TOOLS_ROOT}/acceptance.sh" ||
-  fail "Sprint 114 gate does not compare POSIX+Bash++ with the plain/POSIX-off oracle"
+grep -Fq 'same_result "${stem}.posix-off.out" "${stem}.posix.out"' "${TOOLS_ROOT}/acceptance.sh" ||
+  fail "Sprint 114 gate does not compare POSIX+Bash++ with the POSIX selector-off oracle"
 grep -Eq 'same_result .*enabled[^ ]*\.out.*posix[^ ]*\.out|same_result .*posix[^ ]*\.out.*enabled[^ ]*\.out' "${TOOLS_ROOT}/acceptance.sh" &&
   fail "Sprint 114 gate compares POSIX+Bash++ with enabled Bash++"
 grep -Fq 'transpile --bashpp' "${TOOLS_ROOT}/acceptance.sh" &&

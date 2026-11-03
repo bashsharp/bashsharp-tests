@@ -24,18 +24,23 @@ BASH_ENGINE_BIN=/path/to/bash BASHY_BIN=/path/to/bashy \
 ```
 
 `BASH_ENGINE_BIN` is the bash-compatible shell engine. It owns script
-execution under plain, `--bashpp`, and `--posix --bashpp` modes. `BASHY_BIN` is
+execution under `--no-bashpp`, `--bashpp`, `--posix --no-bashpp`,
+and `--posix --bashpp` modes. `BASHY_BIN` is
 the bashy front door and is used only for `bashy check --bashpp`, because null
 safety is a checker rule with no syntax. The Sprint 114 gate never invokes
 `transpile` and does not require a Go compiler.
 
 For every source fixture the gate captures status, stdout, and stderr from the
-plain/POSIX-off engine and from `--posix --bashpp`. Those results must be
+`--posix --no-bashpp` and `--posix --bashpp`. Those results must be
 byte-identical. This is the POSIX inertness oracle:
 
 ```text
-bash fixture  ==  bash --posix --bashpp fixture
+bash --posix --no-bashpp fixture  ==  bash --posix --bashpp fixture
 ```
+
+POSIX mode stays fixed: special-builtin failures can legitimately terminate
+POSIX execution earlier than ordinary Bash execution. The ordinary selector-off
+run remains the separate near-miss and positive-activation oracle.
 
 The POSIX result is never compared with enabled Bash++ semantics or Bash#
 diagnostics. Positive and invalid Bash# cases run separately under `--bashpp`;
