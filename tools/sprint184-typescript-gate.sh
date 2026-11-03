@@ -5,7 +5,7 @@ set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
 fixtures="${here}/../tests/typescript-workspaces"
-DHNT_ROOT="${DHNT_ROOT:-${HOME}/projects/poc/dhnt}"
+DHNT_ROOT="${DHNT_ROOT:-$(cd -- "${here}/../.." && pwd)}"
 SH_ROOT="${SH_ROOT:-${DHNT_ROOT}/sh}"
 BASHY_ROOT="${BASHY_ROOT:-${DHNT_ROOT}/bashy}"
 OPENCODE_ROOT="${OPENCODE_ROOT:-${DHNT_ROOT}/ycode/priorart/opencode}"
