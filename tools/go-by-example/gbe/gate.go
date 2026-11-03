@@ -1346,7 +1346,7 @@ func gateMain(args []string) {
 		"target", "${GOROOT}/bin/go",
 		"version", tc.goVersion,
 		"go_sha256", tc.goSHA256,
-		"network", "candidate provisions reviewed SDKs before baseline; installed binary and VERSION re-authenticated",
+		"network", "not used for SDK provisioning; authenticated cache prepared before execution",
 	)
 	if buildToolpin.Version != toolpin.Version {
 		managedToolCache.Set("candidate_build", Obj(
@@ -1440,9 +1440,6 @@ func gateMain(args []string) {
 		os.MkdirAll(d, 0o755)
 	}
 	benv := buildEnv(tc, gocache, gomodcache, gohome, gotmp)
-	if err := initializeManagedToolCaches(BASHY, tc.binCache, base+"/managed-tool-initialization", benv, capture, tc, buildTC); err != nil {
-		fatal("cannot initialize authenticated runtime SDKs: " + err.Error())
-	}
 	g := &gateContext{}
 
 	// The corpus-owned run launcher is compiled once, by the same pinned SDK as

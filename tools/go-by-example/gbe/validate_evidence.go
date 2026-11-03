@@ -371,6 +371,9 @@ func validateEvidenceMain(args []string) {
 			die("candidate " + key + " is not the repository-reviewed value")
 		}
 	}
+	if runtime.GOOS != "windows" && recorded.Str("launcher_sha256") == recorded.Str("payload_sha256") {
+		die("candidate launcher and payload digests may not coincide")
+	}
 	if !deepEqual(recorded.Get("repositories"), reviewed.RepositoryRecords()) {
 		die("candidate runtime dependencies differ from the reviewed set: " + Generate(recorded.Get("repositories")))
 	}
@@ -423,7 +426,7 @@ func validateEvidenceMain(args []string) {
 		"target", "${GOROOT}/bin/go",
 		"version", toolpin[2],
 		"go_sha256", toolpin[4],
-		"network", "candidate provisions reviewed SDKs before baseline; installed binary and VERSION re-authenticated",
+		"network", "not used for SDK provisioning; authenticated cache prepared before execution",
 	)
 	if buildToolchain.Version != oracleToolchain.Version {
 		wantManaged.Set("candidate_build", Obj(

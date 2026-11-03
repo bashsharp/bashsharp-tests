@@ -22,16 +22,3 @@ unchanged. The harness neither installs packages nor skips missing dependencies.
 
 Run `ruby tests/lowering/interpreted_contract_test.rb` to check grading against
 wrong statuses, missing diagnostics, wrong source locations and extra output.
-
-### Exact candidate selection
-
-Set `GBE_CANDIDATE` to the reviewed Go-by-Example candidate manifest and
-`BASHY_BIN` to its exact executable before running `harness/run.sh`. The harness
-fails early when the manifest is missing and forwards it explicitly to the
-existing authenticated gate. The registry still approves the manifest digest,
-launcher and payload hashes, toolchain, build recipe and clean source revisions.
-Current native products use the executable itself as payload; historical Unix
-launchers retain their adjacent `.real` payload. Neither layout permits a hash
-mismatch. Use the public umbrella's manual `candidate-prepare` validation lane
-to retain a draft manifest and exact executable for independent review; preparing
-an artifact never approves it or records a corpus pass.

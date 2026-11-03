@@ -43,7 +43,7 @@ if ! git -C "$NANOCHAT_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; th
 else
 	check_pin "$NANOCHAT_ROOT" "$nanochat_sha" nanochat
 	before="$(git -C "$NANOCHAT_ROOT" status --porcelain=v1)"
-	out="$(BASHY="$BASHY" NANOCHAT_ROOT="$NANOCHAT_ROOT" bash "$here/python-package-fixture.sh" "$fixtures/nanochat.bpp" --bashpp)" || fail "nanochat direct-import fixture did not run"
+	out="$(PYTHONPATH="$NANOCHAT_ROOT" "$BASHY" --bashpp "$fixtures/nanochat.bpp")" || fail "nanochat direct-import fixture did not run"
 	case "$out" in
 		$'true 42\nfalse\n'*'ValueError: fixture-boom'*) ;;
 		*) fail "nanochat output was $(printf %q "$out")" ;;
@@ -54,7 +54,7 @@ else
 		PYTHONPATH="$NANOCHAT_ROOT" go run "$fixtures/nanochat-stale-handle.go" "$NANOCHAT_ROOT"
 	) || fail "nanochat stale-handle API fixture did not run"
 
-	if BASHY="$BASHY" NANOCHAT_ROOT="$NANOCHAT_ROOT" bash "$here/python-package-fixture.sh" "$fixtures/nanochat-missing-attribute.bpp" --bashpp >"$scratch/nanochat-missing.out" 2>"$scratch/nanochat-missing.err"; then
+	if PYTHONPATH="$NANOCHAT_ROOT" "$BASHY" --bashpp "$fixtures/nanochat-missing-attribute.bpp" >"$scratch/nanochat-missing.out" 2>"$scratch/nanochat-missing.err"; then
 		fail "nanochat missing attribute unexpectedly succeeded"
 	fi
 	grep -q 'sprint183_missing_attribute' "$scratch/nanochat-missing.err" || fail "missing-attribute diagnostic did not name the attribute"
@@ -71,7 +71,7 @@ else
 	python="$MINISWE_ROOT/.venv/bin/python"
 	[ -x "$python" ] || fail "mini-SWE-agent pinned environment is unavailable: $python"
 	before="$(git -C "$MINISWE_ROOT" status --porcelain=v1)"
-	out="$(BASHY="$BASHY" MINISWE_ROOT="$MINISWE_ROOT" bash "$here/python-package-fixture.sh" "$fixtures/mini-swe-agent.bpp" --bashpp)" || fail "mini-SWE-agent direct-import fixture did not run"
+	out="$(cd "$MINISWE_ROOT" && PYTHONPATH="$MINISWE_ROOT/src" BASHPP_PYTHON="$python" "$BASHY" --bashpp "$fixtures/mini-swe-agent.bpp")" || fail "mini-SWE-agent direct-import fixture did not run"
 	[ "$(printf '%s\n' "$out" | tail -n 1)" = DefaultAgent ] || fail "mini-SWE-agent output did not end with DefaultAgent: $(printf %q "$out")"
 	after="$(git -C "$MINISWE_ROOT" status --porcelain=v1)"
 	[ "$after" = "$before" ] || fail "mini-SWE-agent fixture changed the checkout"

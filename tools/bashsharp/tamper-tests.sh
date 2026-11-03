@@ -32,13 +32,12 @@ cat > "${tmp}/fake-engine" <<'EOF'
 #!/usr/bin/env bash
 set -u
 printf 'engine\t%s\n' "$*" >> "${BASHSHARP_FAKE_LOG}"
-enabled=${BASHSHARP_FAKE_DEFAULT:-false}
+enabled=false
 posix=false
 fixture=''
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --bashpp) enabled=true ;;
-    --no-bashpp) enabled=false ;;
     --posix) posix=true ;;
     -c) exit 0 ;;
     *) fixture="$1" ;;
@@ -46,18 +45,7 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 family="$(basename "$PWD")"
-if ${posix}; then
-  if ${enabled}; then
-    case "${BASHSHARP_FAKE_POSIX_MUTATION:-}" in
-      stdout) printf 'changed-output\n' ;;
-      stderr) printf 'changed-error\n' >&2 ;;
-      status) exit 9 ;;
-    esac
-  fi
-  printf 'posix:%s/%s\n' "${family}" "${fixture}"
-  exit 8
-fi
-if ! ${enabled}; then
+if ! ${enabled} || ${posix}; then
   printf 'plain:%s/%s\n' "${family}" "${fixture}"
   exit 7
 fi
@@ -96,60 +84,15 @@ EOF
 chmod +x "${tmp}/fake-engine" "${tmp}/fake-bashy"
 BASHSHARP_FAKE_LOG="${fake_log}" BASH_ENGINE_BIN="${tmp}/fake-engine" BASHY_BIN="${tmp}/fake-bashy" \
   "${tmp}/tools/bashsharp/acceptance.sh" >/dev/null
-# One selector probe + four executions for each of 40 cases + seven checker-off probes.
-[ "$(wc -l < "${fake_log}" | tr -d ' ')" -eq 168 ] || {
-  echo "Bash# tamper: Sprint 114 gate did not execute its 168-command oracle" >&2
+# One selector probe + three executions for each of 40 cases + seven checker-off probes.
+[ "$(wc -l < "${fake_log}" | tr -d ' ')" -eq 128 ] || {
+  echo "Bash# tamper: Sprint 114 gate did not execute its 128-command oracle" >&2
   exit 1
 }
 grep -q $'^front-door\ttranspile' "${fake_log}" && {
   echo "Bash# tamper: Sprint 114 gate invoked transpile" >&2
   exit 1
 }
-
-# The same off/on contract must hold for Bashy's default-on native front door.
-: > "${fake_log}"
-BASHSHARP_FAKE_DEFAULT=true BASHSHARP_FAKE_LOG="${fake_log}" BASH_ENGINE_BIN="${tmp}/fake-engine" BASHY_BIN="${tmp}/fake-bashy" \
-  "${tmp}/tools/bashsharp/acceptance.sh" >/dev/null
-[ "$(wc -l < "${fake_log}" | tr -d ' ')" -eq 168 ] || {
-  echo "Bash# tamper: default-on engine did not execute all 168 commands" >&2
-  exit 1
-}
-# Removing explicit-off must fail positive activation, not pass by
-# comparing two enabled executions or silently dropping a fixture.
-sed 's/--no-bashpp "${fixture}"/"${fixture}"/' \
-  "${ROOT}/tools/bashsharp/acceptance.sh" > "${tmp}/tools/bashsharp/acceptance.sh"
-if BASHSHARP_FAKE_DEFAULT=true BASHSHARP_FAKE_LOG="${fake_log}" BASH_ENGINE_BIN="${tmp}/fake-engine" BASHY_BIN="${tmp}/fake-bashy" \
-  "${tmp}/tools/bashsharp/acceptance.sh" >"${tmp}/default-on-negative.log" 2>&1; then
-  echo "Bash# tamper: implicit selector-off oracle was accepted" >&2
-  exit 1
-fi
-grep -Fq 'kwargs/bind-reordered: positive case does not prove selector activation' "${tmp}/default-on-negative.log"
-cp "${ROOT}/tools/bashsharp/acceptance.sh" "${tmp}/tools/bashsharp/acceptance.sh"
-
-# Reintroduce the historical cross-mode comparison, allowing it through the
-# structural validator solely in this scratch negative control. The fake's
-# legitimate POSIX-specific output/status must reproduce the runtime failure.
-sed '/^[[:space:]]*same_result /{s/posix-off/plain/g;s/posix_off_rc/plain_rc/g;}' \
-  "${ROOT}/tools/bashsharp/acceptance.sh" > "${tmp}/tools/bashsharp/acceptance.sh"
-sed 's/posix-off/plain/g' "${ROOT}/tools/bashsharp/validate.sh" > "${tmp}/tools/bashsharp/validate.sh"
-if BASHSHARP_FAKE_LOG="${fake_log}" BASH_ENGINE_BIN="${tmp}/fake-engine" BASHY_BIN="${tmp}/fake-bashy" \
-  "${tmp}/tools/bashsharp/acceptance.sh" >"${tmp}/cross-mode-negative.log" 2>&1; then
-  echo "Bash# tamper: historical cross-mode oracle unexpectedly passed" >&2
-  exit 1
-fi
-grep -Fq 'kwargs/bind-reordered: --posix --bashpp is not inert' "${tmp}/cross-mode-negative.log"
-cp "${ROOT}/tools/bashsharp/acceptance.sh" "${tmp}/tools/bashsharp/acceptance.sh"
-cp "${ROOT}/tools/bashsharp/validate.sh" "${tmp}/tools/bashsharp/validate.sh"
-
-# With POSIX held constant, each independently corrupted result must fail.
-for mutation in stdout stderr status; do
-  if BASHSHARP_FAKE_POSIX_MUTATION="$mutation" BASHSHARP_FAKE_LOG="${fake_log}" BASH_ENGINE_BIN="${tmp}/fake-engine" BASHY_BIN="${tmp}/fake-bashy" \
-    "${tmp}/tools/bashsharp/acceptance.sh" >"${tmp}/posix-$mutation.log" 2>&1; then
-    echo "Bash# tamper: changed POSIX $mutation was accepted" >&2
-    exit 1
-  fi
-  grep -Fq 'kwargs/bind-reordered: --posix --bashpp is not inert' "${tmp}/posix-$mutation.log"
-done
 
 rm "${tmp}/tests/bashsharp/kwargs/missing-required.bpp"
 expect_rejected "missing-fixture"
@@ -175,7 +118,7 @@ awk '$1 != "optional-chaining"' "${ROOT}/tests/bashsharp/rejected.tsv" > "${tmp}
 expect_rejected "lost-rejected-exclusion"
 cp "${ROOT}/tests/bashsharp/rejected.tsv" "${tmp}/tests/bashsharp/rejected.tsv"
 
-sed 's/same_result "${stem}.posix-off.out" "${stem}.posix.out"/same_result "${stem}.enabled.out" "${stem}.posix.out"/' \
+sed 's/same_result "${stem}.plain.out" "${stem}.posix.out"/same_result "${stem}.enabled.out" "${stem}.posix.out"/' \
   "${ROOT}/tools/bashsharp/acceptance.sh" > "${tmp}/tools/bashsharp/acceptance.sh"
 chmod +x "${tmp}/tools/bashsharp/acceptance.sh"
 expect_rejected "wrong-POSIX-oracle"

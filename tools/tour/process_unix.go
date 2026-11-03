@@ -10,19 +10,11 @@ import (
 	"syscall"
 )
 
-func configureProcess(cmd *exec.Cmd)      { cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} }
-func registerProcessTree(*exec.Cmd) error { return nil }
-func releaseProcessTree(int)              {}
-
-// Retain the historical split layout whenever .real exists, including a
-// dangling symlink or unreadable entry. Only absence selects a native payload.
-func candidatePayloadPath(launcher string) string {
-	if _, err := os.Lstat(launcher + ".real"); !os.IsNotExist(err) {
-		return launcher + ".real"
-	}
-	return launcher
-}
-func goExecutable(goroot string) string { return filepath.Join(goroot, "bin", "go") }
+func configureProcess(cmd *exec.Cmd)              { cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} }
+func registerProcessTree(*exec.Cmd) error         { return nil }
+func releaseProcessTree(int)                      {}
+func candidatePayloadPath(launcher string) string { return launcher + ".real" }
+func goExecutable(goroot string) string           { return filepath.Join(goroot, "bin", "go") }
 func isExecutable(path string) bool {
 	st, err := os.Stat(path)
 	return err == nil && st.Mode().IsRegular() && st.Mode()&0o111 != 0

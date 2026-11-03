@@ -25,12 +25,9 @@
 #      manifest is the binding; this table only declares WHICH components must
 #      appear in it.
 #
-# HISTORICAL PAIR. Earlier linux/darwin builds emitted two files:
+# THE PAIR. On linux/darwin `make build-bashy` emits two files (bashy/Makefile):
 #   <BIN>       the native siglaunch launcher, compiled from native/siglaunch.c.in
 #   <BIN>.real  the Go payload, `go build -trimpath -ldflags ... ./cmd/bashy`
-# Current native builds use <BIN> for both digest fields. With no .real entry,
-# the payload must be an executable with readable Go build information; both
-# hashes independently bind those same bytes. An existing .real is never ignored.
 # Both digests are in the manifest and both are verified. Binding only the
 # launcher leaves the interpreter unbound; binding only the payload leaves the
 # executed entry point unbound.
@@ -45,7 +42,7 @@
 #   replace github.com/filebrowser/filebrowser/v2 => ../filebrowser
 #
 # The language front door and agentic userland were later split into
-# bashsharp and yoke; all runtime repositories below must be bound. `filebrowser` is easy to
+# bashsharp and yoke; all six replaced repositories below must be bound. `filebrowser` is easy to
 # miss because it enters `require` as an indirect dependency and is replaced
 # anyway; an unbound replaced dependency is unauthenticated product code, so the
 # gate additionally rejects any manifest repository that is NOT declared here.
@@ -61,14 +58,3 @@ readline	dependency	github.com/ergochat/readline	replace github.com/ergochat/rea
 filebrowser	dependency	github.com/filebrowser/filebrowser/v2	replace github.com/filebrowser/filebrowser/v2 => ../filebrowser	
 bashsharp	dependency	github.com/bashsharp/bashsharp	replace github.com/bashsharp/bashsharp => ../bashsharp	
 yoke	dependency	github.com/qiangli/yoke	replace github.com/qiangli/yoke => ../yoke	
-# Migrated public runtime closure: exactly the remaining reviewed artifact pins.
-agent-bench	dependency	github.com/qiangli/agent-bench	workspace module	
-appstore	dependency	github.com/dhnt/appstore	workspace module	
-bashsharp-tour	source	-	bound source repository	
-bonsai	dependency	github.com/qiangli/bonsai	workspace module	
-gfy	dependency	github.com/qiangli/gfy	workspace module	
-gotreesitter	dependency	github.com/odvcencio/gotreesitter	workspace module	
-nadir	dependency	github.com/qiangli/nadir	workspace module	
-outpost	dependency	github.com/qiangli/outpost	workspace module	
-yamux	dependency	github.com/qiangli/yamux	workspace module	
-ycode	dependency	github.com/qiangli/ycode	workspace module	

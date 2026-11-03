@@ -5,12 +5,11 @@
 //
 // Sprint 98 bound one reproducible executor digest from docs/go-by-example/
 // executor.tsv. The Go-source front end is not that shape: it is a Makefile
-// historical tag-enabled build (`make build BASHY_GOSOURCE=1`) installed a small
+// tag-enabled build (`make build BASHY_GOSOURCE=1`) that installs a small
 // launcher beside a large `.real` payload, and whose lowering runtime is a set
 // of replaced sibling modules. So the authority moved to a manifest, and the
 // manifest is authenticated by the absorbed corpus primitives rather than by a
-// second implementation of them here. Current native products bind the same
-// executable as launcher and payload; its exact digest still requires review.
+// second implementation of them here.
 //
 // The CLI arg contract is `--candidate MANIFEST` (`GBE_CANDIDATE` for the
 // environment spelling). A caller chooses WHICH reviewed candidate to run; it
@@ -38,8 +37,9 @@ func candidateErr(format string, args ...any) error {
 	return &CandidateError{msg: fmt.Sprintf(format, args...)}
 }
 
-// Reviewed native products have equal launcher/payload hashes. Historical
-// split launchers bind both distinct files. All hashes remain registry-bound.
+// A shipped launcher is a small stub beside its payload. A candidate whose
+// launcher IS the payload is a different artifact shape than the one reviewed,
+// so the two digests may never coincide.
 var candidateFields = []string{"manifest_sha256", "launcher_sha256", "payload_sha256", "frontend_version", "go_identity", "build_recipe", "repositories"}
 
 // Reviewed is one authenticated row of candidates.tsv as a field map.
@@ -122,6 +122,9 @@ func reviewedCandidate(path string, manifestSHA string) (*Reviewed, error) {
 		if !reHex64.MatchString(fields[key]) || reAllZero.MatchString(fields[key]) {
 			return nil, candidateErr("invalid reviewed candidate %s", key)
 		}
+	}
+	if runtime.GOOS != "windows" && fields["launcher_sha256"] == fields["payload_sha256"] {
+		return nil, candidateErr("reviewed candidate launcher and payload digests are identical")
 	}
 	if fields["frontend_version"] == "" {
 		return nil, candidateErr("reviewed candidate declares no frontend version")

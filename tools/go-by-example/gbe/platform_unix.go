@@ -10,18 +10,10 @@ import (
 	"syscall"
 )
 
-func executableFile(path string) bool { return syscall.Access(path, 1) == nil }
-
-// Historical signal launchers retain their separately authenticated payload.
-// Current native products are their own payload; both reviewed hashes must match.
-func candidatePayloadPath(launcher string) string {
-	if _, err := os.Lstat(launcher + ".real"); !os.IsNotExist(err) {
-		return launcher + ".real"
-	}
-	return launcher
-}
-func goExecutable(goroot string) string { return filepath.Join(goroot, "bin", "go") }
-func linkSDK(link, target string) error { return os.Symlink(target, link) }
+func executableFile(path string) bool             { return syscall.Access(path, 1) == nil }
+func candidatePayloadPath(launcher string) string { return launcher + ".real" }
+func goExecutable(goroot string) string           { return filepath.Join(goroot, "bin", "go") }
+func linkSDK(link, target string) error           { return os.Symlink(target, link) }
 
 func configureProcess(cmd *exec.Cmd, _ map[string]string) func() error {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
