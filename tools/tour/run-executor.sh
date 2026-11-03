@@ -3,8 +3,8 @@
 # Sprint 118 / Story #4 / Story-ID 759341a95870; Go port Sprint 155 / S155.9 / 43af37063b09.
 #
 # Required:
-#   BASHPP_BIN                candidate bashy launcher (the Makefile-built pair
-#                             <bin> + <bin>.real)
+#   BASHPP_BIN                candidate native bashy executable, or historical
+#                             Makefile-built pair <bin> + <bin>.real
 #   TOUR_CANDIDATE_MANIFEST   the manager-supplied build manifest JSON; the
 #                             candidate is authenticated against it verbatim
 #                             (tools/tour/capture.go AuthenticateCandidate) and the

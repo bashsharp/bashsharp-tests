@@ -225,8 +225,11 @@ observations. What changed from `tour-evidence/v2`:
   claims one;
 - the candidate is authenticated against the **manager-supplied build manifest
   verbatim** (`AuthenticateCandidate`), binding the launcher and
-  `.real` payload digests and every replaced dependency — `bashy`, `sh`,
-  `coreutils`, `readline` and `filebrowser` — at a clean revision. This
+  payload digests and all 17 public runtime repositories declared in
+  `docs/tour/candidate.tsv` at clean revisions. Historical split builds bind
+  `<bin>` and `<bin>.real`; native builds bind both hashes to the same executable
+  and require readable Go build information. An existing `.real` is never
+  ignored. This
   replaces both the release-tag-only rule that made Makefile-built candidates
   untestable and the earlier derived-commit binding, which related the binary
   to whatever happened to be checked out beside it;
@@ -242,7 +245,12 @@ observations. What changed from `tour-evidence/v2`:
   fresh `HOME`/`TMPDIR`/artifact/runtime directory; all 97 sources are
   re-verified after every mode.
 
-**Current result: PASS, 291/291.** `tests/tour/executor-results.jsonl` is the
+Sprint 557 adds authenticated native-artifact support without changing the 97
+rows, three modes, timeouts or semantic oracles. A new candidate needs a fresh
+291-observation executor run and validation; authenticating historical ledgers
+alone does not establish parity for that candidate.
+
+**Retained Sprint 155 result: PASS, 291/291.** `tests/tour/executor-results.jsonl` is the
 Sprint 155 (S155.9) run of the Go-ported executor on a remote macOS host against a
 clean rebuild of the Sprint 118 candidate017 revision set (bashy `fdd3fac9`,
 sh `037aaf86`, coreutils `ec91ea45`, readline `b958823b`, filebrowser

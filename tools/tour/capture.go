@@ -16,6 +16,7 @@ package main
 
 import (
 	"crypto/rand"
+	"debug/buildinfo"
 	"encoding/hex"
 	"fmt"
 	"os"
@@ -409,7 +410,7 @@ func gitOutput(dir string, args ...string) (string, bool) {
 }
 
 // AuthenticateCandidate verifies the manager-supplied manifest verbatim: the
-// launcher digest, the adjacent `.real` payload digest, and that every listed
+// launcher digest, its split or native payload digest, and that every listed
 // repository is at the stated revision with a clean tree including untracked
 // files. It returns the manifest merged with the launcher/payload records.
 func AuthenticateCandidate(bashy string, candidate map[string]any) (map[string]any, error) {
@@ -430,9 +431,21 @@ func AuthenticateCandidate(bashy string, candidate map[string]any) (map[string]a
 	if err != nil {
 		return nil, err
 	}
-	payload, err := authenticateFile(candidatePayloadPath(bashy), asString(candidate["payload_sha256"]))
+	payloadPath := candidatePayloadPath(bashy)
+	payload, err := authenticateFile(payloadPath, asString(candidate["payload_sha256"]))
 	if err != nil {
 		return nil, err
+	}
+	// A missing split payload is not enough to authenticate a shell launcher
+	// as a native product. Read Go executable metadata without executing it;
+	// both independently supplied digest fields above must bind the same bytes.
+	if payloadPath == bashy {
+		if !isExecutable(bashy) {
+			return nil, contractError("native candidate is not executable: %s", bashy)
+		}
+		if _, err := buildinfo.ReadFile(bashy); err != nil {
+			return nil, contractError("native candidate has no Go build information: %s", bashy)
+		}
 	}
 	for _, item := range asList(candidate["repositories"]) {
 		repo := asMap(item)

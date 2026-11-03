@@ -755,7 +755,7 @@ func cmdExecutorSelftests(root string) int {
 		for _, c := range components {
 			names = append(names, asString(c["component"]))
 		}
-		return expect(equalStrings(sortedCopy(names), []string{"bashsharp", "bashy", "coreutils", "filebrowser", "readline", "sh", "yoke"}), inspect(names))
+		return expect(equalStrings(sortedCopy(names), []string{"agent-bench", "appstore", "bashsharp", "bashsharp-tour", "bashy", "bonsai", "coreutils", "filebrowser", "gfy", "gotreesitter", "nadir", "outpost", "readline", "sh", "yamux", "ycode", "yoke"}), inspect(names))
 	})
 	suite.check("candidate: a manifest-authenticated Makefile build is ACCEPTED (no release tag required)", func() any {
 		reasons := candidateFailures(candidateFixture())
@@ -781,7 +781,7 @@ func cmdExecutorSelftests(root string) int {
 		asMap(asList(c["repositories"])[1])["commit"] = "abc1234"
 		return expect(containsString(candidateFailures(c), "candidate:unbound_revision:sh"), "x")
 	})
-	suite.check("candidate: a missing .real payload fails (launcher digest alone is not a binding)", func() any {
+	suite.check("candidate: a missing authenticated payload fails (launcher digest alone is not a binding)", func() any {
 		c := candidateFixture()
 		asMap(c["binaries"])["payload"] = map[string]any{"present": false, "sha256": nil}
 		return expect(containsString(candidateFailures(c), "candidate:missing_payload"), "x")
