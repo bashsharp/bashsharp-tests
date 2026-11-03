@@ -292,7 +292,9 @@ run_fixture() { # <file> <label> <extra bashy args...>
 
   out="$(mktemp)"; err="$(mktemp)"
   rc=0
-  if [ "$id" = tests/typescript-workspaces/opencode.bpp ]; then
+  if [[ "$id" == tests/python-packages/*.bpp ]]; then
+    BASHY="${BASHY_BIN}" bash "${TEST_DIR}/tools/python-package-fixture.sh" "$file" "$@" >"$out" 2>"$err" || rc=$?
+  elif [ "$id" = tests/typescript-workspaces/opencode.bpp ]; then
     BASHY_BIN="${BASHY_BIN}" bash "${TEST_DIR}/tools/opencode-fixture.sh" "$file" >"$out" 2>"$err" || rc=$?
   else
     "${BASHY_BIN}" "$@" "$file" >"$out" 2>"$err" || rc=$?
