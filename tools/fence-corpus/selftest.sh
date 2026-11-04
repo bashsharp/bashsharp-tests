@@ -87,4 +87,18 @@ printf '# rc=0\nwrong\n' > "$work/aggregate/examples-fenced/chapter/hello.expect
 fail aggregate-fatal 'stdout bytes differ' sh "$here/aggregate.sh" "$work/aggregate"
 rm "$work/aggregate/examples-fenced/cases.tsv"
 fail aggregate-missing-manifest cases.tsv sh "$here/aggregate.sh" "$work/aggregate"
+# Isolate manifest changes from the production pending rows and use empty roots
+# so these checks never depend on a corpus toolchain or the host OS.
+mkdir -p "$work/gate" "$work/empty"
+cp "$here/aggregate.sh" "$work/gate/aggregate.sh"
+for script in validate-inventory.sh check.sh; do
+  ln -s "$here/$script" "$work/gate/$script"
+done
+printf 'corpus\tplatforms\tstatus\nexamples-fenced\tlinux,darwin,windows\trequired\n' > "$work/gate/corpora.tsv"
+fail aggregate-missing-required 'missing required corpus examples-fenced' sh "$work/gate/aggregate.sh" "$work/empty"
+printf 'corpus\tplatforms\tstatus\nexamples-fenced\tlinux,darwin,windows\tpending\n' > "$work/gate/corpora.tsv"
+pass aggregate-pending sh "$work/gate/aggregate.sh" "$work/empty"
+grep -qx 'PENDING examples-fenced' "$work/log" || { cat "$work/log"; echo 'FAIL selftest pending not reported'; exit 1; }
+mkdir "$work/empty/unlisted-by-example"
+fail aggregate-unlisted 'unlisted corpus unlisted-by-example' sh "$work/gate/aggregate.sh" "$work/empty"
 echo 'PASS fence-corpus selftest: all positive and negative assertions verified'
