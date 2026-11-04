@@ -1,5 +1,16 @@
 #!/bin/sh
 # Deliberately a protocol stub: selftests exercise the gate, not Bash# semantics.
+if [ "$1" = go ]; then
+  [ "$#" = 3 ] && [ "$2:$3" = env:GOROOT ] || exit 98
+  [ "${BASHY_OFFLINE-unset}:${GOROOT-unset}:${BASHPP_GO-unset}" = unset:unset:unset ] || exit 93
+  pin=$(/bin/cat "${0%/*}/go-pin") || exit 94
+  [ ! -e "$BASHY_BIN_CACHE/fail" ] || { echo 'fixture Go provisioning failed' >&2; exit 42; }
+  sdk="$BASHY_BIN_CACHE/go/$pin/go"
+  /bin/mkdir -p "$sdk" || exit 95
+  printf '%s\n' "$pin" > "$sdk/VERSION"
+  printf '%s\n' "$sdk"
+  exit 0
+fi
 if [ "$1" = check ]; then
   [ "$#" = 3 ] && [ "$2" = --bashsharp ] || exit 98
   [ ! -e check-fail ] || exit 42

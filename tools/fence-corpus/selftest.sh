@@ -4,6 +4,8 @@ here=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 # Build once; use the same production entrypoints without repeated resolution.
 bin=$(sh "$here/build.sh")
 export FENCE_CORPUS=1
+# Selftests own their caches even when the caller configured a retained run.
+unset FENCE_TOOLCHAIN_DIR
 GBE_ROOT=$(CDPATH= cd -- "$here/../.." && pwd); export GBE_ROOT
 BASHY_BIN="$here/testdata/runner.sh"; export BASHY_BIN
 FENCE_TIMEOUT=2; export FENCE_TIMEOUT
@@ -71,6 +73,29 @@ fail provision-busy 'toolchain directory busy' env FENCE_TOOLCHAIN_DIR="$work/to
 [ "$(ls -l "$work/tools/python/ready" | awk '{print substr($1,3,1)}')" = - ]
 rmdir "$work/tools/.fence-lock"
 chmod u+w "$work/tools/python/ready"
+# The candidate owns the fence pin, independently of the authenticated gate SDK.
+cp "$BASHY_BIN" "$work/candidate"
+for pin in 9.98.1 9.98.2; do
+  reset
+  printf '%s\n' "$pin" > "$work/go-pin"
+  sed 's/	-	0	-/	go	0	-/' "$work/case/cases.tsv" > "$work/cases"
+  cp "$work/cases" "$work/case/cases.tsv"
+  cat > "$work/case/chapter/hello.bsh" <<FIXTURE
+[ "\$BASHY_OFFLINE" = 1 ] || exit 92
+[ "\${GOROOT-unset}:\${BASHPP_GO-unset}" = unset:unset ] || exit 93
+[ -f "\$BASHY_BIN_CACHE/go/$pin/go/VERSION" ] || exit 94
+read resolved < "\$BASHY_BIN_CACHE/go/$pin/go/VERSION"
+[ "\$resolved" = "$pin" ] || exit 95
+printf 'hello\n'
+FIXTURE
+  pass "provision-candidate-go-$pin" env BASHY_BIN="$work/candidate" FENCE_TOOLCHAIN_DIR="$work/go-tools" "$bin" fence-check --corpus "$work/case"
+  grep -q "/go/$pin/go$" "$work/go-tools/provision.log"
+  # Only the candidate's pins belong in the fence cache, never the gate SDK.
+  [ "$(ls "$work/go-tools/bin/go" | grep -vc '^9\.98\.')" -eq 0 ]
+done
+: > "$work/go-tools/bin/fail"
+fail provision-candidate-go-fatal 'fixture Go provisioning failed' env BASHY_BIN="$work/candidate" FENCE_TOOLCHAIN_DIR="$work/go-tools" "$bin" fence-check --corpus "$work/case"
+if grep -q '^PASS case' "$work/log"; then echo 'FAIL executed after Go provisioning failure'; exit 1; fi
 reset
 cat > "$work/case/chapter/hello.bsh" <<'FIXTURE'
 [ "${FENCE_LEAK-unset}:${CLAUDE_TEST-unset}:${CODEX_TEST-unset}:${BASHY_AGENT_TEST-unset}" = unset:unset:unset:unset ] || exit 91
@@ -309,6 +334,31 @@ main.main()
       fail compare-closing_channel_order-stderr-strict 'stderr bytes differ' "$bin" fence-check --corpus "$work/case" ;;
   esac
 done
+reset
+printf 'file_metadata,wallclock\n' > "$work/case/chapter/hello.compare"
+printf '# rc=0\ntotal 4\nat 2026-11-03T01:02:03Z\n' > "$work/case/chapter/hello.expected"
+printf "printf 'total 8\\nat 2026-11-04T02:03:04Z\\n'\n" > "$work/case/chapter/hello.bsh"
+pass compare-compound "$bin" fence-check --corpus "$work/case"
+printf 'wallclock\n' > "$work/case/chapter/hello.compare"
+fail compare-compound-needs-metadata 'FAIL case' "$bin" fence-check --corpus "$work/case"
+printf 'file_metadata\n' > "$work/case/chapter/hello.compare"
+fail compare-compound-needs-clock 'FAIL case' "$bin" fence-check --corpus "$work/case"
+printf 'file_metadata,wallclock\n' > "$work/case/chapter/hello.compare"
+printf "printf 'total 8\\nat 2026-11-04T02:03:04Z corrupt\\n'\n" > "$work/case/chapter/hello.bsh"
+fail compare-compound-corruption 'FAIL case' "$bin" fence-check --corpus "$work/case"
+for names in 'wallclock,unknown' 'unknown,wallclock' 'wallclock,none' 'wallclock,' ',wallclock' 'wallclock,,duration'; do
+  printf '%s\n' "$names" > "$work/case/chapter/hello.compare"
+  fail "compare-compound-invalid-$names" 'unknown comparator' "$bin" fence-check --corpus "$work/case"
+done
+# Removing the sole timestamp before wallclock must fail its shape check;
+# reversing the declared order succeeds. Do not sort or deduplicate the list.
+reset
+printf '# rc=0\n-rw-r--r-- 1 2026-11-03T01:02:03Z group 12 Nov 3 01:02 file\n' > "$work/case/chapter/hello.expected"
+printf "printf '%%s\\n' '-rw-r--r-- 1 2026-11-04T02:03:04Z group 12 Nov 3 01:02 file'\n" > "$work/case/chapter/hello.bsh"
+printf 'wallclock,file_metadata\n' > "$work/case/chapter/hello.compare"
+pass compare-compound-order "$bin" fence-check --corpus "$work/case"
+printf 'file_metadata,wallclock\n' > "$work/case/chapter/hello.compare"
+fail compare-compound-order-shape 'wallclock shape' "$bin" fence-check --corpus "$work/case"
 reset
 printf 'none\n' > "$work/case/chapter/hello.compare"
 fail compare-none 'unknown comparator' "$bin" fence-check --corpus "$work/case"
