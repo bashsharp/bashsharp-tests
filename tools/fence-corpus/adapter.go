@@ -310,7 +310,17 @@ func fenceRun(tc *toolchainContext, bashy, toolroot, dir string, row []string, l
 		if outErr != nil || errErr != nil {
 			return false, fmt.Errorf("comparator %s: stdout=%v stderr=%v; rc actual=%v, want %d", name, outErr, errErr, s.Get("exit"), want)
 		}
-		return false, fmt.Errorf("state=%s rc actual=%v, want %d\n%s%s", s.Str("state"), s.Get("exit"), want,
+		reasons := []string{}
+		if badStatus {
+			reasons = append(reasons, fmt.Sprintf("rc differs (state=%s rc actual=%v, want %d)", s.Str("state"), s.Get("exit"), want))
+		}
+		if !outOK {
+			reasons = append(reasons, "stdout differs")
+		}
+		if !errOK {
+			reasons = append(reasons, "stderr differs")
+		}
+		return false, fmt.Errorf("%s\n%s%s", strings.Join(reasons, "; "),
 			fenceDiff("stdout", stdout, actualOut), fenceDiff("stderr", stderr, actual))
 	}
 	return true, nil
@@ -432,7 +442,8 @@ func fenceCheck(args []string) (result error) {
 			return e
 		}
 		counts, e := fenceTable(dir+"/counts.tsv", "mode\tplatform\tcases\tpass")
-		if e != nil {
+		missingCounts := os.IsNotExist(e)
+		if e != nil && !missingCounts {
 			return e
 		}
 		floors := map[string][2]int{}
@@ -483,9 +494,13 @@ func fenceCheck(args []string) (result error) {
 				}
 			}
 		}
+		if missingCounts && !update {
+			failures++
+			fmt.Printf("FAIL %s: missing counts file counts.tsv\n", dir)
+		}
 		for key, n := range measured {
 			floor, exists := floors[key]
-			if !exists && !update {
+			if !exists && !update && !missingCounts {
 				failures++
 				fmt.Printf("FAIL %s: missing counts for %s\n", dir, key)
 			}
