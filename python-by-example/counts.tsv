@@ -1,0 +1,2 @@
+mode	platform	cases	pass
+run	darwin/arm64	22	22

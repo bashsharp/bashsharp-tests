@@ -1,10 +1,22 @@
 source_ref	disposition	case_id	reason
+python-by-example/00-boundary/scalars.bsh	case	boundary-scalars	hand-written CPython fence boundary contract
+python-by-example/00-boundary/containers.bsh	case	boundary-containers	hand-written CPython fence boundary contract
+python-by-example/00-boundary/error-opt-in.bsh	case	boundary-error-opt-in	hand-written CPython fence boundary contract
+python-by-example/00-boundary/typed-command-failure.bsh	diagnostic	boundary-typed-command-failure	exact CPython TypeError diagnostic contract
+python-by-example/00-boundary/command-int.bsh	case	boundary-command-int	hand-written CPython fence boundary contract
+python-by-example/00-boundary/command-str.bsh	case	boundary-command-str	hand-written CPython fence boundary contract
+python-by-example/00-boundary/command-streams.bsh	case	boundary-command-streams	hand-written CPython fence boundary contract
+python-by-example/00-boundary/system-exit.bsh	case	boundary-system-exit	hand-written CPython fence boundary contract
+python-by-example/00-boundary/keyboard-interrupt.bsh	case	boundary-keyboard-interrupt	hand-written CPython fence boundary contract
+python-by-example/00-boundary/stream-routing.bsh	case	boundary-stream-routing	hand-written CPython fence boundary contract
+python-by-example/00-boundary/cwd.bsh	case	boundary-cwd	hand-written CPython fence boundary contract
+python-by-example/00-boundary/worker-state.bsh	case	boundary-worker-state	hand-written CPython fence boundary contract
 Doc/tutorial/appendix.rst:64-65	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
-Doc/tutorial/appendix.rst:78-79	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/appendix.rst:78-79	fragment	-	non-Python chmod command requires a script and host permission context
 Doc/tutorial/appendix.rst:112-119	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
 Doc/tutorial/appendix.rst:129-132	interactive	-	upstream REPL transcript retained in inventory
 Doc/tutorial/classes.rst:168-190	case	tutorial-classes	deterministic native-oracle adaptation
-Doc/tutorial/classes.rst:195-199	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/classes.rst:195-199	prose	-	expected-output transcript for the preceding Python example
 Doc/tutorial/classes.rst:225-231	missing-feature:python-class-declarations	-	top-level fence declarations accept functions, imports, docstrings, and constants
 Doc/tutorial/classes.rst:269-275	missing-feature:python-class-declarations	-	top-level fence declarations accept functions, imports, docstrings, and constants
 Doc/tutorial/classes.rst:286-287	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
@@ -73,8 +85,8 @@ Doc/tutorial/controlflow.rst:687-691	fragment	-	non-interactive tutorial fragmen
 Doc/tutorial/controlflow.rst:700-707	interactive	-	upstream REPL transcript retained in inventory
 Doc/tutorial/controlflow.rst:716-724	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
 Doc/tutorial/controlflow.rst:727-732	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
-Doc/tutorial/controlflow.rst:737-745	diagnostic	-	non-Python or diagnostic transcript
-Doc/tutorial/controlflow.rst:762-768	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/controlflow.rst:737-745	prose	-	expected-output transcript for the preceding Python example
+Doc/tutorial/controlflow.rst:762-768	prose	-	annotated function-signature diagram is not executable Python
 Doc/tutorial/controlflow.rst:810-822	interactive	-	upstream REPL transcript retained in inventory
 Doc/tutorial/controlflow.rst:827-832	interactive	-	upstream REPL transcript retained in inventory
 Doc/tutorial/controlflow.rst:836-843	interactive	-	upstream REPL transcript retained in inventory
@@ -215,8 +227,8 @@ Doc/tutorial/inputoutput.rst:459-470	interactive	-	upstream REPL transcript reta
 Doc/tutorial/inputoutput.rst:514-518	interactive	-	upstream REPL transcript retained in inventory
 Doc/tutorial/inputoutput.rst:523-524	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
 Doc/tutorial/inputoutput.rst:528-529	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
-Doc/tutorial/interpreter.rst:19-20	diagnostic	-	non-Python or diagnostic transcript
-Doc/tutorial/interpreter.rst:100-105	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/interpreter.rst:19-20	fragment	-	interpreter invocation name is a shell command fragment
+Doc/tutorial/interpreter.rst:100-105	interactive	-	version and platform-specific interactive interpreter startup transcript
 Doc/tutorial/interpreter.rst:111-117	interactive	-	upstream REPL transcript retained in inventory
 Doc/tutorial/interpreter.rst:143-144	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
 Doc/tutorial/interpreter.rst:150-151	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
@@ -273,14 +285,14 @@ Doc/tutorial/modules.rst:123-126	interactive	-	upstream REPL transcript retained
 Doc/tutorial/modules.rst:132-136	interactive	-	upstream REPL transcript retained in inventory
 Doc/tutorial/modules.rst:153-154	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
 Doc/tutorial/modules.rst:159-162	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
-Doc/tutorial/modules.rst:169-171	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/modules.rst:169-171	fragment	-	shell transcript depends on the fibo.py file built by preceding examples
 Doc/tutorial/modules.rst:174-176	interactive	-	upstream REPL transcript retained in inventory
 Doc/tutorial/modules.rst:283-293	interactive	-	upstream REPL transcript retained in inventory
 Doc/tutorial/modules.rst:302-305	interactive	-	upstream REPL transcript retained in inventory
 Doc/tutorial/modules.rst:314-339	interactive	-	upstream REPL transcript retained in inventory
 Doc/tutorial/modules.rst:342-347	interactive	-	upstream REPL transcript retained in inventory
 Doc/tutorial/modules.rst:356-387	interactive	-	upstream REPL transcript retained in inventory
-Doc/tutorial/modules.rst:414-437	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/modules.rst:414-437	prose	-	illustrative package filesystem schematic is not executable Python
 Doc/tutorial/modules.rst:452-453	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
 Doc/tutorial/modules.rst:457-458	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
 Doc/tutorial/modules.rst:461-462	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
@@ -320,7 +332,7 @@ Doc/tutorial/stdlib2.rst:107-125	interactive	-	upstream REPL transcript retained
 Doc/tutorial/stdlib2.rst:144-163	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
 Doc/tutorial/stdlib2.rst:177-196	missing-feature:python-class-declarations	-	top-level fence declarations accept functions, imports, docstrings, and constants
 Doc/tutorial/stdlib2.rst:218-224	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
-Doc/tutorial/stdlib2.rst:229-232	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/stdlib2.rst:229-232	prose	-	expected stderr transcript for the preceding logging example
 Doc/tutorial/stdlib2.rst:262-285	interactive	-	upstream REPL transcript retained in inventory
 Doc/tutorial/stdlib2.rst:301-307	interactive	-	upstream REPL transcript retained in inventory
 Doc/tutorial/stdlib2.rst:313-318	interactive	-	upstream REPL transcript retained in inventory
@@ -335,10 +347,10 @@ Doc/tutorial/venv.rst:63-64	fragment	-	non-interactive tutorial fragment lacks a
 Doc/tutorial/venv.rst:67-68	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
 Doc/tutorial/venv.rst:81-90	interactive	-	upstream REPL transcript retained in inventory
 Doc/tutorial/venv.rst:98-99	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
-Doc/tutorial/venv.rst:118-124	diagnostic	-	non-Python or diagnostic transcript
-Doc/tutorial/venv.rst:130-135	diagnostic	-	non-Python or diagnostic transcript
-Doc/tutorial/venv.rst:143-150	diagnostic	-	non-Python or diagnostic transcript
-Doc/tutorial/venv.rst:158-170	diagnostic	-	non-Python or diagnostic transcript
-Doc/tutorial/venv.rst:176-182	diagnostic	-	non-Python or diagnostic transcript
-Doc/tutorial/venv.rst:189-194	diagnostic	-	non-Python or diagnostic transcript
-Doc/tutorial/venv.rst:201-211	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/venv.rst:118-124	env-dependent	-	pip transcript depends on network index and mutable virtual-environment package state
+Doc/tutorial/venv.rst:130-135	env-dependent	-	pip transcript depends on network index and mutable virtual-environment package state
+Doc/tutorial/venv.rst:143-150	env-dependent	-	pip transcript depends on network index and mutable virtual-environment package state
+Doc/tutorial/venv.rst:158-170	env-dependent	-	pip transcript depends on network index and mutable virtual-environment package state
+Doc/tutorial/venv.rst:176-182	env-dependent	-	pip transcript depends on network index and mutable virtual-environment package state
+Doc/tutorial/venv.rst:189-194	env-dependent	-	pip transcript depends on network index and mutable virtual-environment package state
+Doc/tutorial/venv.rst:201-211	env-dependent	-	pip transcript depends on network index and mutable virtual-environment package state
