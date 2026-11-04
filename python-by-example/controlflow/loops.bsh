@@ -1,0 +1,10 @@
+# provenance: CPython v3.15.0 Doc/tutorial/controlflow.rst:63; PSF-2.0; code also 0BSD
+# oracle: tools/fence-corpus/python/oracle.sh python-by-example/controlflow/loops.bsh
+~~~py as py
+def main() -> int:
+    words = ['cat', 'window', 'defenestrate']
+    for word in words:
+        print(word, len(word))
+    return 0
+~~~
+py.main

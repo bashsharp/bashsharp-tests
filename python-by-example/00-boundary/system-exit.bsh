@@ -1,0 +1,5 @@
+# provenance: hand-written command-mode boundary; CPython v3.15.0
+~~~py as py
+def main() -> None: raise SystemExit(4)
+~~~
+py.main

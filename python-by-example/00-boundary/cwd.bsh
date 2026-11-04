@@ -1,0 +1,10 @@
+# provenance: hand-written cwd boundary; CPython v3.15.0
+~~~py as py
+import os
+def cwd() -> str: return os.getcwd()
+~~~
+cd /
+a := py.cwd()
+cd /tmp
+b := py.cwd()
+printf '%s|%s\n' "$a" "$b"

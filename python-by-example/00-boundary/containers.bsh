@@ -1,0 +1,8 @@
+# provenance: hand-written boundary; CPython v3.15.0; 0BSD/PSF-2.0 examples
+~~~py as py
+def values() -> list[int]: return [3, 1, 2]
+def mapping() -> dict[str, int]: return {"b": 2, "a": 1}
+~~~
+v := py.values()
+m := py.mapping()
+printf '%s|%s\n' "$v" "$m"

@@ -1,0 +1,11 @@
+# provenance: hand-written stream-order boundary; CPython v3.15.0
+~~~py as py
+import sys
+def main() -> int:
+    print("out-1", flush=True)
+    print("err-1", file=sys.stderr, flush=True)
+    print("out-2", flush=True)
+    print("err-2", file=sys.stderr, flush=True)
+    return 0
+~~~
+py.main

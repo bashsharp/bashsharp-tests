@@ -1,0 +1,13 @@
+# provenance: CPython v3.15.0 Doc/tutorial/modules.rst:28; PSF-2.0; code also 0BSD
+# oracle: tools/fence-corpus/python/oracle.sh python-by-example/modules/fibonacci.bsh
+~~~py as py
+def main() -> int:
+    a, b = 0, 1
+    values = []
+    while a < 20:
+        values.append(a)
+        a, b = b, a + b
+    print(*values)
+    return 0
+~~~
+py.main

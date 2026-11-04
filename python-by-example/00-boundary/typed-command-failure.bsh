@@ -1,0 +1,5 @@
+# provenance: hand-written boundary; CPython v3.15.0
+~~~py as py
+def typed(value: int) -> int: return value + 1
+~~~
+py.typed nope
