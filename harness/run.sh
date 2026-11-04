@@ -100,6 +100,17 @@ else
   exit 2
 fi
 
+# Sprint 562: mandatory shared fence-corpus aggregate. Keep the Go three-mode
+# gate above independent: its native corpus has a different inventory contract.
+if [ ! -x "${TEST_DIR}/tools/fence-corpus/aggregate.sh" ]; then
+  echo "FATAL: fence-corpus aggregate runner missing" >&2
+  exit 2
+fi
+if ! BASHY_BIN="${BASHY_BIN}" "${TEST_DIR}/tools/fence-corpus/aggregate.sh"; then
+  echo "FATAL: fence-corpus inventory or execution gate failed" >&2
+  exit 2
+fi
+
 # ---------------------------------------------------------------------------
 # GO ORACLE — execute a reviewed tranche of the official Go corpus for real.
 #
