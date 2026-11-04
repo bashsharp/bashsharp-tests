@@ -1,0 +1,2 @@
+source	upstream_repo	commit	code_license	prose_license
+v3.15.0	https://github.com/python/cpython.git	d220409a13b77de7a6c30abe16ea90db01528edc	0BSD OR PSF-2.0	PSF-2.0
