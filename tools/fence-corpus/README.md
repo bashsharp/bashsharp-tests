@@ -108,8 +108,13 @@ or `tour-fenced`, excluding `.git`, `.cache`, `.agents`, and repository `tools`
 and `docs` (which contain machinery and provenance with overlapping names).
 Discovery does not depend on cases.tsv existing: a deleted manifest fails.
 Each discovered corpus must pass both validation and execution. Missing runner
-scripts and all failures propagate. No matching corpora means there is nothing
-to aggregate; it does not claim any cases passed. `aggregate.sh [ROOT]` supports
+scripts and all failures propagate. `corpora.tsv` lists corpus names, comma-separated
+OS names (`linux`, `darwin`, `windows`), and `pending` or `required` status.
+Unlisted discovered corpora fail. A required corpus missing on a listed OS
+fails even if no corpus directories remain. Pending rows print `PENDING <corpus>`
+and permit an absent corpus; any discovered corpus still undergoes all checks.
+All nine initial rows are pending; the manager promotes each to required when
+its corpus lands. `aggregate.sh [ROOT]` supports
 an explicit discovery root for fixture testing; the harness always uses the
 repository root. Existing harness sections, including the Go three-mode gate,
 are unchanged.

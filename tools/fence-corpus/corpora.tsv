@@ -1,0 +1,10 @@
+corpus	platforms	status
+python-by-example	linux	pending
+examples-fenced	linux	pending
+tour-fenced	linux	pending
+typescript-by-example	linux	pending
+rust-by-example	linux	pending
+c-by-example	linux	pending
+cpp-by-example	linux	pending
+csharp-by-example	linux,windows	pending
+powershell-by-example	linux,windows	pending
