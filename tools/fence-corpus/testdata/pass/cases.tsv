@@ -1,0 +1,2 @@
+id	mode	file	needs	rc	xfail
+hello	run	chapter/hello.bsh	-	0	-

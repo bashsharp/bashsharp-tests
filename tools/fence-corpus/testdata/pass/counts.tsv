@@ -1,0 +1,7 @@
+mode	platform	cases	pass
+run	darwin/amd64	1	1
+run	darwin/arm64	1	1
+run	linux/amd64	1	1
+run	linux/arm64	1	1
+run	windows/amd64	1	1
+run	windows/arm64	1	1
