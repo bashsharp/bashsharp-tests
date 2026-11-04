@@ -171,7 +171,7 @@ fail build-output-contract 'build expected' "$bin" fence-check --corpus "$work/c
 
 # Each licence accepts its documented volatile change, rejects observable
 # corruption, and cannot hide a changed process exit status.
-for comparator in wallclock interleave_order pointer_address map_order duration panic_trace; do
+for comparator in wallclock interleave_order pointer_address map_order duration panic_trace closing_channel_order; do
   reset
   printf '%s\n' "$comparator" > "$work/case/chapter/hello.compare"
   case "$comparator" in
@@ -222,6 +222,25 @@ going
 goroutine : 1
 goroutine : 2
 done' ;;
+    closing_channel_order)
+      expected='sent job 1
+sent job 2
+sent job 3
+sent all jobs
+received job 1
+received job 2
+received job 3
+received all jobs
+received more jobs: false'
+      actual='sent job 1
+received job 1
+sent job 2
+received job 2
+sent job 3
+received job 3
+sent all jobs
+received all jobs
+received more jobs: false' ;;
     panic_trace)
       expected='panic: boom
 
@@ -252,8 +271,21 @@ main.main()
     { printf "printf 'corruption\\n'\n"; cat "$work/original"; } > "$work/case/chapter/hello.bsh"
   fi
   fail "compare-$comparator-corruption" 'FAIL case' "$bin" fence-check --corpus "$work/case"
+  # A stream-specific licence must leave the opposite stream byte-exact.
+  case "$comparator" in
+    panic_trace)
+      printf '# rc=0\n%s\n' "$expected" > "$work/case/chapter/hello.expected"
+      { cat "$work/original"; printf "printf '%%s\\n' '%s'\n" "$actual"; } > "$work/case/chapter/hello.bsh"
+      fail compare-panic_trace-stdout-strict 'stdout bytes differ' "$bin" fence-check --corpus "$work/case" ;;
+    closing_channel_order)
+      printf '%s\n' "$expected" > "$work/case/chapter/hello.stderr"
+      { cat "$work/original"; printf "printf '%%s\\n' '%s' >&2\n" "$actual"; } > "$work/case/chapter/hello.bsh"
+      fail compare-closing_channel_order-stderr-strict 'stderr bytes differ' "$bin" fence-check --corpus "$work/case" ;;
+  esac
 done
 reset
+printf 'none\n' > "$work/case/chapter/hello.compare"
+fail compare-none 'unknown comparator' "$bin" fence-check --corpus "$work/case"
 printf 'unknown\n' > "$work/case/chapter/hello.compare"
 fail compare-unknown 'unknown comparator' "$bin" fence-check --corpus "$work/case"
 

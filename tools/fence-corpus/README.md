@@ -26,9 +26,9 @@ stdout. `name.stderr`, when present, is raw stderr; otherwise stderr must be
 empty. The manifest rc and expected header must agree. Timeouts, launch errors,
 and surviving descendants fail even if an expected rc happens to match.
 
-An optional `name.compare` contains exactly one GBE comparator name:
-`wallclock`, `interleave_order`, `pointer_address`, `map_order`, `duration`,
-or `panic_trace`. Both expected and actual streams pass through the existing
+An optional `name.compare` contains exactly one GBE comparator name from
+`NormalizerNames` in `tools/go-by-example/gbe/normalizer.go`, excluding the
+`none` sentinel. Both expected and actual streams pass through the existing
 GBE normalizer with its stream-specific rules; unknown names and invalid shapes
 fail. These are the GBE example-specific licences, not general output sorting
 or number removal. In particular, `duration` permits Go test elapsed-time
@@ -174,8 +174,9 @@ mutations to test PASS, stdout mismatch, final-newline mismatch, count drops,
 non-decreasing updates, inventory errors, missing expected output, xfail,
 timeouts, rc mismatch, missing runner/SDK/runtime, and fatal aggregate behavior.
 It also verifies build-only hangs are never executed, failures in each build
-stage, all six comparator licences (volatile changes, real differences, and rc
-mismatches), unknown names, and run cleanup including interruption.
+stage, seven comparator licences (volatile changes, real differences, and rc
+mismatches), strict stream routing for `panic_trace` and `closing_channel_order`,
+unknown names, and run cleanup including interruption.
 Its shell runner is a deliberate protocol stub, not a Bash# oracle. Compiled
 and build selftesting stub the check/transpile protocol, then compile real Go
 (and execute it only for compiled mode) with
