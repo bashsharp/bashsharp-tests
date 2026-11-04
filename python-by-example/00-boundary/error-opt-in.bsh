@@ -1,0 +1,6 @@
+# provenance: hand-written boundary; CPython v3.15.0
+~~~py as py
+def fail() -> int: raise ValueError("boom")
+~~~
+v, err := py.fail()
+printf 'value=%s error=%s\n' "$v" "${err:+caught}"

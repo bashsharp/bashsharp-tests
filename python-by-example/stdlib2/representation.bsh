@@ -1,0 +1,9 @@
+# provenance: CPython v3.15.0 Doc/tutorial/stdlib2.rst:19; PSF-2.0; code also 0BSD
+# oracle: tools/fence-corpus/python/oracle.sh python-by-example/stdlib2/representation.bsh
+~~~py as py
+def main() -> int:
+    import reprlib
+    print(reprlib.repr(set('supercalifragilisticexpialidocious')))
+    return 0
+~~~
+py.main

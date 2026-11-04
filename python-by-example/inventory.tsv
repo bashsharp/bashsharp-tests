@@ -1,0 +1,344 @@
+source_ref	disposition	case_id	reason
+Doc/tutorial/appendix.rst:64-65	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/appendix.rst:78-79	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/appendix.rst:112-119	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/appendix.rst:129-132	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/classes.rst:168-190	case	tutorial-classes	deterministic native-oracle adaptation
+Doc/tutorial/classes.rst:195-199	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/classes.rst:225-231	missing-feature:python-class-declarations	-	top-level fence declarations accept functions, imports, docstrings, and constants
+Doc/tutorial/classes.rst:269-275	missing-feature:python-class-declarations	-	top-level fence declarations accept functions, imports, docstrings, and constants
+Doc/tutorial/classes.rst:286-287	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/classes.rst:296-298	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/classes.rst:303-304	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/classes.rst:309-318	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/classes.rst:334-339	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/classes.rst:360-361	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/classes.rst:366-369	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/classes.rst:404-421	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/classes.rst:428-444	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/classes.rst:447-465	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/classes.rst:476-487	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/classes.rst:518-529	missing-feature:python-class-declarations	-	top-level fence declarations accept functions, imports, docstrings, and constants
+Doc/tutorial/classes.rst:538-548	missing-feature:python-class-declarations	-	top-level fence declarations accept functions, imports, docstrings, and constants
+Doc/tutorial/classes.rst:572-578	missing-feature:python-class-declarations	-	top-level fence declarations accept functions, imports, docstrings, and constants
+Doc/tutorial/classes.rst:585-586	missing-feature:python-class-declarations	-	top-level fence declarations accept functions, imports, docstrings, and constants
+Doc/tutorial/classes.rst:633-639	missing-feature:python-class-declarations	-	top-level fence declarations accept functions, imports, docstrings, and constants
+Doc/tutorial/classes.rst:702-720	missing-feature:python-class-declarations	-	top-level fence declarations accept functions, imports, docstrings, and constants
+Doc/tutorial/classes.rst:747-754	missing-feature:python-class-declarations	-	top-level fence declarations accept functions, imports, docstrings, and constants
+Doc/tutorial/classes.rst:757-762	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/classes.rst:790-800	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/classes.rst:810-825	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/classes.rst:831-845	missing-feature:python-class-declarations	-	top-level fence declarations accept functions, imports, docstrings, and constants
+Doc/tutorial/classes.rst:848-859	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/classes.rst:872-875	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/classes.rst:878-885	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/classes.rst:916-936	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/classes.rst:944-946	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/classes.rst:949-952	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:19-32	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:63-71	case	tutorial-controlflow	deterministic native-oracle adaptation
+Doc/tutorial/controlflow.rst:76-90	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/controlflow.rst:99-107	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:113-121	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:125-134	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:140-142	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:154-156	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:169-179	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:183-197	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:221-238	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:263-266	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:269-272	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:277-280	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:304-314	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/controlflow.rst:320-322	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/controlflow.rst:326-338	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/controlflow.rst:350-367	missing-feature:python-class-declarations	-	top-level fence declarations accept functions, imports, docstrings, and constants
+Doc/tutorial/controlflow.rst:374-378	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/controlflow.rst:389-406	missing-feature:python-class-declarations	-	top-level fence declarations accept functions, imports, docstrings, and constants
+Doc/tutorial/controlflow.rst:411-416	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/controlflow.rst:435-436	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/controlflow.rst:446-461	missing-feature:python-class-declarations	-	top-level fence declarations accept functions, imports, docstrings, and constants
+Doc/tutorial/controlflow.rst:473-484	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:525-530	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:538-541	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:545-557	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:594-605	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/controlflow.rst:621-628	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/controlflow.rst:636-643	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/controlflow.rst:646-649	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/controlflow.rst:653-659	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/controlflow.rst:668-673	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/controlflow.rst:678-684	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/controlflow.rst:687-691	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/controlflow.rst:700-707	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:716-724	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/controlflow.rst:727-732	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/controlflow.rst:737-745	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/controlflow.rst:762-768	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/controlflow.rst:810-822	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:827-832	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:836-843	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:847-854	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:858-874	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:877-879	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/controlflow.rst:883-888	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:891-896	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:906-907	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/controlflow.rst:934-937	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/controlflow.rst:944-951	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:964-969	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:976-985	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:999-1007	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:1012-1017	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:1047-1065	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/controlflow.rst:1089-1098	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:100-120	case	tutorial-datastructures	deterministic native-oracle adaptation
+Doc/tutorial/datastructures.rst:144-160	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:176-187	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:200-206	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:211-212	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/datastructures.rst:215-216	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/datastructures.rst:226-228	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:231-239	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:246-273	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:276-279	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:289-294	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:297-299	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:304-310	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:313-323	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:327-329	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:342-345	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:349-355	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:359-362	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:366-369	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:384-394	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:397-398	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:416-438	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:460-468	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:473-474	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:502-524	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:528-536	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:576-600	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:604-606	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:610-612	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:616-624	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:628-631	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:640-646	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:650-656	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:660-668	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:672-680	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:684-694	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:699-707	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:711-721	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:757-761	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/datastructures.rst:785-792	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/errors.rst:20-25	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/errors.rst:46-64	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/errors.rst:95-102	case	tutorial-errors	deterministic native-oracle adaptation
+Doc/tutorial/errors.rst:126-128	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/errors.rst:134-152	missing-feature:python-class-declarations	-	top-level fence declarations accept functions, imports, docstrings, and constants
+Doc/tutorial/errors.rst:166-182	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/errors.rst:203-216	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/errors.rst:222-230	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/errors.rst:240-250	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/errors.rst:259-264	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/errors.rst:271-272	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/errors.rst:277-289	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/errors.rst:299-316	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/errors.rst:320-322	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/errors.rst:325-346	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/errors.rst:350-359	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/errors.rst:392-402	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/errors.rst:441-449	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/errors.rst:452-478	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/errors.rst:499-501	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/errors.rst:508-511	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/errors.rst:532-556	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/errors.rst:564-604	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/errors.rst:610-621	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/errors.rst:634-648	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/errors.rst:653-697	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/floatingpoint.rst:27-28	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/floatingpoint.rst:31-32	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/floatingpoint.rst:35-36	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/floatingpoint.rst:45-46	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/floatingpoint.rst:60-62	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/floatingpoint.rst:68-70	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/floatingpoint.rst:98-106	case	tutorial-floatingpoint	deterministic native-oracle adaptation
+Doc/tutorial/floatingpoint.rst:115-117	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/floatingpoint.rst:124-126	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/floatingpoint.rst:132-134	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/floatingpoint.rst:140-142	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/floatingpoint.rst:184-187	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/floatingpoint.rst:193-195	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/floatingpoint.rst:201-203	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/floatingpoint.rst:209-211	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/floatingpoint.rst:224-228	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/floatingpoint.rst:237-252	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/floatingpoint.rst:276-277	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/floatingpoint.rst:280-281	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/floatingpoint.rst:287-289	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/floatingpoint.rst:295-298	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/floatingpoint.rst:306-308	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/floatingpoint.rst:312-313	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/floatingpoint.rst:316-317	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/floatingpoint.rst:327-329	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/floatingpoint.rst:335-337	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/floatingpoint.rst:345-347	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/floatingpoint.rst:353-366	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:32-36	case	tutorial-inputoutput	deterministic native-oracle adaptation
+Doc/tutorial/inputoutput.rst:46-51	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:77-97	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:126-129	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:133-140	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:145-150	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:171-173	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:179-183	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:187-190	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:193-196	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:202-206	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:210-213	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:217-221	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:225-238	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:248-263	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:279-286	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:297-300	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:318-319	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:355-361	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:379-385	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:403-407	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:415-421	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:425-430	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:437-439	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:443-447	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:459-470	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:514-518	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/inputoutput.rst:523-524	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/inputoutput.rst:528-529	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/interpreter.rst:19-20	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/interpreter.rst:100-105	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/interpreter.rst:111-117	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/interpreter.rst:143-144	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/interpreter.rst:150-151	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/interpreter.rst:156-158	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/introduction.rst:32-37	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/introduction.rst:58-66	case	tutorial-introduction	deterministic native-oracle adaptation
+Doc/tutorial/introduction.rst:75-84	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:87-91	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:95-99	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:103-107	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:111-113	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:118-126	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:151-157	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:161-171	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:176-182	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:187-192	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:204-214	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:218-221	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:225-227	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:230-234	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:237-248	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:251-253	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:258-263	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:266-272	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:278-282	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:286-292	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:296-300	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:306-309	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/introduction.rst:323-327	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:331-335	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:339-347	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:350-354	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:357-361	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:393-396	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:400-406	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:409-411	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:415-421	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:425-429	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:435-442	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:447-453	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:457-472	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:475-478	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:482-491	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:502-516	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:550-553	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/introduction.rst:557-564	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/modules.rst:28-46	case	tutorial-modules	deterministic native-oracle adaptation
+Doc/tutorial/modules.rst:50-51	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/modules.rst:57-63	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/modules.rst:66-70	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/modules.rst:96-99	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/modules.rst:105-108	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/modules.rst:123-126	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/modules.rst:132-136	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/modules.rst:153-154	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/modules.rst:159-162	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/modules.rst:169-171	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/modules.rst:174-176	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/modules.rst:283-293	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/modules.rst:302-305	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/modules.rst:314-339	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/modules.rst:342-347	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/modules.rst:356-387	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/modules.rst:414-437	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/modules.rst:452-453	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/modules.rst:457-458	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/modules.rst:461-462	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/modules.rst:466-467	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/modules.rst:470-471	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/modules.rst:475-476	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/modules.rst:513-514	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/modules.rst:525-533	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/modules.rst:543-546	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/modules.rst:578-581	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/stdlib.rst:16-22	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib.rst:32-37	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib.rst:41-47	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib.rst:56-60	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib.rst:70-73	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/stdlib.rst:77-78	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/stdlib.rst:83-92	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/stdlib.rst:107-109	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib.rst:122-127	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib.rst:131-134	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib.rst:143-148	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib.rst:151-160	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib.rst:164-172	case	tutorial-stdlib	deterministic native-oracle adaptation
+Doc/tutorial/stdlib.rst:185-203	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib.rst:218-232	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib.rst:242-254	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib.rst:268-273	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib.rst:295-305	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib.rst:310-324	missing-feature:python-class-declarations	-	top-level fence declarations accept functions, imports, docstrings, and constants
+Doc/tutorial/stdlib2.rst:19-22	case	tutorial-stdlib2	deterministic native-oracle adaptation
+Doc/tutorial/stdlib2.rst:28-38	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib2.rst:42-52	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib2.rst:57-68	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib2.rst:83-87	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib2.rst:94-102	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib2.rst:107-125	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib2.rst:144-163	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/stdlib2.rst:177-196	missing-feature:python-class-declarations	-	top-level fence declarations accept functions, imports, docstrings, and constants
+Doc/tutorial/stdlib2.rst:218-224	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/stdlib2.rst:229-232	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/stdlib2.rst:262-285	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib2.rst:301-307	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib2.rst:313-318	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib2.rst:321-328	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/stdlib2.rst:333-338	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib2.rst:344-351	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib2.rst:373-378	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib2.rst:389-398	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/stdlib2.rst:401-405	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/venv.rst:47-48	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/venv.rst:63-64	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/venv.rst:67-68	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/venv.rst:81-90	interactive	-	upstream REPL transcript retained in inventory
+Doc/tutorial/venv.rst:98-99	fragment	-	non-interactive tutorial fragment lacks a standalone oracle entry point
+Doc/tutorial/venv.rst:118-124	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/venv.rst:130-135	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/venv.rst:143-150	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/venv.rst:158-170	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/venv.rst:176-182	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/venv.rst:189-194	diagnostic	-	non-Python or diagnostic transcript
+Doc/tutorial/venv.rst:201-211	diagnostic	-	non-Python or diagnostic transcript

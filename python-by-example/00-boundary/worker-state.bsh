@@ -1,0 +1,11 @@
+# provenance: hand-written worker-lifetime boundary; CPython v3.15.0
+~~~py as py
+state = 0
+def bump() -> int:
+    global state
+    state += 1
+    return state
+~~~
+a := py.bump()
+b := py.bump()
+printf '%s,%s\n' "$a" "$b"

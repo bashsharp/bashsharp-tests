@@ -1,0 +1,14 @@
+# provenance: CPython v3.15.0 Doc/tutorial/classes.rst:168; PSF-2.0; code also 0BSD
+# oracle: tools/fence-corpus/python/oracle.sh python-by-example/classes/scopes.bsh
+~~~py as py
+def main() -> int:
+    spam = 'test spam'
+    def do_nonlocal():
+        nonlocal spam
+        spam = 'nonlocal spam'
+    print(spam)
+    do_nonlocal()
+    print(spam)
+    return 0
+~~~
+py.main

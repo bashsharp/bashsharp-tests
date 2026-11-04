@@ -1,0 +1,11 @@
+# provenance: CPython v3.15.0 Doc/tutorial/floatingpoint.rst:98; PSF-2.0; code also 0BSD
+# oracle: tools/fence-corpus/python/oracle.sh python-by-example/floatingpoint/precision.bsh
+~~~py as py
+def main() -> int:
+    import math
+    print(format(math.pi, '.12g'))
+    print(format(math.pi, '.2f'))
+    print(repr(math.pi))
+    return 0
+~~~
+py.main

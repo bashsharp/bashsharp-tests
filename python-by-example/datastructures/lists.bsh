@@ -1,0 +1,13 @@
+# provenance: CPython v3.15.0 Doc/tutorial/datastructures.rst:100; PSF-2.0; code also 0BSD
+# oracle: tools/fence-corpus/python/oracle.sh python-by-example/datastructures/lists.bsh
+~~~py as py
+def main() -> int:
+    fruits = ['orange', 'apple', 'pear', 'banana', 'kiwi', 'apple', 'banana']
+    print(fruits.count('apple'))
+    print(fruits.count('tangerine'))
+    print(fruits.index('banana'))
+    fruits.sort()
+    print(fruits)
+    return 0
+~~~
+py.main

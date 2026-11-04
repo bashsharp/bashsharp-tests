@@ -1,0 +1,14 @@
+# provenance: CPython v3.15.0 Doc/tutorial/errors.rst:95; PSF-2.0; code also 0BSD
+# oracle: tools/fence-corpus/python/oracle.sh python-by-example/errors/exceptions.bsh
+~~~py as py
+def main() -> int:
+    for value in ('x', '2'):
+        try:
+            number = int(value)
+        except ValueError:
+            print('not a number')
+        else:
+            print(number * number)
+    return 0
+~~~
+py.main

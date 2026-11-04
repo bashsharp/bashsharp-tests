@@ -1,0 +1,4 @@
+# rc=0
+cat 3
+window 6
+defenestrate 12

@@ -1,0 +1,5 @@
+# provenance: hand-written command-mode boundary; CPython v3.15.0
+~~~py as py
+def main() -> tuple[str, str, int]: return ("out\n", "err", 9)
+~~~
+py.main

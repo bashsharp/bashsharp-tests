@@ -1,0 +1,13 @@
+# provenance: CPython v3.15.0 Doc/tutorial/inputoutput.rst:32; PSF-2.0; code also 0BSD
+# oracle: tools/fence-corpus/python/oracle.sh python-by-example/inputoutput/formatting.bsh
+~~~py as py
+def main() -> int:
+    year = 2016
+    event = 'Referendum'
+    print(f'Results of the {year} {event}')
+    table = {'Sjoerd': 4127, 'Jack': 4098, 'Dcab': 7678}
+    for name, phone in sorted(table.items()):
+        print(f'{name:10} ==> {phone:10d}')
+    return 0
+~~~
+py.main
