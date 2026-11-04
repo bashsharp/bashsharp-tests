@@ -87,7 +87,7 @@ func fenceCases(dir string) ([][]string, error) {
 		}
 		seen[r[0]] = true
 		rc, e := strconv.Atoi(r[4])
-		if (r[1] != "run" && r[1] != "compiled") || e != nil || rc < 0 || rc > 255 || r[5] != "-" {
+		if (r[1] != "run" && r[1] != "compiled" && r[1] != "build") || e != nil || rc < 0 || rc > 255 || r[5] != "-" {
 			return nil, fmt.Errorf("invalid case/rc/xfail: %s", r[0])
 		}
 		if filepath.IsAbs(r[2]) || strings.Contains(filepath.ToSlash(r[2]), "../") || !strings.HasSuffix(r[2], ".bsh") {
@@ -101,9 +101,15 @@ func fenceCases(dir string) ([][]string, error) {
 		if e != nil {
 			return nil, e
 		}
-		header, _, ok := bytes.Cut(b, []byte("\n"))
+		header, body, ok := bytes.Cut(b, []byte("\n"))
 		if !ok || string(header) != "# rc="+r[4] {
 			return nil, fmt.Errorf("invalid expected rc header: %s", path)
+		}
+		if r[1] == "build" && (rc != 0 || len(body) != 0) {
+			return nil, fmt.Errorf("build expected must contain only # rc=0: %s", path)
+		}
+		if _, e := fenceComparator(path); e != nil {
+			return nil, e
 		}
 	}
 	if len(rows) == 0 {
@@ -204,15 +210,31 @@ func fenceRun(tc *toolchainContext, bashy, toolroot, dir string, row []string, l
 	deadline := time.Now().Add(time.Duration(limit * float64(time.Second)))
 	stage := 0
 	invoke := func(argv []string, at string, e map[string]string) (*Object, error) {
+		if err := fenceInterrupted(); err != nil {
+			return nil, err
+		}
 		left := time.Until(deadline).Seconds()
 		if left <= 0 {
 			return nil, fmt.Errorf("case wall-time limit")
 		}
 		stage++
-		return capture(argv, at, fmt.Sprintf("%s/log/%d", work, stage), e, Flt(left), os.DevNull)
+		result, err := capture(argv, at, fmt.Sprintf("%s/log/%d", work, stage), e, Flt(left), os.DevNull)
+		if interrupted := fenceInterrupted(); interrupted != nil {
+			return nil, interrupted
+		}
+		return result, err
 	}
 	argv := []string{bashy, "--bashsharp", filepath.Base(source)}
-	if row[1] == "compiled" {
+	if row[1] == "build" {
+		s, e := invoke([]string{bashy, "check", "--bashsharp", filepath.Base(source)}, cwd, env)
+		if e != nil {
+			return false, e
+		}
+		if !success(s) {
+			return false, fmt.Errorf("static check failed (%s): %s", s.Str("state"), fenceExcerpt([]byte(fenceRead(s.Obj("stderr").Str("path")))))
+		}
+	}
+	if row[1] == "compiled" || row[1] == "build" {
 		module := os.Getenv("FENCE_SH_MODULE")
 		if module == "" || moduleName(module) != "mvdan.cc/sh/v3" {
 			return false, fmt.Errorf("compiled mode requires FENCE_SH_MODULE naming the candidate lowering runtime")
@@ -245,6 +267,9 @@ func fenceRun(tc *toolchainContext, bashy, toolroot, dir string, row []string, l
 		if !success(s) {
 			return false, fmt.Errorf("build failed (%s): %s", s.Str("state"), fenceExcerpt([]byte(fenceRead(s.Obj("stderr").Str("path")))))
 		}
+		if row[1] == "build" {
+			return true, nil
+		}
 		argv = []string{artifact}
 	}
 	s, err := invoke(argv, cwd, env)
@@ -275,7 +300,16 @@ func fenceRun(tc *toolchainContext, bashy, toolroot, dir string, row []string, l
 	if err != nil {
 		return false, err
 	}
-	if badStatus || !bytes.Equal(stdout, actualOut) || !bytes.Equal(stderr, actual) {
+	name, err := fenceComparator(source)
+	if err != nil {
+		return false, err
+	}
+	outOK, outErr := fenceCompare(stdout, actualOut, name, "stdout")
+	errOK, errErr := fenceCompare(stderr, actual, name, "stderr")
+	if badStatus || !outOK || !errOK {
+		if outErr != nil || errErr != nil {
+			return false, fmt.Errorf("comparator %s: stdout=%v stderr=%v; rc actual=%v, want %d", name, outErr, errErr, s.Get("exit"), want)
+		}
 		return false, fmt.Errorf("state=%s rc actual=%v, want %d\n%s%s", s.Str("state"), s.Get("exit"), want,
 			fenceDiff("stdout", stdout, actualOut), fenceDiff("stderr", stderr, actual))
 	}
@@ -283,7 +317,9 @@ func fenceRun(tc *toolchainContext, bashy, toolroot, dir string, row []string, l
 }
 func fenceRead(path string) string { b, _ := os.ReadFile(path); return string(b) }
 
-func fenceCheck(args []string) error {
+func fenceCheck(args []string) (result error) {
+	stop := fenceTrap()
+	defer stop()
 	dirs := []string{}
 	mode, id := "", ""
 	update := false
@@ -308,11 +344,11 @@ func fenceCheck(args []string) error {
 			return fmt.Errorf("unknown option %s", a)
 		}
 	}
-	if mode != "" && mode != "run" && mode != "compiled" {
+	if mode != "" && mode != "run" && mode != "compiled" && mode != "build" {
 		return fmt.Errorf("invalid mode")
 	}
 	if len(dirs) == 0 {
-		return fmt.Errorf("usage: check.sh --corpus DIR [--corpus DIR...] [--mode run|compiled] [--case ID] [--update-counts]")
+		return fmt.Errorf("usage: check.sh --corpus DIR [--corpus DIR...] [--mode run|compiled|build] [--case ID] [--update-counts]")
 	}
 	if update && id != "" {
 		return fmt.Errorf("cannot update counts for a filtered case")
@@ -371,7 +407,14 @@ func fenceCheck(args []string) error {
 	if err != nil {
 		return err
 	}
-	defer release()
+	defer func() {
+		if e := release(); e != nil {
+			result = fmt.Errorf("%v; cleanup failed: %w", result, e)
+		}
+		if e := fenceInterrupted(); e != nil {
+			result = e
+		}
+	}()
 	platform := runtime.GOOS + "/" + runtime.GOARCH
 	failures, total, passes := 0, 0, 0
 	type pending struct {
@@ -397,7 +440,7 @@ func fenceCheck(args []string) error {
 			a, e1 := strconv.Atoi(r[2])
 			b, e2 := strconv.Atoi(r[3])
 			key := r[0] + "\t" + r[1]
-			if _, ok := floors[key]; ok || e1 != nil || e2 != nil || a < 0 || b < 0 || b > a || (r[0] != "run" && r[0] != "compiled") {
+			if _, ok := floors[key]; ok || e1 != nil || e2 != nil || a < 0 || b < 0 || b > a || (r[0] != "run" && r[0] != "compiled" && r[0] != "build") {
 				return fmt.Errorf("invalid counts row: %v", r)
 			}
 			floors[key] = [2]int{a, b}
@@ -405,6 +448,9 @@ func fenceCheck(args []string) error {
 		measured := map[string][2]int{}
 		selected := 0
 		for _, r := range rows {
+			if err := fenceInterrupted(); err != nil {
+				return err
+			}
 			if (mode != "" && r[1] != mode) || (id != "" && r[0] != id) {
 				continue
 			}
@@ -479,4 +525,35 @@ func fenceCheck(args []string) error {
 		}
 	}
 	return nil
+}
+
+// A single named GBE licence applies to both streams with GBE's stream rules.
+func fenceComparator(source string) (string, error) {
+	b, err := os.ReadFile(strings.TrimSuffix(source, ".bsh") + ".compare")
+	if os.IsNotExist(err) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	name := strings.TrimSpace(string(b))
+	if !contains([]string{"wallclock", "interleave_order", "pointer_address", "map_order", "duration", "panic_trace"}, name) {
+		return "", fmt.Errorf("unknown comparator %q", name)
+	}
+	return name, nil
+}
+
+func fenceCompare(want, got []byte, name, stream string) (bool, error) {
+	if name == "" {
+		return bytes.Equal(want, got), nil
+	}
+	a, err := Normalize(want, []string{name}, stream)
+	if err != nil {
+		return false, err
+	}
+	b, err := Normalize(got, []string{name}, stream)
+	if err != nil {
+		return false, err
+	}
+	return a == b, nil
 }

@@ -2,11 +2,14 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 )
 
 // These are actual fence calls, so provisioning follows the candidate's own
@@ -72,7 +75,7 @@ func fenceToolMode(root string, writable bool) error {
 	})
 }
 
-func fenceProvision(tc *toolchainContext, bashy string, needs map[string]bool) (string, func(), error) {
+func fenceProvision(tc *toolchainContext, bashy string, needs map[string]bool) (string, func() error, error) {
 	base := ROOT + "/tools/fence-corpus/.cache"
 	if err := os.MkdirAll(base, 0700); err != nil {
 		return "", nil, err
@@ -81,7 +84,28 @@ func fenceProvision(tc *toolchainContext, bashy string, needs map[string]bool) (
 	if err != nil {
 		return "", nil, err
 	}
+	fmt.Println("Run area:", run)
+	// Always remove run scratch, even if acquiring a caller-owned lease fails.
+	owned := false
+	good := false
 	root := os.Getenv("FENCE_TOOLCHAIN_DIR")
+	release := func() error {
+		var errs []error
+		if owned {
+			errs = append(errs, fenceToolMode(root, true))
+			errs = append(errs, os.Remove(root+"/.fence-lock"))
+		}
+		errs = append(errs, fenceToolMode(run, true))
+		errs = append(errs, os.RemoveAll(run))
+		return errors.Join(errs...)
+	}
+	defer func() {
+		if !good {
+			if e := release(); e != nil {
+				fmt.Fprintln(os.Stderr, "FAIL cleanup:", e)
+			}
+		}
+	}()
 	if root == "" {
 		root = run + "/toolchains"
 	}
@@ -97,21 +121,18 @@ func fenceProvision(tc *toolchainContext, bashy string, needs map[string]bool) (
 	if err = os.Mkdir(lock, 0700); err != nil {
 		return "", nil, fmt.Errorf("toolchain directory busy: %s: %w", root, err)
 	}
-	release := func() { os.Remove(lock) }
-	good := false
-	defer func() {
-		if !good {
-			release()
-		}
-	}()
+	owned = true
 	logPath := run + "/provision.log"
+	if os.Getenv("FENCE_TOOLCHAIN_DIR") != "" {
+		logPath = root + "/provision.log"
+	}
 	log, err := os.Create(logPath)
 	if err != nil {
 		return "", nil, err
 	}
 	defer log.Close()
 	fmt.Println("Provision log:", logPath)
-	fail := func(e error) (string, func(), error) {
+	fail := func(e error) (string, func() error, error) {
 		fmt.Fprintln(log, e)
 		return "", nil, fmt.Errorf("toolchain provisioning failed; log: %s\n%s", logPath, fenceExcerpt([]byte(fenceRead(logPath))))
 	}
@@ -128,11 +149,6 @@ func fenceProvision(tc *toolchainContext, bashy string, needs map[string]bool) (
 			return fail(err)
 		}
 	}
-	defer func() {
-		for _, d := range []string{"bin", "python", "uv"} {
-			fenceToolMode(root+"/"+d, false)
-		}
-	}()
 	tc.binCache = root + "/bin"
 	tc.runGocache = run + "/cache"
 	// The shared helper creates a new link; reuse must verify the existing SDK.
@@ -159,6 +175,9 @@ func fenceProvision(tc *toolchainContext, bashy string, needs map[string]bool) (
 	}
 	sort.Strings(names)
 	for _, need := range names {
+		if e := fenceInterrupted(); e != nil {
+			return fail(e)
+		}
 		probe, ok := fenceProbes[need]
 		if !ok {
 			return fail(fmt.Errorf("unsupported fence need %q", need))
@@ -173,6 +192,9 @@ func fenceProvision(tc *toolchainContext, bashy string, needs map[string]bool) (
 			return fail(e)
 		}
 		fmt.Fprint(log, fenceRead(s.Obj("stdout").Str("path")), fenceRead(s.Obj("stderr").Str("path")))
+		if e := fenceInterrupted(); e != nil {
+			return fail(e)
+		}
 		if !success(s) {
 			return fail(fmt.Errorf("%s: state=%s rc=%v", need, s.Str("state"), s.Get("exit")))
 		}
@@ -232,4 +254,28 @@ func fenceDiff(stream string, want, got []byte) string {
 		}
 	}
 	return out.String()
+}
+
+// Trap interrupts before provisioning starts. Let the bounded GBE supervisor
+// finish/reap its active stage before removing files it may still be using.
+var fenceSignals chan os.Signal
+var fenceSignal os.Signal
+
+func fenceTrap() func() {
+	fenceSignals = make(chan os.Signal, 1)
+	fenceSignal = nil
+	signal.Notify(fenceSignals, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+	return func() { signal.Stop(fenceSignals) }
+}
+
+func fenceInterrupted() error {
+	select {
+	case sig := <-fenceSignals:
+		fenceSignal = sig
+	default:
+	}
+	if fenceSignal != nil {
+		return fmt.Errorf("interrupted: %s", fenceSignal)
+	}
+	return nil
 }

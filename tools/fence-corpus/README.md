@@ -9,8 +9,8 @@ sh tools/fence-corpus/validate-inventory.sh python-by-example
 sh tools/fence-corpus/selftest.sh
 ```
 
-`check.sh` requires at least one `--corpus`. Each manifest row selects `run`
-or `compiled`; `--mode` filters those rows, and `--case ID` selects an ID.
+`check.sh` requires at least one `--corpus`. Each manifest row selects `run`,
+`compiled`, or `build`; `--mode` filters those rows, and `--case ID` selects an ID.
 Filters never waive committed count floors: a small sample of a larger corpus
 can print PASS for its selected cases and still fail the aggregate ratchet.
 No selected cases is a failure. Every row is structurally checked before
@@ -25,6 +25,16 @@ files and compares bytes, including NULs and final newlines. The first line of
 stdout. `name.stderr`, when present, is raw stderr; otherwise stderr must be
 empty. The manifest rc and expected header must agree. Timeouts, launch errors,
 and surviving descendants fail even if an expected rc happens to match.
+
+An optional `name.compare` contains exactly one GBE comparator name:
+`wallclock`, `interleave_order`, `pointer_address`, `map_order`, `duration`,
+or `panic_trace`. Both expected and actual streams pass through the existing
+GBE normalizer with its stream-specific rules; unknown names and invalid shapes
+fail. These are the GBE example-specific licences, not general output sorting
+or number removal. In particular, `duration` permits Go test elapsed-time
+variation but preserves ordinary printed durations; `panic_trace` preserves
+the panic body on stderr while ignoring the stack. Exit status is always checked
+independently and cannot be waived by a comparator.
 
 The default **20-second wall-time budget** covers all executable stages of a
 case together. `FENCE_TIMEOUT` may only shorten it. This is the existing GBE
@@ -54,10 +64,16 @@ artifact
 ```
 
 Set `FENCE_SH_MODULE` to the **candidate's** existing `mvdan.cc/sh/v3` lowering
-runtime module directory for compiled cases. The generated module uses the same
+runtime module directory for compiled or build cases. The generated module uses the same
 runtime replacement pattern as GBE, with module downloads and toolchain
 switching disabled. It does not use the Go-source importer. The runner never
 edits or provisions that runtime checkout.
+
+Build mode first invokes `$BASHY_BIN check --bashsharp FILE`, then uses the
+same transpile and native build stages as compiled mode. Every stage must
+succeed; neither the source program nor the artifact is executed. Its manifest
+rc must be 0 and its `.expected` must contain only `# rc=0` plus a newline.
+It has its own `build` counts rows and supports `--mode build`.
 
 Before any case runs, the runner unions selected rows' comma/space-separated
 `needs` and calls a small fence for each language through the candidate bashy.
@@ -66,9 +82,15 @@ than host executables. Unknown needs and provisioning failures fail the run;
 there are no skips. Provisioning has a separate 120-second deadline per language;
 the case deadline remains at most 20 seconds.
 
-Each run retains `tools/fence-corpus/.cache/run-<id>/provision.log` and its
-provisioned toolchains. Set `FENCE_TOOLCHAIN_DIR` to reuse a dedicated toolchain
-directory across runs (concurrent reuse fails with a busy-directory error).
+Each run removes `tools/fence-corpus/.cache/run-<id>`, including its
+provision log and default toolchains, after restoring owner write permissions.
+Cleanup applies to success, failure, and trapped INT/TERM/HUP signals. On a
+signal, the active bounded stage finishes or times out under GBE supervision
+before cleanup, so its children are reaped before their files are removed.
+Set `FENCE_TOOLCHAIN_DIR` to retain and reuse a dedicated toolchain directory
+(concurrent reuse fails with a busy-directory error). Its owner write bits are
+restored at run end, and its latest `provision.log` is retained there. Temporary
+run scratch is still removed. Symlink targets are never traversed or chmodded.
 `FENCE_BIN_CACHE` is no longer consumed. The runner owns the `bin`, `python`, and
 `uv` subdirectories and removes their write bits during case execution; symlink
 targets such as the authenticated Go SDK are never chmodded. Case HOME, TMPDIR,
@@ -87,8 +109,8 @@ offline setting prevent tool acquisition during cases. Python uses
 
 Failures show expected/actual rc and both streams, with up to 20 differing line
 pairs per stream, capped at 200 bytes per displayed line. Quoted bytes expose
-missing newlines and control characters. Full provisioning output is kept in
-the run log; failures print a bounded excerpt and its path.
+missing newlines and control characters. Provisioning failures print a bounded excerpt before cleanup; full logs are
+retained only with an explicit `FENCE_TOOLCHAIN_DIR`.
 
 ## Tables and ratchets
 
@@ -151,8 +173,12 @@ The selftest copies a tiny committed synthetic corpus and applies isolated
 mutations to test PASS, stdout mismatch, final-newline mismatch, count drops,
 non-decreasing updates, inventory errors, missing expected output, xfail,
 timeouts, rc mismatch, missing runner/SDK/runtime, and fatal aggregate behavior.
+It also verifies build-only hangs are never executed, failures in each build
+stage, all six comparator licences (volatile changes, real differences, and rc
+mismatches), unknown names, and run cleanup including interruption.
 Its shell runner is a deliberate protocol stub, not a Bash# oracle. Compiled
-selftesting stubs only transpilation, then builds and runs real native Go with
+and build selftesting stub the check/transpile protocol, then compile real Go
+(and execute it only for compiled mode) with
 the pinned SDK. `testdata/runtime/go.mod` is an empty test-only module identity.
 The fixtures represent one synthetic source example, one case, and one `case`
 disposition; no upstream examples were imported for this infrastructure story.

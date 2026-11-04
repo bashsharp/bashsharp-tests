@@ -14,13 +14,21 @@ pass() {
   name=$1; shift
   if ! "$@" >"$work/log" 2>&1; then cat "$work/log"; echo "FAIL selftest $name"; exit 1; fi
   grep -q PASS "$work/log" || { cat "$work/log"; exit 1; }
+  check_cleanup
   echo "PASS selftest $name"
 }
 fail() {
   name=$1; pattern=$2; shift 2
   if "$@" >"$work/log" 2>&1; then cat "$work/log"; echo "FAIL selftest $name accepted corruption"; exit 1; fi
   grep -q "$pattern" "$work/log" || { cat "$work/log"; echo "FAIL selftest $name wrong failure"; exit 1; }
+  check_cleanup
   echo "PASS selftest $name"
+}
+check_cleanup() {
+  run_area=$(sed -n 's/^Run area: //p' "$work/log" | head -n 1)
+  if [ -n "$run_area" ]; then
+    [ ! -e "$run_area" ] || { echo 'FAIL leaked run area'; exit 1; }
+  fi
 }
 reset() { rm -rf "$work/case"; cp -R "$here/testdata/pass" "$work/case"; }
 pass inventory "$bin" fence-validate "$work/pass"
@@ -38,7 +46,7 @@ FIXTURE
 printf 'second\trun\tchapter/hello.bsh\tpython\t0\t-\n' >> "$work/case/cases.tsv"
 pass provision-once env FENCE_TOOLCHAIN_DIR="$work/tools" "$bin" fence-check --corpus "$work/case"
 # Inspect mode bits, rather than test -w (root can write read-only files).
-[ "$(ls -l "$work/tools/python/ready" | awk '{print substr($1,3,1) substr($1,6,1) substr($1,9,1)}')" = --- ]
+[ "$(ls -l "$work/tools/python/ready" | awk '{print substr($1,3,1) substr($1,6,1) substr($1,9,1)}')" = w-- ]
 provision_log=$(sed -n 's/^Provision log: //p' "$work/log")
 [ "$(grep -c '^fixture first install$' "$provision_log")" -eq 1 ]
 grep -q '^Summary: 2 cases, 2 PASS, 0 failures$' "$work/log"
@@ -49,6 +57,20 @@ chmod u+w "$work/tools/python"
 : > "$work/tools/python/fail"
 fail provision-fatal 'fixture provisioning failed' env FENCE_TOOLCHAIN_DIR="$work/tools" "$bin" fence-check --corpus "$work/case"
 if grep -q '^PASS case' "$work/log"; then echo 'FAIL executed after provisioning failure'; exit 1; fi
+[ "$(ls -l "$work/tools/python/ready" | awk '{print substr($1,3,1)}')" = w ]
+[ ! -e "$work/tools/.fence-lock" ]
+# Default provisioning failures also release their run-scoped scratch/tools.
+sed 's/python/unknown-language/g' "$work/case/cases.tsv" > "$work/cases"
+cp "$work/cases" "$work/case/cases.tsv"
+fail provision-default-cleanup 'unsupported fence need' "$bin" fence-check --corpus "$work/case"
+# A busy caller directory belongs to another run: do not thaw it or remove its lease.
+mkdir "$work/tools/.fence-lock"
+chmod u-w "$work/tools/python/ready"
+fail provision-busy 'toolchain directory busy' env FENCE_TOOLCHAIN_DIR="$work/tools" "$bin" fence-check --corpus "$work/pass"
+[ -d "$work/tools/.fence-lock" ]
+[ "$(ls -l "$work/tools/python/ready" | awk '{print substr($1,3,1)}')" = - ]
+rmdir "$work/tools/.fence-lock"
+chmod u+w "$work/tools/python/ready"
 reset
 cat > "$work/case/chapter/hello.bsh" <<'FIXTURE'
 [ "${FENCE_LEAK-unset}:${CLAUDE_TEST-unset}:${CODEX_TEST-unset}:${BASHY_AGENT_TEST-unset}" = unset:unset:unset:unset ] || exit 91
@@ -124,6 +146,141 @@ printf '# rc=0\n' > "$work/case/chapter/hello.expected"
 printf 'compiled\n' > "$work/case/chapter/hello.stderr"
 fail missing-runtime FENCE_SH_MODULE "$bin" fence-check --corpus "$work/case"
 pass compiled env FENCE_TIMEOUT=20 FENCE_SH_MODULE="$here/testdata/runtime" "$bin" fence-check --corpus "$work/case"
+# Build runs both checking and native compilation, but neither source nor
+# artifact may run: both intentionally hang.
+reset
+sed 's/run/build/g' "$work/case/cases.tsv" > "$work/cases"
+cp "$work/cases" "$work/case/cases.tsv"
+sed 's/run/build/g' "$work/case/counts.tsv" > "$work/counts"
+cp "$work/counts" "$work/case/counts.tsv"
+printf '# rc=0\n' > "$work/case/chapter/hello.expected"
+printf 'while :; do :; done\n' > "$work/case/chapter/hello.bsh"
+: > "$work/case/chapter/build-hang"
+pass build-never-executes env FENCE_TIMEOUT=20 FENCE_SH_MODULE="$here/testdata/runtime" "$bin" fence-check --corpus "$work/case" --mode build --update-counts
+grep -q '^build' "$work/case/counts.tsv"
+: > "$work/case/chapter/check-fail"
+fail build-check-fails 'static check failed' env FENCE_SH_MODULE="$here/testdata/runtime" "$bin" fence-check --corpus "$work/case"
+rm "$work/case/chapter/check-fail"
+: > "$work/case/chapter/transpile-fail"
+fail build-transpile-fails 'transpile failed' env FENCE_SH_MODULE="$here/testdata/runtime" "$bin" fence-check --corpus "$work/case"
+rm "$work/case/chapter/transpile-fail" "$work/case/chapter/build-hang"
+: > "$work/case/chapter/build-fail"
+fail build-compiler-fails 'build failed' env FENCE_TIMEOUT=20 FENCE_SH_MODULE="$here/testdata/runtime" "$bin" fence-check --corpus "$work/case"
+printf '# rc=0\nunexpected\n' > "$work/case/chapter/hello.expected"
+fail build-output-contract 'build expected' "$bin" fence-check --corpus "$work/case"
+
+# Each licence accepts its documented volatile change, rejects observable
+# corruption, and cannot hide a changed process exit status.
+for comparator in wallclock interleave_order pointer_address map_order duration panic_trace; do
+  reset
+  printf '%s\n' "$comparator" > "$work/case/chapter/hello.compare"
+  case "$comparator" in
+    wallclock)
+      expected='at 2026-11-03T01:02:03Z'
+      actual='at 2026-11-04T02:03:04Z' ;;
+    pointer_address)
+      expected='pointer: 0x1234'
+      actual='pointer: 0xabcd' ;;
+    duration)
+      expected='=== RUN   TestExample
+--- PASS: TestExample (0.01s)
+PASS'
+      actual='=== RUN   TestExample
+--- PASS: TestExample (0.02s)
+PASS' ;;
+    map_order)
+      expected='sum: 9
+index: 1
+a -> apple
+b -> banana
+key: a
+key: b
+0 103
+1 111'
+      actual='sum: 9
+index: 1
+b -> banana
+a -> apple
+key: b
+key: a
+0 103
+1 111' ;;
+    interleave_order)
+      expected='direct : 0
+direct : 1
+direct : 2
+going
+goroutine : 0
+goroutine : 1
+goroutine : 2
+done'
+      actual='direct : 0
+direct : 1
+direct : 2
+goroutine : 0
+going
+goroutine : 1
+goroutine : 2
+done' ;;
+    panic_trace)
+      expected='panic: boom
+
+goroutine 1 [running]:
+main.main()
+  /oracle/main.go:12'
+      actual='panic: boom
+
+goroutine 9 [running]:
+main.main()
+  /generated/main.go:99' ;;
+  esac
+  printf '# rc=0\n' > "$work/case/chapter/hello.expected"
+  if [ "$comparator" = panic_trace ]; then
+    printf '%s\n' "$expected" > "$work/case/chapter/hello.stderr"
+    printf "printf '%%s\\n' '%s' >&2\n" "$actual" > "$work/case/chapter/hello.bsh"
+  else
+    printf '%s\n' "$expected" >> "$work/case/chapter/hello.expected"
+    printf "printf '%%s\\n' '%s'\n" "$actual" > "$work/case/chapter/hello.bsh"
+  fi
+  pass "compare-$comparator-volatile" "$bin" fence-check --corpus "$work/case"
+  cp "$work/case/chapter/hello.bsh" "$work/original"
+  printf 'exit 7\n' >> "$work/case/chapter/hello.bsh"
+  fail "compare-$comparator-rc" 'want 0' "$bin" fence-check --corpus "$work/case"
+  # Prefixing a changed event also tests the panic body, before its stack.
+  { printf "printf 'corruption\\n' >&2\n"; cat "$work/original"; } > "$work/case/chapter/hello.bsh"
+  if [ "$comparator" != panic_trace ]; then
+    { printf "printf 'corruption\\n'\n"; cat "$work/original"; } > "$work/case/chapter/hello.bsh"
+  fi
+  fail "compare-$comparator-corruption" 'FAIL case' "$bin" fence-check --corpus "$work/case"
+done
+reset
+printf 'unknown\n' > "$work/case/chapter/hello.compare"
+fail compare-unknown 'unknown comparator' "$bin" fence-check --corpus "$work/case"
+
+# Interrupt while a supervised case is active; cleanup follows its bounded reap.
+reset
+printf 'while :; do :; done\n' > "$work/case/chapter/hello.bsh"
+for interrupt in TERM HUP INT; do
+  "$bin" fence-check --corpus "$work/case" > "$work/log" 2>&1 &
+  pid=$!
+  sleep 1
+  kill -"$interrupt" "$pid"
+  if wait "$pid"; then echo 'FAIL interrupt accepted'; exit 1; fi
+  grep -q interrupted "$work/log"
+  check_cleanup
+  echo "PASS selftest interrupt-$interrupt-cleanup"
+done
+env FENCE_TOOLCHAIN_DIR="$work/tools" "$bin" fence-check --corpus "$work/case" > "$work/log" 2>&1 &
+pid=$!
+sleep 1
+kill -TERM "$pid"
+if wait "$pid"; then echo 'FAIL interrupt accepted'; exit 1; fi
+grep -q interrupted "$work/log"
+check_cleanup
+[ -d "$work/tools" ]
+[ ! -e "$work/tools/.fence-lock" ]
+[ "$(ls -l "$work/tools/python/ready" | awk '{print substr($1,3,1)}')" = w ]
+echo 'PASS selftest interrupt-retained-writable'
 mkdir -p "$work/aggregate"
 cp -R "$here/testdata/pass" "$work/aggregate/examples-fenced"
 pass aggregate sh "$here/aggregate.sh" "$work/aggregate"
