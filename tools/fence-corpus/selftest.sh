@@ -99,6 +99,11 @@ fail aggregate-missing-required 'missing required corpus examples-fenced' sh "$w
 printf 'corpus\tplatforms\tstatus\nexamples-fenced\tlinux,darwin,windows\tpending\n' > "$work/gate/corpora.tsv"
 pass aggregate-pending sh "$work/gate/aggregate.sh" "$work/empty"
 grep -qx 'PENDING examples-fenced' "$work/log" || { cat "$work/log"; echo 'FAIL selftest pending not reported'; exit 1; }
-mkdir "$work/empty/unlisted-by-example"
-fail aggregate-unlisted 'unlisted corpus unlisted-by-example' sh "$work/gate/aggregate.sh" "$work/empty"
+mkdir -p "$work/empty/tests/go-by-example"
+pass aggregate-plain-go-ignored sh "$work/gate/aggregate.sh" "$work/empty"
+mkdir "$work/empty/foo-by-example"
+fail aggregate-unlisted 'unlisted corpus foo-by-example' sh "$work/gate/aggregate.sh" "$work/empty"
+rmdir "$work/empty/foo-by-example"
+mkdir -p "$work/empty/examples/go-by-example"
+fail aggregate-go-exclusion-exact-path 'unlisted corpus go-by-example' sh "$work/gate/aggregate.sh" "$work/empty"
 echo 'PASS fence-corpus selftest: all positive and negative assertions verified'
