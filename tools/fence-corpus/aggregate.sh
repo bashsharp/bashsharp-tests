@@ -9,9 +9,10 @@ done
 # Corpora may be at repository root or under tests/examples. Discover by name,
 # not cases.tsv, so a deleted manifest cannot silently remove a corpus.
 # The tools and docs namesakes hold machinery/provenance, not executable corpora.
+# tests/go-by-example is plain-source data for the separate Go three-mode gate.
 list=$(mktemp)
 trap 'rm -f "$list"' EXIT HUP INT TERM
-find "$root" \( -name .git -o -name .cache -o -path "$root/tools" -o -path "$root/docs" -o -path "$root/.agents" \) -prune -o \
+find "$root" \( -name .git -o -name .cache -o -path "$root/tools" -o -path "$root/docs" -o -path "$root/.agents" -o -path "$root/tests/go-by-example" \) -prune -o \
   -type d \( -name '*-by-example' -o -name examples-fenced -o -name tour-fenced \) -print > "$list"
 # Use OS names matching the manifest (independent of architecture).
 case $(uname -s) in
