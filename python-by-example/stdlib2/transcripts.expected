@@ -1,0 +1,25 @@
+# rc=0
+[[[['black', 'cyan'],
+   'white',
+   ['green', 'red']],
+  [['magenta', 'yellow'],
+   'blue']]]
+The wrap() method is just like fill()
+except that it returns a list of strings
+instead of one big string with newlines
+to separate the wrapped lines.
+'Nottinghamfolk send $10 to the ditch fund.'
+KeyError: 'owner'
+'Return the unladen swallow to $owner.'
+26932
+array('H', [10, 700])
+Handling task1
+[(100, 'perl'), (200, 'tcl'), (300, 'ruby'), (400, 'lua'), (500, 'python')]
+[-5, 0, 1]
+Decimal('0.74')
+0.73
+Decimal('0.00')
+0.09999999999999995
+True
+False
+Decimal('0.142857142857142857142857142857142857')

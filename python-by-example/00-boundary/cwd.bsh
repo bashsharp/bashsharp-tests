@@ -5,6 +5,6 @@ def cwd() -> str: return os.getcwd()
 ~~~
 cd /
 a := py.cwd()
-cd /tmp
+cd /usr
 b := py.cwd()
 printf '%s|%s\n' "$a" "$b"

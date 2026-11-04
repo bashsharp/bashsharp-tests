@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "<string>", line 135, in run_command
+    return command_status(fn(*argv))
+                          ~~^^^^^^^
+  File "<bash++ python>", line 1, in typed
+TypeError: can only concatenate str (not "int") to str

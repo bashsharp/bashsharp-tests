@@ -4,6 +4,7 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/../../.." && pwd)"
 pin="$root/python-by-example/pin.tsv"
 out="$root/python-by-example/inventory.tsv"
+cases="$root/python-by-example/cases.tsv"
 cache="${PYTHON_CORPUS_CACHE:-$root/.cache/python-fence-corpus/cpython}"
 
 IFS=$'\t' read -r source repo commit code_license prose_license < <(sed -n '2p' "$pin")
@@ -22,6 +23,14 @@ git -C "$cache" checkout --quiet --detach "$commit"
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 printf 'source_ref\tdisposition\tcase_id\treason\n' >"$tmp"
+awk -F '\t' '
+NR > 1 && $1 ~ /^boundary-/ {
+  disposition = ($1 == "boundary-typed-command-failure" ? "diagnostic" : "case")
+  reason = ($1 == "boundary-typed-command-failure" ? "exact CPython TypeError diagnostic contract" : "hand-written CPython fence boundary contract")
+  print "python-by-example/" $3 "\t" disposition "\t" $1 "\t" reason
+}
+' "$cases" >>"$tmp"
+boundary_count="$(( $(wc -l <"$tmp") - 1 ))"
 
 awk '
 function emit(    ref,disp,id,reason,key) {
@@ -41,8 +50,20 @@ function emit(    ref,disp,id,reason,key) {
   else if (key == "floatingpoint.rst:98") id = "tutorial-floatingpoint"
 
   if (id != "-") { disp = "case"; reason = "deterministic native-oracle adaptation" }
+  else if (key == "appendix.rst:78") { disp = "fragment"; reason = "non-Python chmod command requires a script and host permission context" }
+  else if (key == "classes.rst:195") { disp = "prose"; reason = "expected-output transcript for the preceding Python example" }
+  else if (key == "controlflow.rst:737") { disp = "prose"; reason = "expected-output transcript for the preceding Python example" }
+  else if (key == "controlflow.rst:762") { disp = "prose"; reason = "annotated function-signature diagram is not executable Python" }
+  else if (key == "interpreter.rst:19") { disp = "fragment"; reason = "interpreter invocation name is a shell command fragment" }
+  else if (key == "interpreter.rst:100") { disp = "interactive"; reason = "version and platform-specific interactive interpreter startup transcript" }
+  else if (key == "modules.rst:169") { disp = "fragment"; reason = "shell transcript depends on the fibo.py file built by preceding examples" }
+  else if (key == "modules.rst:414") { disp = "prose"; reason = "illustrative package filesystem schematic is not executable Python" }
+  else if (key == "stdlib2.rst:229") { disp = "prose"; reason = "expected stderr transcript for the preceding logging example" }
+  else if (file == "venv.rst" && first >= 118 && first <= 201) { disp = "env-dependent"; reason = "pip transcript depends on network index and mutable virtual-environment package state" }
   else if (body ~ /(^|\n)[ ]*>>> /) { disp = "interactive"; reason = "upstream REPL transcript retained in inventory" }
-  else if (lang ~ /(none|text|console|shell|bash)/) { disp = "diagnostic"; reason = "non-Python or diagnostic transcript" }
+  else if (lang ~ /none/) { disp = "prose"; reason = "non-executable output or explanatory text block" }
+  else if (lang ~ /text/) { disp = "prose"; reason = "non-executable explanatory text block" }
+  else if (lang ~ /(console|shell|bash)/) { disp = "fragment"; reason = "non-Python command transcript lacks a standalone oracle entry point" }
   else if (body ~ /(^|\n)[ ]*class[ ]/) { disp = "missing-feature:python-class-declarations"; reason = "top-level fence declarations accept functions, imports, docstrings, and constants" }
   else { disp = "fragment"; reason = "non-interactive tutorial fragment lacks a standalone oracle entry point" }
   print ref "\t" disp "\t" id "\t" reason
@@ -72,4 +93,25 @@ END { emit() }
 
 mv "$tmp" "$out"
 trap - EXIT
-printf 'inventory: %s examples from %s@%s\n' "$(( $(wc -l <"$out") - 1 ))" "$source" "$commit"
+python_bin="${PYTHON_CORPUS_PYTHON:-}"
+if [ -z "$python_bin" ]; then
+  resolve="$(mktemp)"
+  trap 'rm -f "$resolve"' EXIT
+  cat >"$resolve" <<'EOF'
+~~~py as py
+import sys
+def executable() -> str: return sys.executable
+~~~
+py.executable
+EOF
+  python_bin="$("${BASHY:-bashy}" --bashpp "$resolve")"
+  case "$python_bin" in
+    '$HOME/'*) python_bin="${HOME}${python_bin#\$HOME}" ;;
+  esac
+  rm -f "$resolve"
+  trap - EXIT
+fi
+"$python_bin" "$root/tools/fence-corpus/python/generate_transcripts.py" "$cache"
+total_count="$(( $(wc -l <"$out") - 1 ))"
+printf 'inventory: %s upstream examples from %s@%s plus %s boundary cases\n' \
+  "$((total_count - boundary_count))" "$source" "$commit" "$boundary_count"

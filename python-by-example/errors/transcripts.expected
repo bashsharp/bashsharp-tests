@@ -1,0 +1,38 @@
+# rc=0
+SyntaxError: invalid syntax
+ZeroDivisionError: division by zero
+NameError: name 'spam' is not defined
+TypeError: can only concatenate str (not "int") to str
+B
+C
+D
+<class 'Exception'>
+('spam', 'eggs')
+('spam', 'eggs')
+x = spam
+y = eggs
+Handling run-time error: division by zero
+NameError: HiThere
+ValueError
+An exception flew by!
+NameError: HiThere
+RuntimeError: unable to handle error
+RuntimeError
+RuntimeError: Failed to open database
+RuntimeError
+Goodbye, world!
+KeyboardInterrupt
+False
+result is 2.0
+executing finally clause
+division by zero!
+executing finally clause
+executing finally clause
+TypeError: unsupported operand type(s) for /: 'str' and 'str'
+    +------------------------------------
+caught <class 'ExceptionGroup'>: there were problems (2 sub-exceptions)
+There were OSErrors
+There were SystemErrors
+      +------------------------------------
+Add some more information
+    +------------------------------------

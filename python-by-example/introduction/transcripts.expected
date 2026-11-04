@@ -1,0 +1,90 @@
+# rc=0
+4
+20
+5.0
+1.6
+5.666666666666667
+5
+2
+17
+25
+128
+900
+NameError: name 'n' is not defined
+14.0
+12.5625
+113.0625
+113.06
+'spam eggs'
+'Paris rabbit got your back :)! Yay!'
+'1975'
+"doesn't"
+"doesn't"
+'"Yes," they said.'
+'"Yes," they said.'
+'"Isn\'t," they said.'
+'First line.\nSecond line.'
+First line.
+Second line.
+C:	his
+ame
+C:\this\name
+Usage: thingy [OPTIONS]
+     -h                        Display this usage message
+     -H hostname               Hostname to connect to
+
+'unununium'
+'Python'
+'Put several strings within parentheses to have them joined together.'
+SyntaxError: invalid syntax
+SyntaxError: invalid syntax
+'Python'
+'P'
+'n'
+'n'
+'o'
+'P'
+'Py'
+'tho'
+'Py'
+'on'
+'on'
+'Python'
+'Python'
+IndexError: string index out of range
+'on'
+''
+TypeError: 'str' object does not support item assignment
+TypeError: 'str' object does not support item assignment
+'Jython'
+'Pypy'
+34
+[1, 4, 9, 16, 25]
+1
+25
+[9, 16, 25]
+[1, 4, 9, 16, 25, 36, 49, 64, 81, 100]
+64
+[1, 8, 27, 64, 125]
+[1, 8, 27, 64, 125, 216, 343]
+True
+['Red', 'Green', 'Blue', 'Alph']
+['Red', 'Green', 'Blue', 'Alpha']
+['Red', 'Green', 'Blue', 'Alph']
+['a', 'b', 'c', 'd', 'e', 'f', 'g']
+['a', 'b', 'C', 'D', 'E', 'f', 'g']
+['a', 'b', 'f', 'g']
+[]
+4
+[['a', 'b', 'c'], [1, 2, 3]]
+['a', 'b', 'c']
+'b'
+0
+1
+1
+2
+3
+5
+8
+The value of i is 65536
+0,1,1,2,3,5,8,13,21,34,55,89,144,233,377,610,987,

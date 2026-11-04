@@ -1,0 +1,107 @@
+# rc=0
+Please enter an integer: 42
+More
+cat 3
+window 6
+defenestrate 12
+0
+1
+2
+3
+4
+[5, 6, 7, 8, 9]
+[0, 3, 6, 9]
+[-10, -40, -70]
+0 Mary
+1 had
+2 a
+3 little
+4 lamb
+range(0, 10)
+6
+4 equals 2 * 2
+6 equals 2 * 3
+8 equals 2 * 4
+9 equals 3 * 3
+Found an even number 2
+Found an odd number 3
+Found an even number 4
+Found an odd number 5
+Found an even number 6
+Found an odd number 7
+Found an even number 8
+Found an odd number 9
+2 is a prime number
+3 is a prime number
+4 equals 2 * 2
+5 is a prime number
+6 equals 2 * 3
+7 is a prime number
+8 equals 2 * 4
+9 equals 3 * 3
+0 1 1 2 3 5 8 13 21 34 55 89 144 233 377 610 987 1597 
+
+
+None
+[0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89]
+5
+[1]
+[1, 2]
+[1, 2, 3]
+-- This parrot wouldn't voom if you put 1000 volts through it.
+-- Lovely plumage, the Norwegian Blue
+-- It's a stiff !
+-- This parrot wouldn't voom if you put 1000 volts through it.
+-- Lovely plumage, the Norwegian Blue
+-- It's a stiff !
+-- This parrot wouldn't VOOOOOM if you put 1000000 volts through it.
+-- Lovely plumage, the Norwegian Blue
+-- It's a stiff !
+-- This parrot wouldn't VOOOOOM if you put 1000000 volts through it.
+-- Lovely plumage, the Norwegian Blue
+-- It's a stiff !
+-- This parrot wouldn't jump if you put a million volts through it.
+-- Lovely plumage, the Norwegian Blue
+-- It's bereft of life !
+-- This parrot wouldn't voom if you put a thousand volts through it.
+-- Lovely plumage, the Norwegian Blue
+-- It's pushing up the daisies !
+TypeError: function() got multiple values for argument 'a'
+-- Do you have any Limburger ?
+-- I'm sorry, we're all out of Limburger
+It's very runny, sir.
+It's really very, VERY runny, sir.
+----------------------------------------
+shopkeeper : Michael Palin
+client : John Cleese
+sketch : Cheese Shop Sketch
+2
+2
+1
+TypeError: pos_only_arg() got some positional-only arguments passed as keyword arguments: 'arg'
+TypeError: kwd_only_arg() takes 0 positional arguments but 1 was given
+3
+TypeError: combined_example() takes 2 positional arguments but 3 were given
+1 2 3
+1 2 3
+TypeError: combined_example() got some positional-only arguments passed as keyword arguments: 'pos_only'
+TypeError: foo() got multiple values for argument 'name'
+True
+'earth/mars/venus'
+'earth.mars.venus'
+[3, 4, 5]
+[3, 4, 5]
+-- This parrot wouldn't VOOM if you put four million volts through it. E's bleedin' demised !
+42
+43
+[(4, 'four'), (1, 'one'), (3, 'three'), (2, 'two')]
+Do nothing, but document it.
+
+No, really, it doesn't do anything:
+
+    >>> my_function()
+    >>>
+
+Annotations: {'ham': 'str', 'eggs': 'str', 'return': 'str'}
+Arguments: spam eggs
+'spam and eggs'
