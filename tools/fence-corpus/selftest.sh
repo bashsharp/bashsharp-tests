@@ -8,7 +8,7 @@ GBE_ROOT=$(CDPATH= cd -- "$here/../.." && pwd); export GBE_ROOT
 BASHY_BIN="$here/testdata/runner.sh"; export BASHY_BIN
 FENCE_TIMEOUT=2; export FENCE_TIMEOUT
 work=$(mktemp -d)
-trap 'rm -rf "$work"' EXIT HUP INT TERM
+trap 'chmod -R u+w "$work"; rm -rf "$work"' EXIT HUP INT TERM
 cp -R "$here/testdata/pass" "$work/pass"
 pass() {
   name=$1; shift
@@ -26,6 +26,50 @@ reset() { rm -rf "$work/case"; cp -R "$here/testdata/pass" "$work/case"; }
 pass inventory "$bin" fence-validate "$work/pass"
 pass bytes "$bin" fence-check --corpus "$work/pass"
 pass isolation "$bin" fence-check --corpus "$work/pass"
+reset
+# A declared fence is provisioned once; its first-install stderr is run output.
+sed 's/	-	0	-/	python	0	-/' "$work/case/cases.tsv" > "$work/cases"
+cp "$work/cases" "$work/case/cases.tsv"
+cat > "$work/case/chapter/hello.bsh" <<'FIXTURE'
+[ -f "$UV_PYTHON_INSTALL_DIR/ready" ] || exit 94
+[ "$BASHY_OFFLINE:$UV_OFFLINE:$UV_PYTHON_DOWNLOADS" = 1:1:never ] || exit 92
+printf 'hello\n'
+FIXTURE
+printf 'second\trun\tchapter/hello.bsh\tpython\t0\t-\n' >> "$work/case/cases.tsv"
+pass provision-once env FENCE_TOOLCHAIN_DIR="$work/tools" "$bin" fence-check --corpus "$work/case"
+# Inspect mode bits, rather than test -w (root can write read-only files).
+[ "$(ls -l "$work/tools/python/ready" | awk '{print substr($1,3,1) substr($1,6,1) substr($1,9,1)}')" = --- ]
+provision_log=$(sed -n 's/^Provision log: //p' "$work/log")
+[ "$(grep -c '^fixture first install$' "$provision_log")" -eq 1 ]
+grep -q '^Summary: 2 cases, 2 PASS, 0 failures$' "$work/log"
+pass provision-reuse env FENCE_TOOLCHAIN_DIR="$work/tools" "$bin" fence-check --corpus "$work/case"
+provision_log=$(sed -n 's/^Provision log: //p' "$work/log")
+if grep -q 'fixture first install' "$provision_log"; then echo 'FAIL repeated install'; exit 1; fi
+chmod u+w "$work/tools/python"
+: > "$work/tools/python/fail"
+fail provision-fatal 'fixture provisioning failed' env FENCE_TOOLCHAIN_DIR="$work/tools" "$bin" fence-check --corpus "$work/case"
+if grep -q '^PASS case' "$work/log"; then echo 'FAIL executed after provisioning failure'; exit 1; fi
+reset
+cat > "$work/case/chapter/hello.bsh" <<'FIXTURE'
+[ "${FENCE_LEAK-unset}:${CLAUDE_TEST-unset}:${CODEX_TEST-unset}:${BASHY_AGENT_TEST-unset}" = unset:unset:unset:unset ] || exit 91
+printf 'hello\n'
+FIXTURE
+pass environment-allowlist env FENCE_LEAK=leak CLAUDE_TEST=leak CODEX_TEST=leak BASHY_AGENT_TEST=leak "$bin" fence-check --corpus "$work/case"
+reset
+cat > "$work/case/chapter/hello.bsh" <<'FIXTURE'
+i=0
+while [ "$i" -lt 30 ]; do
+ printf 'actual-out-%s\n' "$i"
+ printf 'actual-err-%s\n' "$i" >&2
+ i=$((i + 1))
+done
+exit 7
+FIXTURE
+fail diagnostics 'rc actual=7, want 0' "$bin" fence-check --corpus "$work/case"
+for pattern in 'stdout bytes differ' 'stderr bytes differ' 'actual-out-0' 'actual-err-0' 'excerpt limited'; do
+ grep -q "$pattern" "$work/log"
+done
+if grep -q 'actual-out-20\|actual-err-20' "$work/log"; then echo 'FAIL unbounded diagnostic'; exit 1; fi
 reset
 ln -s "$work/pass/chapter/hello.bsh" "$work/case/chapter/escape"
 fail symlink-isolation symlinks "$bin" fence-check --corpus "$work/case"

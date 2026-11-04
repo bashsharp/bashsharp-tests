@@ -57,10 +57,38 @@ Set `FENCE_SH_MODULE` to the **candidate's** existing `mvdan.cc/sh/v3` lowering
 runtime module directory for compiled cases. The generated module uses the same
 runtime replacement pattern as GBE, with module downloads and toolchain
 switching disabled. It does not use the Go-source importer. The runner never
-edits or provisions that runtime checkout. `FENCE_BIN_CACHE` can explicitly name
-an already provisioned bashy tool cache for non-Go fences; otherwise each case
-gets an isolated managed cache containing the authenticated Go SDK. `needs` is
-metadata, never a reason to skip: unavailable dependencies must fail execution.
+edits or provisions that runtime checkout.
+
+Before any case runs, the runner unions selected rows' comma/space-separated
+`needs` and calls a small fence for each language through the candidate bashy.
+This uses bashy's own managed provisioning, including transitive tools, rather
+than host executables. Unknown needs and provisioning failures fail the run;
+there are no skips. Provisioning has a separate 120-second deadline per language;
+the case deadline remains at most 20 seconds.
+
+Each run retains `tools/fence-corpus/.cache/run-<id>/provision.log` and its
+provisioned toolchains. Set `FENCE_TOOLCHAIN_DIR` to reuse a dedicated toolchain
+directory across runs (concurrent reuse fails with a busy-directory error).
+`FENCE_BIN_CACHE` is no longer consumed. The runner owns the `bin`, `python`, and
+`uv` subdirectories and removes their write bits during case execution; symlink
+targets such as the authenticated Go SDK are never chmodded. Case HOME, TMPDIR,
+working directory, build cache, and uv scratch cache remain fresh (uv writes
+cache metadata even during interpreter discovery). These permissions and offline
+settings are isolation for trusted corpus programs, not an OS security sandbox.
+
+Case environments are built from an explicit allowlist with empty PATH, fixed
+locale/timezone, `BASHY_HINTS=off`, and managed toolchain paths. No caller agent,
+session, proxy, or tool-version variables are inherited. `BASHY_OFFLINE=1`,
+`UV_OFFLINE=1`, `UV_PYTHON_DOWNLOADS=never`, Go's disabled proxy/sumdb and Cargo's
+offline setting prevent tool acquisition during cases. Python uses
+`UV_PYTHON_INSTALL_DIR` and `UV_CACHE_DIR`: yoke's
+`external/python.EnsureInterpreter` passes these to uv's managed-only
+`python find/install` (unlike the independent `BASHY_BIN_CACHE`).
+
+Failures show expected/actual rc and both streams, with up to 20 differing line
+pairs per stream, capped at 200 bytes per displayed line. Quoted bytes expose
+missing newlines and control characters. Full provisioning output is kept in
+the run log; failures print a bounded excerpt and its path.
 
 ## Tables and ratchets
 

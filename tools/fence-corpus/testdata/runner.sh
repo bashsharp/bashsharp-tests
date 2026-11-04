@@ -6,6 +6,15 @@ if [ "$1" = transpile ]; then
   exit 0
 fi
 [ "$1" = --bashsharp ] || exit 98
+case "$2" in
+  provision-*.bsh)
+    [ ! -e "$UV_PYTHON_INSTALL_DIR/fail" ] || { echo 'fixture provisioning failed' >&2; exit 42; }
+    if [ ! -e "$UV_PYTHON_INSTALL_DIR/ready" ]; then
+      printf 'fixture first install\n' >&2
+      printf 'ready\n' > "$UV_PYTHON_INSTALL_DIR/ready"
+    fi
+    exit 0 ;;
+esac
 [ -d "$HOME" ] && [ -d "$TMPDIR" ] || exit 97
 [ ! -e touched ] || exit 96
 : > touched

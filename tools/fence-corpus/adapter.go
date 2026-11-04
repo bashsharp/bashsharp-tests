@@ -169,7 +169,7 @@ func fenceInventory(dir string) error {
 	return nil
 }
 
-func fenceRun(tc *toolchainContext, bashy, dir string, row []string, limit float64) (bool, error) {
+func fenceRun(tc *toolchainContext, bashy, toolroot, dir string, row []string, limit float64) (bool, error) {
 	work, err := os.MkdirTemp("", "fence-case-")
 	if err != nil {
 		return false, err
@@ -199,16 +199,8 @@ func fenceRun(tc *toolchainContext, bashy, dir string, row []string, limit float
 		}
 	}
 	tc.runGocache = work + "/cache"
-	tc.binCache = work + "/tools"
-	if err = provisionManagedToolCaches(tc.binCache, tc); err != nil {
-		return false, err
-	}
-	env := runEnv(tc, work, nil)
+	env := fenceEnv(tc, work, toolroot, true)
 	env["PWD"] = cwd
-	// Optional managed caches are explicitly supplied, never searched on PATH.
-	if cache := os.Getenv("FENCE_BIN_CACHE"); cache != "" {
-		env["BASHY_BIN_CACHE"] = cache
-	}
 	deadline := time.Now().Add(time.Duration(limit * float64(time.Second)))
 	stage := 0
 	invoke := func(argv []string, at string, e map[string]string) (*Object, error) {
@@ -235,7 +227,7 @@ func fenceRun(tc *toolchainContext, bashy, dir string, row []string, limit float
 			return false, e
 		}
 		if !success(s) {
-			return false, fmt.Errorf("transpile failed (%s): %s", s.Str("state"), fenceRead(s.Obj("stderr").Str("path")))
+			return false, fmt.Errorf("transpile failed (%s): %s", s.Str("state"), fenceExcerpt([]byte(fenceRead(s.Obj("stderr").Str("path")))))
 		}
 		mod := "module fencelowered\n\ngo 1.27\n\nrequire mvdan.cc/sh/v3 v3.0.0\nreplace mvdan.cc/sh/v3 => " + strconv.Quote(module) + "\n"
 		if err = os.WriteFile(work+"/build/go.mod", []byte(mod), 0600); err != nil {
@@ -251,7 +243,7 @@ func fenceRun(tc *toolchainContext, bashy, dir string, row []string, limit float
 			return false, e
 		}
 		if !success(s) {
-			return false, fmt.Errorf("build failed (%s): %s", s.Str("state"), fenceRead(s.Obj("stderr").Str("path")))
+			return false, fmt.Errorf("build failed (%s): %s", s.Str("state"), fenceExcerpt([]byte(fenceRead(s.Obj("stderr").Str("path")))))
 		}
 		argv = []string{artifact}
 	}
@@ -261,9 +253,7 @@ func fenceRun(tc *toolchainContext, bashy, dir string, row []string, limit float
 	}
 	want, _ := strconv.ParseInt(row[4], 10, 64)
 	got, has := s.Int("exit")
-	if !s.Bool("spawned") || s.Str("state") != "exited" || s.Bool("descendants_survived") || !has || got != want {
-		return false, fmt.Errorf("state=%s rc=%v, want %d", s.Str("state"), s.Get("exit"), want)
-	}
+	badStatus := !s.Bool("spawned") || s.Str("state") != "exited" || s.Bool("descendants_survived") || !has || got != want
 	expected, err := os.ReadFile(strings.TrimSuffix(source, ".bsh") + ".expected")
 	if err != nil {
 		return false, err
@@ -273,9 +263,7 @@ func fenceRun(tc *toolchainContext, bashy, dir string, row []string, limit float
 	if err != nil {
 		return false, err
 	}
-	if !bytes.Equal(stdout, actual) {
-		return false, fmt.Errorf("stdout bytes differ")
-	}
+	actualOut := actual
 	stderr := []byte{}
 	stderrPath := strings.TrimSuffix(source, ".bsh") + ".stderr"
 	if b, e := os.ReadFile(stderrPath); e == nil {
@@ -287,8 +275,9 @@ func fenceRun(tc *toolchainContext, bashy, dir string, row []string, limit float
 	if err != nil {
 		return false, err
 	}
-	if !bytes.Equal(stderr, actual) {
-		return false, fmt.Errorf("stderr bytes differ")
+	if badStatus || !bytes.Equal(stdout, actualOut) || !bytes.Equal(stderr, actual) {
+		return false, fmt.Errorf("state=%s rc actual=%v, want %d\n%s%s", s.Str("state"), s.Get("exit"), want,
+			fenceDiff("stdout", stdout, actualOut), fenceDiff("stderr", stderr, actual))
 	}
 	return true, nil
 }
@@ -360,6 +349,29 @@ func fenceCheck(args []string) error {
 		return err
 	}
 	tc := resolveToolchain(pin)
+	// Resolve the union before executing ANY case, including across corpora.
+	needs := map[string]bool{}
+	for _, dir := range dirs {
+		rows, e := fenceCases(dir)
+		if e != nil {
+			return e
+		}
+		for _, row := range rows {
+			if (mode != "" && row[1] != mode) || (id != "" && row[0] != id) {
+				continue
+			}
+			for _, need := range strings.FieldsFunc(row[3], func(r rune) bool { return r == ',' || r == ' ' }) {
+				if need != "-" {
+					needs[need] = true
+				}
+			}
+		}
+	}
+	toolroot, release, err := fenceProvision(tc, bashy, needs)
+	if err != nil {
+		return err
+	}
+	defer release()
 	platform := runtime.GOOS + "/" + runtime.GOARCH
 	failures, total, passes := 0, 0, 0
 	type pending struct {
@@ -401,7 +413,7 @@ func fenceCheck(args []string) error {
 			n := measured[key]
 			n[0]++
 			total++
-			ok, e := fenceRun(tc, bashy, dir, r, limit)
+			ok, e := fenceRun(tc, bashy, toolroot, dir, r, limit)
 			if ok {
 				n[1]++
 				passes++
