@@ -537,7 +537,8 @@ func fenceComparator(source string) (string, error) {
 		return "", err
 	}
 	name := strings.TrimSpace(string(b))
-	if !contains([]string{"wallclock", "interleave_order", "pointer_address", "map_order", "duration", "panic_trace"}, name) {
+	// "none" is the gate's no-normalization sentinel, not a comparator.
+	if name == "none" || !contains(NormalizerNames, name) {
 		return "", fmt.Errorf("unknown comparator %q", name)
 	}
 	return name, nil
