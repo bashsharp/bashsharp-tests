@@ -88,6 +88,7 @@ done
 exit 7
 FIXTURE
 fail diagnostics 'rc actual=7, want 0' "$bin" fence-check --corpus "$work/case"
+grep -q '^FAIL case hello run: rc differs .*stdout differs; stderr differs$' "$work/log"
 for pattern in 'stdout bytes differ' 'stderr bytes differ' 'actual-out-0' 'actual-err-0' 'excerpt limited'; do
  grep -q "$pattern" "$work/log"
 done
@@ -98,6 +99,31 @@ fail symlink-isolation symlinks "$bin" fence-check --corpus "$work/case"
 reset
 printf '# rc=0\nwrong\n' > "$work/case/chapter/hello.expected"
 fail mismatch 'stdout bytes differ' "$bin" fence-check --corpus "$work/case"
+grep -qx 'FAIL case hello run: stdout differs' "$work/log"
+reset
+printf 'unexpected\n' > "$work/case/chapter/hello.stderr"
+fail stderr-mismatch 'stderr bytes differ' "$bin" fence-check --corpus "$work/case"
+grep -qx 'FAIL case hello run: stderr differs' "$work/log"
+reset
+printf 'exit 7\n' >> "$work/case/chapter/hello.bsh"
+fail rc-mismatch '^FAIL case hello run: rc differs (state=exited rc actual=7, want 0)$' "$bin" fence-check --corpus "$work/case"
+reset
+# Missing counts must not prevent any case or later corpus from executing.
+rm "$work/case/counts.tsv"
+printf 'second\trun\tchapter/hello.bsh\t-\t0\t-\n' >> "$work/case/cases.tsv"
+fail missing-counts 'missing counts' "$bin" fence-check --corpus "$work/case" --corpus "$work/pass"
+grep -qx 'PASS case hello run' "$work/log"
+grep -qx 'PASS case second run' "$work/log"
+grep -qx 'PASS pass hello run' "$work/log"
+grep -qx 'Summary: 3 cases, 3 PASS, 1 failures' "$work/log"
+[ ! -e "$work/case/counts.tsv" ]
+pass create-counts "$bin" fence-check --corpus "$work/case" --update-counts
+printf 'mode\tplatform\tcases\tpass\n' > "$work/header"
+head -n 1 "$work/case/counts.tsv" > "$work/actual-header"
+cmp "$work/header" "$work/actual-header"
+[ "$(wc -l < "$work/case/counts.tsv" | tr -d ' ')" -eq 2 ]
+awk -F '\t' 'NR == 2 { if ($1 != "run" || $2 !~ /^(darwin|linux|windows)\// || $3 != 2 || $4 != 2) exit 1 }' "$work/case/counts.tsv"
+pass created-counts "$bin" fence-check --corpus "$work/case"
 reset
 # Preserve all bytes: removing only the final newline must be detected.
 printf '# rc=0\nhello' > "$work/case/chapter/hello.expected"
