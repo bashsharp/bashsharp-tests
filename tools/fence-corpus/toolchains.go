@@ -12,8 +12,8 @@ import (
 	"syscall"
 )
 
-// These are actual fence calls, so provisioning follows the candidate's own
-// defaults and resolvers (including transitive tools such as Rust's linker).
+// Fence calls follow the candidate's defaults and resolvers (including
+// transitive tools such as Rust's linker). Go uses its direct provisioner below.
 var fenceProbes = map[string]string{
 	"python":     "~~~python\ndef ready() -> int: return 1\n~~~\nx := ready()\n",
 	"typescript": "~~~typescript\nexport function ready(): number { return 1; }\n~~~\nx := ready()\n",
@@ -31,6 +31,10 @@ var fenceProbes = map[string]string{
 func fenceEnv(tc *toolchainContext, work, root string, offline bool) map[string]string {
 	// runEnv constructs an allowlist; capture replaces, never merges, os.Environ.
 	env := runEnv(tc, work, nil)
+	// The oracle SDK is only for building compiled cases. Let the candidate's
+	// provisioner discover its own gotoolchain pin, on every platform.
+	delete(env, "GOROOT")
+	delete(env, "BASHPP_GO")
 	env["BASHY_BIN_CACHE"] = root + "/bin"
 	// yoke external/python.EnsureInterpreter passes these through to uv's
 	// managed-only `python find/install`; BASHY_BIN_CACHE alone is insufficient.
@@ -52,7 +56,7 @@ func fenceEnv(tc *toolchainContext, work, root string, offline bool) map[string]
 	return env
 }
 
-// Do not follow symlinks: the authenticated Go SDK is linked, not owned here.
+// Do not follow symlinks: their targets are not owned by this cache.
 func fenceToolMode(root string, writable bool) error {
 	return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if os.IsNotExist(err) {
@@ -151,16 +155,6 @@ func fenceProvision(tc *toolchainContext, bashy string, needs map[string]bool) (
 	}
 	tc.binCache = root + "/bin"
 	tc.runGocache = run + "/cache"
-	// The shared helper creates a new link; reuse must verify the existing SDK.
-	link := filepath.Join(tc.binCache, "go", strings.TrimPrefix(tc.goVersion, "go"), "go")
-	if st, e := os.Stat(link); e == nil {
-		target, e := os.Stat(tc.goroot)
-		if e != nil || !os.SameFile(st, target) || sha(goExecutable(link)) != tc.goSHA256 {
-			return fail(fmt.Errorf("reused Go SDK does not match authenticated toolchain: %s", link))
-		}
-	} else if err = provisionManagedToolCaches(tc.binCache, tc); err != nil {
-		return fail(err)
-	}
 	aliases := map[string]string{"py": "python", "ts": "typescript", "node": "javascript", "js": "javascript", "rs": "rust", "cc": "c", "zig": "c", "c++": "cpp", "pwsh": "powershell", "ps1": "powershell", "cs": "csharp"}
 	canonical := map[string]bool{}
 	for need := range needs {
@@ -187,7 +181,14 @@ func fenceProvision(tc *toolchainContext, bashy string, needs map[string]bool) (
 			return fail(err)
 		}
 		fmt.Fprintln(log, "Provision", need)
-		s, e := capture([]string{bashy, "--bashsharp", file}, run, run+"/logs/"+need, fenceEnv(tc, run, root, false), Int(120), os.DevNull)
+		argv := []string{bashy, "--bashsharp", file}
+		if need == "go" {
+			// Go fences can return a call error as a value. Invoke the candidate's
+			// provisioner directly so an unavailable SDK is a fatal stage failure.
+			// Its reported GOROOT records the resolved pin in the provision log.
+			argv = []string{bashy, "go", "env", "GOROOT"}
+		}
+		s, e := capture(argv, run, run+"/logs/"+need, fenceEnv(tc, run, root, false), Int(120), os.DevNull)
 		if e != nil {
 			return fail(e)
 		}

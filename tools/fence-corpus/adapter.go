@@ -542,7 +542,7 @@ func fenceCheck(args []string) (result error) {
 	return nil
 }
 
-// A single named GBE licence applies to both streams with GBE's stream rules.
+// Named GBE licences apply in declaration order with GBE's stream rules.
 func fenceComparator(source string) (string, error) {
 	b, err := os.ReadFile(strings.TrimSuffix(source, ".bsh") + ".compare")
 	if os.IsNotExist(err) {
@@ -553,8 +553,10 @@ func fenceComparator(source string) (string, error) {
 	}
 	name := strings.TrimSpace(string(b))
 	// "none" is the gate's no-normalization sentinel, not a comparator.
-	if name == "none" || !contains(NormalizerNames, name) {
-		return "", fmt.Errorf("unknown comparator %q", name)
+	for _, part := range strings.Split(name, ",") {
+		if part == "none" || !contains(NormalizerNames, part) {
+			return "", fmt.Errorf("unknown comparator %q", part)
+		}
 	}
 	return name, nil
 }
@@ -563,11 +565,11 @@ func fenceCompare(want, got []byte, name, stream string) (bool, error) {
 	if name == "" {
 		return bytes.Equal(want, got), nil
 	}
-	a, err := Normalize(want, []string{name}, stream)
+	a, err := Normalize(want, strings.Split(name, ","), stream)
 	if err != nil {
 		return false, err
 	}
-	b, err := Normalize(got, []string{name}, stream)
+	b, err := Normalize(got, strings.Split(name, ","), stream)
 	if err != nil {
 		return false, err
 	}

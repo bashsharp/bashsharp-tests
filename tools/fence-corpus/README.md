@@ -26,10 +26,10 @@ stdout. `name.stderr`, when present, is raw stderr; otherwise stderr must be
 empty. The manifest rc and expected header must agree. Timeouts, launch errors,
 and surviving descendants fail even if an expected rc happens to match.
 
-An optional `name.compare` contains exactly one GBE comparator name from
+An optional `name.compare` contains a comma-separated list of GBE comparator names from
 `NormalizerNames` in `tools/go-by-example/gbe/normalizer.go`, excluding the
 `none` sentinel. Both expected and actual streams pass through the existing
-GBE normalizer with its stream-specific rules; unknown names and invalid shapes
+GBE normalizer in the listed order with its stream-specific rules; unknown names and invalid shapes
 fail. These are the GBE example-specific licences, not general output sorting
 or number removal. In particular, `duration` permits Go test elapsed-time
 variation but preserves ordinary printed durations; `panic_trace` preserves
@@ -48,8 +48,7 @@ when the case finishes; mismatch/stage diagnostics are printed.
 ignored build tree under `tools/fence-corpus/.cache`. It reuses the existing
 GBE build script, adding only an output file for the authenticated SDK path.
 The original source files and three-mode gate are unchanged. The adapter calls
-GBE's `capture`, `toolchainPin`, `resolveToolchain`, `runEnv`, `buildEnv`, and
-managed SDK cache helpers directly. The SDK is pinned by
+GBE's `capture`, `toolchainPin`, `resolveToolchain`, `runEnv`, `buildEnv` directly. The SDK is pinned by
 `docs/go-by-example/toolchain.tsv`, including its binary checksum. The existing
 build resolver may locate that SDK through a bootstrap Go installation; cases
 never execute an arbitrary Go toolchain from PATH. Missing SDKs are fatal.
@@ -77,6 +76,11 @@ It has its own `build` counts rows and supports `--mode build`.
 
 Before any case runs, the runner unions selected rows' comma/space-separated
 `needs` and calls a small fence for each language through the candidate bashy.
+For Go it invokes `$BASHY_BIN go env GOROOT` instead: the candidate's own
+provisioner discovers its gotoolchain pin and logs the resolved SDK path.
+The online provisioning environment and offline case environment omit gate
+`GOROOT` and `BASHPP_GO` overrides. The gate SDK is used for the supervisor and
+compiled-mode build only; it is not seeded into the fence bin cache.
 This uses bashy's own managed provisioning, including transitive tools, rather
 than host executables. Unknown needs and provisioning failures fail the run;
 there are no skips. Provisioning has a separate 120-second deadline per language;
@@ -93,7 +97,7 @@ restored at run end, and its latest `provision.log` is retained there. Temporary
 run scratch is still removed. Symlink targets are never traversed or chmodded.
 `FENCE_BIN_CACHE` is no longer consumed. The runner owns the `bin`, `python`, and
 `uv` subdirectories and removes their write bits during case execution; symlink
-targets such as the authenticated Go SDK are never chmodded. Case HOME, TMPDIR,
+targets are never chmodded. Case HOME, TMPDIR,
 working directory, build cache, and uv scratch cache remain fresh (uv writes
 cache metadata even during interpreter discovery). These permissions and offline
 settings are isolation for trusted corpus programs, not an OS security sandbox.

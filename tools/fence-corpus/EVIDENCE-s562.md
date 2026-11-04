@@ -42,3 +42,32 @@ when only bashy was on PATH on macOS; the generated wrapper now selects the
 platform spelling. No shared engine changes or weakened assertions were needed.
 Other language provisioning probes follow the candidate's fence resolvers;
 only Python was exercised against a real corpus in this bounded local check.
+
+## E1 Go provisioning and compound comparators follow-up
+
+The fence cache no longer contains a link to the gate SDK. For a selected Go
+need, the online stage invokes the candidate's `go env GOROOT` provisioner with
+the run's `BASHY_BIN_CACHE`, recording its resolved SDK path. Neither online
+provisioning nor offline case execution inherits the gate's `GOROOT` or Windows
+`BASHPP_GO`. The authenticated gate SDK still builds the supervisor and compiled
+cases. Other languages retain their candidate fence provisioning probes.
+
+`.compare` accepts comma-separated known GBE normalizers in declaration order;
+unknown names, empty members, and `none` remain fatal. The shared normalizer
+retains its stream rules and shape validation.
+
+Validation: `sh tools/fence-corpus/selftest.sh` passed all 89 named checks and
+printed its final all-assertions-verified marker; `git diff --check` passed.
+The selftest exercises two fixture candidate pins (9.98.1 and 9.98.2), both
+different from the gate SDK, checks their online provisioning and offline use,
+rejects provisioning failures, and proves the gate SDK was not seeded. Compound
+checks cover both required normalizers, observable corruption, invalid members,
+and an order-sensitive shape check. Selftests now ignore an inherited retained
+cache setting and own their temporary caches.
+
+Counts: no upstream examples, corpus cases, or inventory dispositions added or
+changed. The existing base fixture still has one synthetic example, one run
+case, and one `case` disposition; all other disposition counts are zero.
+Only runner code, its fixture/selftest, README, and this evidence file changed.
+No engine findings or changes; real Linux corpus execution remains with the
+manager, as requested. No timeout increases, skips, or weakened assertions.
