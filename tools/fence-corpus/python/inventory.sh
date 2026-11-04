@@ -93,6 +93,25 @@ END { emit() }
 
 mv "$tmp" "$out"
 trap - EXIT
+python_bin="${PYTHON_CORPUS_PYTHON:-}"
+if [ -z "$python_bin" ]; then
+  resolve="$(mktemp)"
+  trap 'rm -f "$resolve"' EXIT
+  cat >"$resolve" <<'EOF'
+~~~py as py
+import sys
+def executable() -> str: return sys.executable
+~~~
+py.executable
+EOF
+  python_bin="$("${BASHY:-bashy}" --bashpp "$resolve")"
+  case "$python_bin" in
+    '$HOME/'*) python_bin="${HOME}${python_bin#\$HOME}" ;;
+  esac
+  rm -f "$resolve"
+  trap - EXIT
+fi
+"$python_bin" "$root/tools/fence-corpus/python/generate_transcripts.py" "$cache"
 total_count="$(( $(wc -l <"$out") - 1 ))"
 printf 'inventory: %s upstream examples from %s@%s plus %s boundary cases\n' \
   "$((total_count - boundary_count))" "$source" "$commit" "$boundary_count"

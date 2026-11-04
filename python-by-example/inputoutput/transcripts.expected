@@ -1,0 +1,63 @@
+# rc=0
+'Results of the 2016 Referendum'
+' 42572654 YES votes  49.67%'
+'Hello, world.'
+"'Hello, world.'"
+'0.14285714285714285'
+The value of x is 32.5, and y is 40000...
+'hello, world\n'
+"(32.5, 40000, ('spam', 'eggs'))"
+The value of pi is approximately 3.142.
+Sjoerd     ==>       4127
+Jack       ==>       4098
+Dcab       ==>       7678
+My hovercraft is full of eels.
+My hovercraft is full of 'eels'.
+We are the knights who say "Ni!"
+spam and eggs
+eggs and spam
+This spam is absolutely horrible.
+The story of Bill, Manfred, and Georg.
+Jack: 4098; Sjoerd: 4127; Dcab: 8637678
+Jack: 4098; Sjoerd: 4127; Dcab: 8637678
+ 1   1    1
+ 2   4    8
+ 3   9   27
+ 4  16   64
+ 5  25  125
+ 6  36  216
+ 7  49  343
+ 8  64  512
+ 9  81  729
+10 100 1000
+ 1   1    1
+ 2   4    8
+ 3   9   27
+ 4  16   64
+ 5  25  125
+ 6  36  216
+ 7  49  343
+ 8  64  512
+ 9  81  729
+10 100 1000
+'00012'
+'-003.14'
+'3.14159265359'
+The value of pi is approximately 3.142.
+True
+ValueError: I/O operation on closed file.
+'This is the entire file.\n'
+''
+'This is the first line of the file.\n'
+'Second line of the file\n'
+''
+This is the first line of the file.
+Second line of the file
+15
+18
+16
+5
+b'5'
+30
+b'4'
+'[1, "simple", "list"]'

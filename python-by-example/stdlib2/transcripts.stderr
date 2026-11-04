@@ -1,0 +1,3 @@
+WARNING:root:Warning:config file server.conf not found
+ERROR:root:Error occurred
+CRITICAL:root:Critical error -- shutting down
