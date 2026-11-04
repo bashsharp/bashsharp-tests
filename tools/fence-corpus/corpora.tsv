@@ -1,5 +1,5 @@
 corpus	platforms	status
-python-by-example	linux	pending
+python-by-example	linux	required
 examples-fenced	linux	pending
 tour-fenced	linux	pending
 typescript-by-example	linux	pending
