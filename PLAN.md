@@ -1,5 +1,11 @@
 # Plan: bash++ Conformance & Testing Framework (Go 1.27 profile + POSIX 1003.1-2016 + GNU Bash 5.3)
 
+**Certification scope clarification:** this is a public language-test plan.
+Its POSIX fixtures do not contain or substitute for the licensed VSC-PCTS suite.
+See [S561 evidence](https://github.com/qiangli/bashy/blob/main/docs/s561/a4-licensed-results.md) for the completed Classic campaign and
+[S571](https://github.com/dhnt/umbrella/blob/main/docs/plan-s571-posix-certification-readiness.md) for the 67 residual decisions and certification readiness.
+Older toolchain/corpus coordinates below remain their own plan snapshot.
+
 **Target Standards & Versions:**
 - **Bashy module compatibility floor:** Go 1.26.5 (`go` directives in
   `bashy`, `sh`, and `coreutils`)

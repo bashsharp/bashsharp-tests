@@ -1,5 +1,13 @@
 # bashsharp-tests — the conformance gate for Bash#
 
+**POSIX evidence boundary:** this repository's public POSIX/Bash fixtures
+measure language compatibility; they are not the licensed VSC-PCTS campaign.
+S561's Classic candidate measured Profile B 493/493 and full Profile D
+9,270/9,337 PASS group with 67 non-passes (4 FAIL, 54 UNRESOLVED, 9 INSPECT).
+[Licensed aggregate evidence](https://github.com/qiangli/bashy/blob/main/docs/s561/a4-licensed-results.md) and [S571](https://github.com/dhnt/umbrella/blob/main/docs/plan-s571-posix-certification-readiness.md) track the
+remaining authority/manual decisions and certification readiness. These results
+do not certify Bash# or replace this repository's Go/fence corpus measurements.
+
 This repo decides what [Bash#](https://github.com/bashsharp/bashsharp) may
 claim. It is **TDD-first and red on purpose** where the language is not
 finished: a test that fails here is a target with an owner, not a bug in the
