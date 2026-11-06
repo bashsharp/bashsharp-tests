@@ -3,10 +3,9 @@ id: 8be5394e8ce1
 kind: test
 title: Run exhaustive fence corpora in verified isolated shards
 seq: 111
-status: assigned
+status: todo
 priority: p1
 created: 2026-11-05T05:41:01.802057Z
-weave: 50
 assignee: s562-fence-shards
 sprint: 578
 sprint_id: 70ba48be-af89-5ab1-8a8d-42a15fc1ddbe

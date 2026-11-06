@@ -3,10 +3,9 @@ id: d73d4ea89087
 kind: test
 title: Windows PowerShell source-bound oracle lane and remaining provider inventory
 seq: 112
-status: assigned
+status: todo
 priority: p0
 created: 2026-11-05T06:13:33.673274Z
-weave: 51
 assignee: s562-windows-corpus
 sprint: 573
 sprint_id: a5f60348-0dc8-5af7-80aa-9dffe2c745ea

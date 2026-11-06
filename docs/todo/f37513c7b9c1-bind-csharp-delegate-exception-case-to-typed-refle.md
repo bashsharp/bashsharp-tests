@@ -3,9 +3,8 @@ id: f37513c7b9c1
 kind: task
 title: Bind CSharp delegate exception case to typed reflection contract
 seq: 114
-status: assigned
+status: todo
 created: 2026-11-05T08:37:12.09019Z
-weave: 53
 assignee: s562-csharp-diagnostic
 sprint: 573
 sprint_id: a5f60348-0dc8-5af7-80aa-9dffe2c745ea

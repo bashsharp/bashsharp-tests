@@ -3,10 +3,9 @@ id: 1bd89e54e114
 kind: bug
 title: Bound retained per-case compiler caches in corpus diagnostic evidence
 seq: 115
-status: assigned
+status: todo
 priority: p0
 created: 2026-11-06T02:30:50.368153Z
-weave: 54
 assignee: opencode-glm-5.3
 sprint: 578
 sprint_id: 70ba48be-af89-5ab1-8a8d-42a15fc1ddbe
