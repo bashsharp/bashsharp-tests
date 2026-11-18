@@ -121,11 +121,11 @@ test -z "$inherited_posix" || {
 
 shellrt=${BASHPP_SHELLRT_ROOT:-}
 test -n "$shellrt" && test -f "$shellrt/go.mod" || {
-	printf 'FAIL BASHPP_SHELLRT_ROOT must name the caller-supplied mvdan.cc/sh/v3 source tree\n' >&2
+	printf 'FAIL BASHPP_SHELLRT_ROOT must name the caller-supplied github.com/qiangli/bash source tree\n' >&2
 	exit 1
 }
-grep -Eq '^module[[:space:]]+mvdan\.cc/sh/v3$' "$shellrt/go.mod" || {
-	printf 'FAIL BASHPP_SHELLRT_ROOT is not an mvdan.cc/sh/v3 module\n' >&2
+grep -Eq '^module[[:space:]]+github\.com/qiangli/bash$' "$shellrt/go.mod" || {
+	printf 'FAIL BASHPP_SHELLRT_ROOT is not an github.com/qiangli/bash module\n' >&2
 	exit 1
 }
 shellrt_commit=$(git -C "$shellrt" rev-parse HEAD 2>/dev/null || true)

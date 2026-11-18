@@ -60,8 +60,8 @@ esac
 inherited_posix=$(env | sed -n '/^POSIXLY_CORRECT=/p; /^POSIX_PEDANTIC=/p')
 test -z "$inherited_posix" || { printf 'FAIL inherited POSIX selector blocks the Bash++ direct Go-source interface\n' >&2; exit 1; }
 shellrt=${BASHPP_SHELLRT_ROOT:-}
-test -n "$shellrt" && test -f "$shellrt/go.mod" && grep -q '^module mvdan.cc/sh/v3$' "$shellrt/go.mod" || {
-	printf 'FAIL BASHPP_SHELLRT_ROOT must name the caller-supplied mvdan.cc/sh/v3 source tree\n' >&2
+test -n "$shellrt" && test -f "$shellrt/go.mod" && grep -q '^module github.com/qiangli/bash$' "$shellrt/go.mod" || {
+	printf 'FAIL BASHPP_SHELLRT_ROOT must name the caller-supplied github.com/qiangli/bash source tree\n' >&2
 	exit 1
 }
 

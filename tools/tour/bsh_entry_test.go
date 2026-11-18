@@ -34,7 +34,7 @@ func TestMaterializeCreatesByteExactNativeCopy(t *testing.T) {
 	os.WriteFile(filepath.Join(corpus, "main.bsh"), data, 0600)
 	os.WriteFile(filepath.Join(corpus, "LICENSE"), license, 0600)
 	item := Item{Path: "main.bsh", Bytes: int64(len(data)), SHA256: sha256hex(data)}
-	spec := materializeSpec{corpusRoot: corpus, corpus: []string{"tour", "tour/LICENSE", "8", sha256hex(license)}, items: []Item{item}, goVersion: "go1.27.0", helper: []string{"example.test/helper", "v1.0.0", "", "h1:mod", "h1:zip"}, runtimeDep: map[string]any{"module": "mvdan.cc/sh/v3", "require_version": "v3.0.0", "dir": dir}}
+	spec := materializeSpec{corpusRoot: corpus, corpus: []string{"tour", "tour/LICENSE", "8", sha256hex(license)}, items: []Item{item}, goVersion: "go1.27.0", helper: []string{"example.test/helper", "v1.0.0", "", "h1:mod", "h1:zip"}, runtimeDep: map[string]any{"module": "github.com/qiangli/bash", "require_version": "v0.0.0-20261117235306-adb3b4e0c28d", "dir": dir}}
 	if err := materialize(dir, spec); err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestTourBshSmoke(t *testing.T) {
 			os.WriteFile(filepath.Join(dir, "main.bsh"), source, 0600)
 			os.WriteFile(filepath.Join(dir, "main.go"), source, 0600)
 			os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte("# Focused smoke\n"), 0600)
-			module := "module tour.smoke\n\ngo 1.27\n\nrequire mvdan.cc/sh/v3 v3.0.0\nreplace mvdan.cc/sh/v3 => " + filepath.Join(root, "../sh") + "\n"
+			module := "module tour.smoke\n\ngo 1.27\n\nrequire github.com/qiangli/bash v0.0.0-20261117235306-adb3b4e0c28d\nreplace github.com/qiangli/bash => " + filepath.Join(root, "../bash") + "\n"
 			os.WriteFile(filepath.Join(dir, "go.mod"), []byte(module), 0600)
 			var oracle []byte
 			for _, mode := range []string{"baseline", "interpreted", "compiled"} {

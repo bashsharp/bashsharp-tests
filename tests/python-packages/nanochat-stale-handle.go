@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"mvdan.cc/sh/v3/polyglot"
+	"github.com/qiangli/bash/polyglot"
 )
 
 func main() {

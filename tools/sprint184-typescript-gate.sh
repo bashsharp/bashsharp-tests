@@ -55,7 +55,7 @@ run_native() {
 	mkdir -p "$outdir"
 	cp -R "${fixtures}/${layout}/." "$outdir/"
 	program="$outdir/program.bpp"
-	printf 'module sprint184fixture\n\ngo 1.25\n\nrequire mvdan.cc/sh/v3 v3.0.0\nreplace mvdan.cc/sh/v3 => %s\n' "$SH_ROOT" >"$outdir/go.mod"
+	printf 'module sprint184fixture\n\ngo 1.25\n\nrequire github.com/qiangli/bash v0.0.0-20261117235306-adb3b4e0c28d\nreplace github.com/qiangli/bash => %s\n' "$SH_ROOT" >"$outdir/go.mod"
 	if [ "$runtime" = bun ]; then
 		(cd "$outdir" && GOPROXY=off GOFLAGS=-mod=mod BASHPP_TYPESCRIPT_MODULE="$COMPILER" BASHPP_TYPESCRIPT_RUNTIME=bun BASHPP_BUN="$BASHPP_BUN" "$BASHY" transpile --bashpp "$program" -o "$outdir/generated.go")
 	else

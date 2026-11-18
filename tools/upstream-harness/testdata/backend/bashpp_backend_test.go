@@ -460,7 +460,7 @@ func TestCompilerOutputUsesPhaseDirectoryForImplicitObject(t *testing.T) {
 // backendModule writes the temporary Go module that hosts transpiled source.
 func backendModule(t test, shellrt string) (moduleDir string, err error) {
 	moduleDir = t.TempDir()
-	module := fmt.Sprintf("module bashpp_s1572\n\ngo 1.27\n\nrequire mvdan.cc/sh/v3 v3.13.1\nreplace mvdan.cc/sh/v3 => %s\n", shellrt)
+	module := fmt.Sprintf("module bashpp_s1572\n\ngo 1.27\n\nrequire github.com/qiangli/bash v0.0.0-20261117235306-adb3b4e0c28d\nreplace github.com/qiangli/bash => %s\n", shellrt)
 	if err := os.WriteFile(filepath.Join(moduleDir, "go.mod"), []byte(module), 0o600); err != nil {
 		return "", fmt.Errorf("write Bash++ backend module: %w", err)
 	}
@@ -857,7 +857,7 @@ func nativeModuleCommands(dir, tool, shellrt string, record map[string]any, main
 		deps = append(deps, "--go-package", path+"="+strings.Join(files, ","))
 		mainDir = unitDir
 	}
-	body := fmt.Sprintf("module %s\n\ngo 1.27\n\nrequire mvdan.cc/sh/v3 v3.13.1\nreplace mvdan.cc/sh/v3 => %s\n", module, shellrt)
+	body := fmt.Sprintf("module %s\n\ngo 1.27\n\nrequire github.com/qiangli/bash v0.0.0-20261117235306-adb3b4e0c28d\nreplace github.com/qiangli/bash => %s\n", module, shellrt)
 	err = os.WriteFile(filepath.Join(dir, "go.mod"), []byte(body), 0o600)
 	return
 }
@@ -1331,7 +1331,7 @@ func (t test) backendPlan(step *planStep, action, phase string, pkg *packageIden
 		buildArgs := []string{goTool, "build", "-C", moduleDir}
 		buildArgs = append(buildArgs, recipeFlags...)
 		buildArgs = append(buildArgs, "-o", artifact, ".")
-		runDeviations := append(deviations, "generated source is built in a temporary module with a caller-supplied mvdan.cc/sh/v3 replacement")
+		runDeviations := append(deviations, "generated source is built in a temporary module with a caller-supplied github.com/qiangli/bash replacement")
 		if len(recipeFlags) != 0 {
 			runDeviations = append(runDeviations, "upstream go-command recipe flags are passed verbatim to the pinned Go build of the generated module; they are never rewrapped as compile-tool or all= flags")
 		}

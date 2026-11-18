@@ -354,13 +354,13 @@ func authenticateManifest(manifest string, bashy string, row *Reviewed, tool *To
 	}
 	sh := ""
 	for _, path := range declaredPaths {
-		if moduleName(path) == "mvdan.cc/sh/v3" {
+		if moduleName(path) == "github.com/qiangli/bash" {
 			sh = path
 			break
 		}
 	}
 	if sh == "" {
-		return nil, candidateErr("the authenticated candidate declares no mvdan.cc/sh/v3 lowering runtime; the compiled mode cannot build generated Go without it")
+		return nil, candidateErr("the authenticated candidate declares no github.com/qiangli/bash lowering runtime; the compiled mode cannot build generated Go without it")
 	}
 	shReal, err := realPath(sh)
 	if err != nil {

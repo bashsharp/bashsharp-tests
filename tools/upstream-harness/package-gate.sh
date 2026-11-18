@@ -78,7 +78,7 @@ esac
 inherited_posix=$(env | sed -n '/^POSIXLY_CORRECT=/p; /^POSIX_PEDANTIC=/p')
 test -z "$inherited_posix" || { printf 'FAIL inherited POSIX selector blocks the Bash++ direct Go-source interface\n' >&2; exit 1; }
 shellrt=${BASHPP_SHELLRT_ROOT:-}
-test -n "$shellrt" && test -f "$shellrt/go.mod" || { printf 'FAIL BASHPP_SHELLRT_ROOT must name the caller-supplied mvdan.cc/sh/v3 source tree\n' >&2; exit 1; }
+test -n "$shellrt" && test -f "$shellrt/go.mod" || { printf 'FAIL BASHPP_SHELLRT_ROOT must name the caller-supplied github.com/qiangli/bash source tree\n' >&2; exit 1; }
 shellrt_commit=$(git -C "$shellrt" rev-parse HEAD 2>/dev/null || true)
 test "$shellrt_commit" = "$(pin_value shellrt_commit)" || { printf 'FAIL Bash++ runtime source commit: expected %s, got %s\n' "$(pin_value shellrt_commit)" "${shellrt_commit:-missing}" >&2; exit 1; }
 

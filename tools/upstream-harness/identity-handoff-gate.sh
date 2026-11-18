@@ -49,8 +49,8 @@ if test -z "$bashpp_tool"; then bashpp_tool=$(command -v bashsharp || command -v
 test -x "$bashpp_tool" || { printf 'FAIL Bash++ tool is unavailable: %s\n' "$bashpp_tool" >&2; exit 1; }
 bashpp_version=$($bashpp_tool --version)
 shellrt=${BASHPP_SHELLRT_ROOT:-}
-test -n "$shellrt" && test -f "$shellrt/go.mod" && grep -q '^module mvdan.cc/sh/v3$' "$shellrt/go.mod" || {
-	printf 'FAIL BASHPP_SHELLRT_ROOT must name the caller-supplied mvdan.cc/sh/v3 source tree\n' >&2
+test -n "$shellrt" && test -f "$shellrt/go.mod" && grep -q '^module github.com/qiangli/bash$' "$shellrt/go.mod" || {
+	printf 'FAIL BASHPP_SHELLRT_ROOT must name the caller-supplied github.com/qiangli/bash source tree\n' >&2
 	exit 1
 }
 

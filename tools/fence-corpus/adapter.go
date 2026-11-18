@@ -236,7 +236,7 @@ func fenceRun(tc *toolchainContext, bashy, toolroot, dir string, row []string, l
 	}
 	if row[1] == "compiled" || row[1] == "build" {
 		module := os.Getenv("FENCE_SH_MODULE")
-		if module == "" || moduleName(module) != "mvdan.cc/sh/v3" {
+		if module == "" || moduleName(module) != "github.com/qiangli/bash" {
 			return false, fmt.Errorf("compiled mode requires FENCE_SH_MODULE naming the candidate lowering runtime")
 		}
 		module, err = filepath.Abs(module)
@@ -251,7 +251,7 @@ func fenceRun(tc *toolchainContext, bashy, toolroot, dir string, row []string, l
 		if !success(s) {
 			return false, fmt.Errorf("transpile failed (%s): %s", s.Str("state"), fenceExcerpt([]byte(fenceRead(s.Obj("stderr").Str("path")))))
 		}
-		mod := "module fencelowered\n\ngo 1.27\n\nrequire mvdan.cc/sh/v3 v3.0.0\nreplace mvdan.cc/sh/v3 => " + strconv.Quote(module) + "\n"
+		mod := "module fencelowered\n\ngo 1.27\n\nrequire github.com/qiangli/bash v0.0.0-20261117235306-adb3b4e0c28d\nreplace github.com/qiangli/bash => " + strconv.Quote(module) + "\n"
 		if err = os.WriteFile(work+"/build/go.mod", []byte(mod), 0600); err != nil {
 			return false, err
 		}

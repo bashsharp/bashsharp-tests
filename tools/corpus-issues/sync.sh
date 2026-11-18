@@ -74,10 +74,10 @@ This is one of the *repair* roots in the Go-corpus target catalog — a program 
 **Reproduce**
 1. \`tools/go-corpus/refresh.sh\` once (fetches and verifies the pinned Go 1.27.1 source; needs Go ≥ 1.27 on PATH).
 2. Oracle: \`go run go/test/$path\` (or the action the upstream runner uses for \`$action\`).
-3. Bash#: \`bashsharp --source=go go/test/$path\` (interpreted) and, for the compiled mode, \`bashsharp transpile --source=go go/test/$path -o /tmp/t.go && go run /tmp/t.go\` inside a module that replaces \`mvdan.cc/sh/v3\` with a \`github.com/qiangli/sh\` checkout.
+3. Bash#: \`bashsharp --source=go go/test/$path\` (interpreted) and, for the compiled mode, \`bashsharp transpile --source=go go/test/$path -o /tmp/t.go && go run /tmp/t.go\` inside a module that replaces \`github.com/qiangli/bash\` with a \`github.com/qiangli/bash\` checkout.
 4. Diff the two. The fix is done when **both** Bash# modes match the oracle and the classic gate (\`tools/classic-gate.sh\`) is unchanged.
 
-**Where the fix lives:** \`github.com/qiangli/sh\` (\`interp/\` for interpreted, \`lower/\` for compiled); un-\`planned\` or add the fixture here; one PR per root, citing this issue.
+**Where the fix lives:** \`github.com/qiangli/bash\` (\`interp/\` for interpreted, \`lower/\` for compiled); un-\`planned\` or add the fixture here; one PR per root, citing this issue.
 EOB
 )
   if [ "$dry" = 1 ]; then echo "would create: $title"; created=$((created+1)); continue; fi

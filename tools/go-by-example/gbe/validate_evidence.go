@@ -378,7 +378,7 @@ func validateEvidenceMain(args []string) {
 		die("candidate runtime dependencies differ from the reviewed set: " + Generate(recorded.Get("repositories")))
 	}
 	if !deepEqual(recorded.Get("sh_module_commit"), reviewed.Commits["sh"]) {
-		die("candidate lowering runtime is not the reviewed mvdan.cc/sh/v3 commit")
+		die("candidate lowering runtime is not the reviewed github.com/qiangli/bash commit")
 	}
 	// The recorded recipe is part of what is being reviewed: an evidence chain
 	// that quietly reverts to `go run` or grants one mode extra environment is

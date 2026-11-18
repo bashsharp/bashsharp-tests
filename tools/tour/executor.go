@@ -1081,7 +1081,7 @@ func runtimeDependency(candidate map[string]any) (map[string]any, error) {
 					return nil, fmt.Errorf("key not found: %q", k)
 				}
 			}
-			return map[string]any{"module": "mvdan.cc/sh/v3", "require_version": "v3.0.0",
+			return map[string]any{"module": "github.com/qiangli/bash", "require_version": "v0.0.0-20261117235306-adb3b4e0c28d",
 				"dir": component["dir"], "commit": component["commit"]}, nil
 		}
 	}

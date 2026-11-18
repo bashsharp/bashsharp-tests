@@ -95,7 +95,7 @@ var ADAPTERS = []string{"none", "argv_fixture", "fixed_env", "hermetic_cwd", "tm
 var effectNormalizations = []string{"tmp_path"}
 
 // The generated Go depends on the lowering runtime, provisioned from the
-// mvdan.cc/sh/v3 repository the AUTHENTICATED candidate declares.
+// github.com/qiangli/bash repository the AUTHENTICATED candidate declares.
 const goModOracle = "module gbe.oracle\n\ngo 1.27\n"
 
 var (
@@ -1250,13 +1250,13 @@ func gateMain(args []string) {
 
 	// The generated Go depends on the lowering runtime. It is not provisioned
 	// out of band through GBE_SH_MODULE, which was an unauthenticated
-	// environment path: it is the mvdan.cc/sh/v3 repository the AUTHENTICATED
+	// environment path: it is the github.com/qiangli/bash repository the AUTHENTICATED
 	// candidate declares, already proved to be at its clean reviewed commit.
 	tc.shModule = CANDIDATE.Obj("sh_module").Str("path")
 	realBashy := CANDIDATE.Obj("launcher").Str("path")
 	bashySHA := CANDIDATE.Str("launcher_sha256")
 	payloadSHA := CANDIDATE.Str("payload_sha256")
-	goModLowered := "module gbelowered\n\ngo 1.27\n\nrequire mvdan.cc/sh/v3 v3.0.0\n\nreplace mvdan.cc/sh/v3 => " + tc.shModule + "\n"
+	goModLowered := "module gbelowered\n\ngo 1.27\n\nrequire github.com/qiangli/bash v0.0.0-20261117235306-adb3b4e0c28d\n\nreplace github.com/qiangli/bash => " + tc.shModule + "\n"
 	versionCmd := exec.Command(BASHY, "--version")
 	bashyVersion, err := versionCmd.CombinedOutput()
 	if err != nil || len(bashyVersion) == 0 {

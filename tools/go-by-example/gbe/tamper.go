@@ -403,7 +403,7 @@ func (t *tamperSuite) phaseA(gateEnv []string) {
 			}
 			f[8] = strings.Join(kept, ";")
 		})
-	t.expectFail("missing_sh_module", "declares no mvdan.cc/sh/v3 lowering runtime",
+	t.expectFail("missing_sh_module", "declares no github.com/qiangli/bash lowering runtime",
 		skip, nil, gateWrapper(noSh), "--candidate", W+"/no-sh.json", "--bashy", BASHY)
 
 	// The independent candidate validator reaches the same refusals from the
