@@ -6,7 +6,7 @@ module bashpp-tests/tools/grammar-oracle
 // (docs/grammar-oracle/pin.tsv); production modules never import this one.
 go 1.27
 
-toolchain go1.27.2
+toolchain go1.27.4
 
 require github.com/antlr4-go/antlr/v4 v4.13.1
 

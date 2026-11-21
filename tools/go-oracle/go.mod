@@ -4,3 +4,5 @@ module bashpp-tests/tools/go-oracle
 // The toolchain line is exact rather than a floor, so the driver is never
 // silently rebuilt by a different compiler than the one it drives.
 go 1.27.1
+
+toolchain go1.27.4
